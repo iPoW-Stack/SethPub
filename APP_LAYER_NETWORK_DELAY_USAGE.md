@@ -19,20 +19,20 @@
 
 | 变量 | 说明 | 默认值 | 范围 | 示例 |
 |------|------|--------|------|------|
-| SETH_NETWORK_ENABLED | 启用/禁用 | 0 | 0-1 | 1 |
-| SETH_NETWORK_DELAY_MS | 单向延迟 (ms) | 0 | 0-1000 | 25 |
-| SETH_NETWORK_JITTER_MS | 抖动 (ms) | 0 | 0-100 | 10 |
-| SETH_NETWORK_LOSS_RATE | 丢包率 | 0 | 0-1 | 0.0001 |
+| SHARDORA_NETWORK_ENABLED | 启用/禁用 | 0 | 0-1 | 1 |
+| SHARDORA_NETWORK_DELAY_MS | 单向延迟 (ms) | 0 | 0-1000 | 25 |
+| SHARDORA_NETWORK_JITTER_MS | 抖动 (ms) | 0 | 0-100 | 10 |
+| SHARDORA_NETWORK_LOSS_RATE | 丢包率 | 0 | 0-1 | 0.0001 |
 
 ## 使用方式
 
 ### 启用网络模拟 (公网模拟: 50ms RTT)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=25      # 单向 25ms = 往返 50ms
-export SETH_NETWORK_JITTER_MS=10     # 抖动 10ms
-export SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=25      # 单向 25ms = 往返 50ms
+export SHARDORA_NETWORK_JITTER_MS=10     # 抖动 10ms
+export SHARDORA_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
 
 # 启动节点
 ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm>
@@ -41,10 +41,10 @@ export SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
 ### 启用网络模拟 (局域网模拟: 2ms RTT)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=1       # 单向 1ms
-export SETH_NETWORK_JITTER_MS=0      # 无抖动
-export SETH_NETWORK_LOSS_RATE=0      # 无丢包
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=1       # 单向 1ms
+export SHARDORA_NETWORK_JITTER_MS=0      # 无抖动
+export SHARDORA_NETWORK_LOSS_RATE=0      # 无丢包
 
 ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm>
 ```
@@ -52,7 +52,7 @@ export SETH_NETWORK_LOSS_RATE=0      # 无丢包
 ### 禁用网络模拟 (正常运行)
 
 ```bash
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 # 或不设置环境变量 (默认禁用)
 
 ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm>
@@ -67,7 +67,7 @@ export SETH_NETWORK_ENABLED=0
 **主要方法**:
 
 1. `ShouldDropPacket()`: 检查是否应该丢弃报文
-   - 根据 SETH_NETWORK_LOSS_RATE 随机决定
+   - 根据 SHARDORA_NETWORK_LOSS_RATE 随机决定
    - 返回 true 表示丢弃，false 表示保留
 
 2. `GetDelayMs()`: 获取实际延迟时间
@@ -135,21 +135,21 @@ tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
 
 ```
 实际延迟 = 基础延迟 + 随机抖动
-随机抖动 = [-SETH_NETWORK_JITTER_MS, +SETH_NETWORK_JITTER_MS]
+随机抖动 = [-SHARDORA_NETWORK_JITTER_MS, +SHARDORA_NETWORK_JITTER_MS]
 
 例如:
-SETH_NETWORK_DELAY_MS=25
-SETH_NETWORK_JITTER_MS=10
+SHARDORA_NETWORK_DELAY_MS=25
+SHARDORA_NETWORK_JITTER_MS=10
 实际延迟范围 = [15ms, 35ms]
 ```
 
 ### 丢包模拟
 
 ```
-丢包概率 = SETH_NETWORK_LOSS_RATE
+丢包概率 = SHARDORA_NETWORK_LOSS_RATE
 
 例如:
-SETH_NETWORK_LOSS_RATE=0.0001 (0.01%)
+SHARDORA_NETWORK_LOSS_RATE=0.0001 (0.01%)
 平均每 10000 个报文丢弃 1 个
 ```
 
@@ -184,16 +184,16 @@ SETH_NETWORK_LOSS_RATE=0.0001 (0.01%)
 ### 1. 检查环境变量
 
 ```bash
-echo $SETH_NETWORK_ENABLED
-echo $SETH_NETWORK_DELAY_MS
-echo $SETH_NETWORK_JITTER_MS
-echo $SETH_NETWORK_LOSS_RATE
+echo $SHARDORA_NETWORK_ENABLED
+echo $SHARDORA_NETWORK_DELAY_MS
+echo $SHARDORA_NETWORK_JITTER_MS
+echo $SHARDORA_NETWORK_LOSS_RATE
 ```
 
 ### 2. 查看日志
 
 ```bash
-grep "Network simulation" /root/seths/s*/log/seth.log
+grep "Network simulation" /root/shardoras/s*/log/shardora.log
 ```
 
 ### 3. 测试网络延迟
@@ -204,7 +204,7 @@ ping <remote_node_ip>
 
 # 观察 RTT 是否增加
 # 启用网络模拟前: ~0.1ms
-# 启用网络模拟后: ~50ms (如果设置 SETH_NETWORK_DELAY_MS=25)
+# 启用网络模拟后: ~50ms (如果设置 SHARDORA_NETWORK_DELAY_MS=25)
 ```
 
 ### 4. 性能对比
@@ -225,7 +225,7 @@ A: 系统调度可能导致 ±5ms 的偏差，这是正常的。
 
 ### Q: 如何禁用网络模拟?
 
-A: 设置 `SETH_NETWORK_ENABLED=0` 或不设置任何环境变量。
+A: 设置 `SHARDORA_NETWORK_ENABLED=0` 或不设置任何环境变量。
 
 ### Q: 支持哪些平台?
 

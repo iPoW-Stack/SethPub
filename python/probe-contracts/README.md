@@ -1,6 +1,6 @@
 # Probe Contracts Bundle
 
-This folder contains the exact probe contracts and scripts used in the latest Seth diagnostics:
+This folder contains the exact probe contracts and scripts used in the latest Shardora diagnostics:
 
 - `ProbeCallee.sol`
 - `ProbeCaller.sol`
@@ -12,5 +12,5 @@ This folder contains the exact probe contracts and scripts used in the latest Se
 
 Related report:
 
-- `..\seth_call_value_probe_report_2026-03-30.md`
+- `..\shardora_call_value_probe_report_2026-03-30.md`
 

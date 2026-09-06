@@ -17,7 +17,7 @@
 #include <functional>
 #include <vector>
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 class VssManager;
@@ -62,7 +62,7 @@ public:
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr) = 0;
     // Accept a block and txs in it from sync msg.
     virtual Status AcceptSync(const view_block::protobuf::ViewBlockItem& block) = 0;
@@ -105,7 +105,7 @@ public:
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr) override;
     // Accept a synced block.
     Status AcceptSync(const view_block::protobuf::ViewBlockItem& block) override;
@@ -122,14 +122,14 @@ public:
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr);
     bool IsBlockValid(const view_block::protobuf::ViewBlockItem&);
     Status DoTransactions(
         const std::shared_ptr<consensus::WaitingTxsItem>&,
         view_block::protobuf::ViewBlockItem*,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host);
+        shardoravm::ShardorahainHost& shardora_host);
     Status GetAndAddTxsLocally(
         transport::MessagePtr msg_ptr,
         const std::string& parent_hash,
@@ -137,11 +137,11 @@ public:
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>&,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map = nullptr);
     void UpdateDesShardingId(
         pools::protobuf::ToTxMessageItem* to_addr_info, 
-        sethvm::SethhainHost& seth_host);
+        shardoravm::ShardorahainHost& shardora_host);
     
     // Validate statistic transaction node consistency (90% threshold)
     bool ValidateStatisticNodeConsistency(
@@ -160,7 +160,7 @@ public:
                 cur_tps_ = (double(prev_count_) / (double(now_tm_us - prev_tps_tm_us_) / 1000000.0)); 
                 prev_tps_tm_us_ = now_tm_us;
                 if (prev_count_ > 0) {
-                    SETH_WARN("pool: %d, tps: %.2f", pool_idx_, cur_tps_);
+                    SHARDORA_WARN("pool: %d, tps: %.2f", pool_idx_, cur_tps_);
                 }
                 prev_count_ = 0;
             }
@@ -202,5 +202,5 @@ public:
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora
 

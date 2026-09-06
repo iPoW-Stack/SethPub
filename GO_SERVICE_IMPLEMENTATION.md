@@ -1,4 +1,4 @@
-# Go HTTPS 服务实现 - Seth 购买凭证验证系统
+# Go HTTPS 服务实现 - Shardora 购买凭证验证系统
 
 ## ✅ 实现状态：已完成
 
@@ -6,7 +6,7 @@
 
 ## 项目概述
 
-实现了一个完整的 HTTPS 服务，用于验证用户的 ECDSA 签名购买凭证，并通过 Seth 客户端向用户地址转账 100 个币。
+实现了一个完整的 HTTPS 服务，用于验证用户的 ECDSA 签名购买凭证，并通过 Shardora 客户端向用户地址转账 100 个币。
 
 ### 核心功能
 
@@ -14,7 +14,7 @@
 2. ✅ **ECDSA 签名验证** - 验证用户提交的凭证签名
 3. ✅ **防重放攻击** - 每个凭证只能使用一次
 4. ✅ **时间戳验证** - 凭证必须在 5 分钟内有效
-5. ✅ **Seth 客户端集成** - 自动向用户地址转账 100 币
+5. ✅ **Shardora 客户端集成** - 自动向用户地址转账 100 币
 6. ✅ **完整的客户端示例** - 演示如何创建和提交凭证
 
 ---
@@ -24,7 +24,7 @@
 ```
 go_service/
 ├── main.go                 # 主服务器（HTTPS + 凭证验证）
-├── seth_client.go          # Seth 区块链客户端
+├── shardora_client.go          # Shardora 区块链客户端
 ├── client_example.go       # 客户端库（可重用）
 ├── test_client.go          # 测试客户端（独立可执行）
 ├── go.mod                  # Go 模块定义
@@ -43,37 +43,37 @@ go_service/
 - 处理 `/purchase` 端点
 - 验证凭证签名
 - 防止重放攻击
-- 调用 Seth 客户端转账
+- 调用 Shardora 客户端转账
 
 **关键代码**:
 ```go
 type CredentialService struct {
     usedCredentials map[string]bool  // 已使用凭证跟踪
     mu              sync.RWMutex     // 并发安全
-    sethClient      *SethClient      // Seth 客户端
+    shardoraClient      *ShardoraClient      // Shardora 客户端
 }
 
 func (cs *CredentialService) ProcessCredential(cred *PurchaseCredential) (*Response, error) {
     // 1. 验证时间戳（±5 分钟）
     // 2. 检查凭证是否已使用
     // 3. 验证 ECDSA 签名
-    // 4. 通过 Seth 客户端转账
+    // 4. 通过 Shardora 客户端转账
     // 5. 标记凭证为已使用
 }
 ```
 
-### 2. seth_client.go - Seth 区块链客户端
+### 2. shardora_client.go - Shardora 区块链客户端
 
 **功能**:
 - 管理私钥和地址
 - 获取和更新 nonce
 - 构造和签名交易
-- 发送交易到 Seth 节点
+- 发送交易到 Shardora 节点
 - 查询账户余额
 
 **关键代码**:
 ```go
-type SethClient struct {
+type ShardoraClient struct {
     nodeIP       string
     nodePort     int
     privateKey   string
@@ -81,11 +81,11 @@ type SethClient struct {
     ecdsaPrivKey *ecdsa.PrivateKey
 }
 
-func (sc *SethClient) TransferCoins(toAddress string, amount uint64) (string, error) {
+func (sc *ShardoraClient) TransferCoins(toAddress string, amount uint64) (string, error) {
     // 1. 增加 nonce
     // 2. 创建交易
     // 3. 签名交易
-    // 4. 发送到 Seth 节点
+    // 4. 发送到 Shardora 节点
     // 5. 返回交易哈希
 }
 ```
@@ -105,7 +105,7 @@ type ClientExample struct {
     serverURL  string
 }
 
-func (ce *ClientExample) CreateCredential(sethAddress string) (*PurchaseCredential, error) {
+func (ce *ClientExample) CreateCredential(shardoraAddress string) (*PurchaseCredential, error) {
     // 1. 生成随机 nonce
     // 2. 构造消息
     // 3. 签名消息
@@ -128,7 +128,7 @@ func (ce *ClientExample) CreateCredential(sethAddress string) (*PurchaseCredenti
 
 ```go
 type PurchaseCredential struct {
-    Address   string `json:"address"`    // Seth 地址（十六进制，40 字符）
+    Address   string `json:"address"`    // Shardora 地址（十六进制，40 字符）
     Timestamp int64  `json:"timestamp"`  // Unix 时间戳（秒）
     Nonce     string `json:"nonce"`      // 随机数（十六进制，32 字符）
     Signature string `json:"signature"`  // ECDSA 签名（十六进制，128 字符，r||s）
@@ -137,7 +137,7 @@ type PurchaseCredential struct {
 ```
 
 **字段说明**:
-- `Address`: 接收币的 Seth 地址
+- `Address`: 接收币的 Shardora 地址
 - `Timestamp`: 凭证创建时间，用于防止过期凭证
 - `Nonce`: 随机数，用于防止重放攻击
 - `Signature`: ECDSA 签名，格式为 r||s（64 字节）
@@ -165,7 +165,7 @@ func GenerateSelfSignedCert() (tls.Certificate, error) {
     priv, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
     template := x509.Certificate{
         SerialNumber: serialNumber,
-        Subject:      pkix.Name{Organization: []string{"Seth Purchase Service"}},
+        Subject:      pkix.Name{Organization: []string{"Shardora Purchase Service"}},
         NotBefore:    time.Now(),
         NotAfter:     time.Now().Add(365 * 24 * time.Hour),
         KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
@@ -245,14 +245,14 @@ if cred.Timestamp < now-300 || cred.Timestamp > now+300 {
 
 ```bash
 cd go_service
-go run main.go seth_client.go
+go run main.go shardora_client.go
 ```
 
 **输出**:
 ```
 Generated self-signed certificate
 Starting HTTPS server on port 8443...
-Seth node: 127.0.0.1:13001
+Shardora node: 127.0.0.1:13001
 Endpoint: https://localhost:8443/purchase
 ```
 
@@ -261,8 +261,8 @@ Endpoint: https://localhost:8443/purchase
 在 `main.go` 中修改：
 ```go
 port := 8443                                    // HTTPS 端口
-sethNodeIP := "127.0.0.1"                      // Seth 节点 IP
-sethNodePort := 13001                          // Seth 节点端口
+shardoraNodeIP := "127.0.0.1"                      // Shardora 节点 IP
+shardoraNodePort := 13001                          // Shardora 节点端口
 senderPrivateKey := "your_sender_private_key_hex"  // 发送者私钥
 ```
 
@@ -276,7 +276,7 @@ go run test_client.go
 
 **输出示例**:
 ```
-=== Seth Purchase Service Test Client ===
+=== Shardora Purchase Service Test Client ===
 
 1. Generating ECDSA key pair...
    Public Key: 04a1b2c3d4...
@@ -409,12 +409,12 @@ OK
 
 ---
 
-## Seth 客户端集成
+## Shardora 客户端集成
 
 ### 交易结构
 
 ```go
-type SethTransaction struct {
+type ShardoraTransaction struct {
     Nonce    uint64 `json:"nonce"`      // 交易序号
     PubKey   string `json:"pubkey"`     // 公钥（未压缩）
     Step     int    `json:"step"`       // 交易类型（0=普通转账）
@@ -452,7 +452,7 @@ GET http://node:port/api/account?address=xxx
 POST http://node:port/api/transaction
 ```
 
-**请求体**: `SethTransaction` JSON
+**请求体**: `ShardoraTransaction` JSON
 
 **响应**:
 ```json
@@ -614,7 +614,7 @@ if port == "" {
     port = "8443"
 }
 
-sethNodeIP := os.Getenv("SETH_NODE_IP")
+shardoraNodeIP := os.Getenv("SHARDORA_NODE_IP")
 senderPrivateKey := os.Getenv("SENDER_PRIVATE_KEY")
 ```
 
@@ -624,7 +624,7 @@ senderPrivateKey := os.Getenv("SENDER_PRIVATE_KEY")
 FROM golang:1.20-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN go build -o server main.go seth_client.go
+RUN go build -o server main.go shardora_client.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
@@ -638,17 +638,17 @@ CMD ["./server"]
 
 ```ini
 [Unit]
-Description=Seth Purchase Service
+Description=Shardora Purchase Service
 After=network.target
 
 [Service]
 Type=simple
-User=seth
-WorkingDirectory=/opt/seth-purchase-service
-ExecStart=/opt/seth-purchase-service/server
+User=shardora
+WorkingDirectory=/opt/shardora-purchase-service
+ExecStart=/opt/shardora-purchase-service/server
 Restart=on-failure
 Environment="PORT=8443"
-Environment="SETH_NODE_IP=127.0.0.1"
+Environment="SHARDORA_NODE_IP=127.0.0.1"
 
 [Install]
 WantedBy=multi-user.target
@@ -668,7 +668,7 @@ go test -v
 
 ```bash
 # 终端 1: 启动服务器
-go run main.go seth_client.go
+go run main.go shardora_client.go
 
 # 终端 2: 运行测试客户端
 go run test_client.go
@@ -707,12 +707,12 @@ client := &http.Client{Transport: tr}
 - 公钥格式是否正确：65 字节，以 0x04 开头
 - 签名格式是否正确：64 字节，r||s
 
-### 3. Seth 连接失败
+### 3. Shardora 连接失败
 
 **问题**: `Failed to transfer coins: connection refused`
 
 **检查**:
-- Seth 节点是否运行
+- Shardora 节点是否运行
 - IP 和端口是否正确
 - HTTP 端口 = TCP 端口 + 10000
 
@@ -736,7 +736,7 @@ sc.UpdateNonce()
 - ✅ ECDSA 签名验证（P-256 曲线）
 - ✅ 防重放攻击（凭证哈希跟踪）
 - ✅ 时间戳验证（±5 分钟）
-- ✅ Seth 客户端集成（转账 100 币）
+- ✅ Shardora 客户端集成（转账 100 币）
 - ✅ 完整的客户端示例
 - ✅ 测试客户端
 - ✅ 详细文档
@@ -751,7 +751,7 @@ sc.UpdateNonce()
 ### 文件清单
 
 1. `main.go` - 主服务器（350+ 行）
-2. `seth_client.go` - Seth 客户端（250+ 行）
+2. `shardora_client.go` - Shardora 客户端（250+ 行）
 3. `client_example.go` - 客户端库（150+ 行）
 4. `test_client.go` - 测试客户端（200+ 行）
 5. `go.mod` - Go 模块定义

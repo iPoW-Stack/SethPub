@@ -4,18 +4,18 @@
 #include "consensus/hotstuff/view_block_chain.h"
 #include "contract/contract_manager.h"
 #include "network/network_utils.h"
-#include "sethvm/execution.h"
-#include "sethvm/host_journal_stack.h"
-#include "sethvm/reversible_feistel_address.h"
+#include "shardoravm/execution.h"
+#include "shardoravm/host_journal_stack.h"
+#include "shardoravm/reversible_feistel_address.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
 int ContractUserCreateCall::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& pre_seth_host,
+        shardoravm::ShardorahainHost& pre_shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     // contract create call
@@ -23,8 +23,8 @@ int ContractUserCreateCall::HandleTx(
     uint64_t from_balance = 0;
     uint64_t from_nonce = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(pre_seth_host, from, acc_balance_map, &from_balance, &from_nonce);
-    SETH_DEBUG("contract user call create called: %s, balance: %lu", 
+    int balance_status = GetTempAccountBalance(pre_shardora_host, from, acc_balance_map, &from_balance, &from_nonce);
+    SHARDORA_DEBUG("contract user call create called: %s, balance: %lu", 
         common::Encode::HexEncode(from).c_str(), from_balance);
     // Intrinsic gas: base (53000) + bytecode calldata bytes (EIP-2028)
     uint64_t gas_used = consensus::kCreateContractDefaultUseGas
@@ -44,7 +44,7 @@ int ContractUserCreateCall::HandleTx(
             break;
         }
 
-	    protos::AddressInfoPtr contract_info = pre_seth_host.view_block_chain_->ChainGetAccountInfo(block_tx.to());
+	    protos::AddressInfoPtr contract_info = pre_shardora_host.view_block_chain_->ChainGetAccountInfo(block_tx.to());
         if (contract_info != nullptr) {
             block_tx.set_status(kConsensusAccountExists);
             break;
@@ -73,29 +73,29 @@ int ContractUserCreateCall::HandleTx(
     } while(0);
 
     int64_t tmp_from_balance = from_balance;
-    sethvm::SethhainHost seth_host;
-    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
-    seth_host.tx_context_ = pre_seth_host.tx_context_;
-    seth_host.pre_seth_host_ = &pre_seth_host;
+    shardoravm::ShardorahainHost shardora_host;
+    shardora_host.view_block_chain_ = pre_shardora_host.view_block_chain_;
+    shardora_host.tx_context_ = pre_shardora_host.tx_context_;
+    shardora_host.pre_shardora_host_ = &pre_shardora_host;
     evmc_result evmc_call_res = {};
     evmc::Result evmc_res{ evmc_call_res };
     bool check_valid = false;
     if (block_tx.status() == kConsensusSuccess) {
         InitHost(
-            seth_host, 
+            shardora_host, 
             block_tx, 
             block_tx.gas_limit() - gas_used, 
             block_tx.gas_price(), 
             view_block);
         // get caller prepaid gas
-        seth_host.AddTmpAccountBalance(
+        shardora_host.AddTmpAccountBalance(
             block_tx.from(),
             tmp_from_balance);
-        seth_host.AddTmpAccountBalance(
+        shardora_host.AddTmpAccountBalance(
             block_tx.to(),
             block_tx.amount());
         check_valid = true;
-        int call_res = CreateContractCallExcute(seth_host, block_tx, &evmc_res);
+        int call_res = CreateContractCallExcute(shardora_host, block_tx, &evmc_res);
         if (evmc_res.gas_left > (int64_t)block_tx.gas_limit()) {
             gas_used = block_tx.gas_limit();
         } else {
@@ -104,7 +104,7 @@ int ContractUserCreateCall::HandleTx(
 
         if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
             block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
-            SETH_DEBUG("create contract: %s failed, call_res: %d, "
+            SHARDORA_DEBUG("create contract: %s failed, call_res: %d, "
                 "evmc res: %d, gas_used: %lu, gas price: %lu, from_balance: %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 call_res,
@@ -115,22 +115,22 @@ int ContractUserCreateCall::HandleTx(
         }
 
         // ── 叠加跨链路由 gas（构造函数中调用 _crossTransfer 产生）────────────
-        gas_used += static_cast<uint64_t>(seth_host.cross_gas_charged_);
+        gas_used += static_cast<uint64_t>(shardora_host.cross_gas_charged_);
         // ─────────────────────────────────────────────────────────────────────
 
         if (tmp_from_balance > static_cast<int64_t>(gas_used * block_tx.gas_price())) {
             gas_used += consensus::CalcKvStorageGas(
                 tx_info->key().size(), tx_info->value().size(), true);
-            SETH_DEBUG("create contract key: %s, value: %s", 
+            SHARDORA_DEBUG("create contract key: %s, value: %s", 
                 tx_info->key().c_str(), 
                 tx_info->value().c_str());
             if (block_tx.gas_limit() < gas_used) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-                SETH_DEBUG("1 balance error: %lu, %lu, %lu", tmp_from_balance, block_tx.gas_limit(), gas_used);
+                SHARDORA_DEBUG("1 balance error: %lu, %lu, %lu", tmp_from_balance, block_tx.gas_limit(), gas_used);
             }
         } else {
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_ERROR("leader balance error: %llu, %llu", tmp_from_balance, gas_used * block_tx.gas_price());
+            SHARDORA_ERROR("leader balance error: %llu, %llu", tmp_from_balance, gas_used * block_tx.gas_price());
             tmp_from_balance = 0;
         }
     }
@@ -142,12 +142,12 @@ int ContractUserCreateCall::HandleTx(
         if (tmp_from_balance >= int64_t(gas_used * block_tx.gas_price())) {
             if (tmp_from_balance < dec_amount) {
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("leader balance error: %llu, %llu", tmp_from_balance, dec_amount);
+                SHARDORA_ERROR("leader balance error: %llu, %llu", tmp_from_balance, dec_amount);
             }
         } else {
             tmp_from_balance = 0;
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_ERROR("leader balance error: %llu, %llu",
+            SHARDORA_ERROR("leader balance error: %llu, %llu",
                 tmp_from_balance, gas_used * block_tx.gas_price());
         }
     } else {
@@ -161,9 +161,9 @@ int ContractUserCreateCall::HandleTx(
     if (block_tx.status() == kConsensusSuccess) {
         int64_t contract_balance_add = 0;
         int64_t caller_balance_add = 0;
-        int64_t gas_more = seth_host.gas_more_;
+        int64_t gas_more = shardora_host.gas_more_;
         int res = SaveContractCreateInfo(
-            seth_host,
+            shardora_host,
             block_tx,
             contract_balance_add,
             caller_balance_add);
@@ -179,34 +179,34 @@ int ContractUserCreateCall::HandleTx(
                 evmc::address ca{};
                 memcpy(ca.bytes, block_tx.to().data(),
                     std::min(block_tx.to().size(), sizeof(ca.bytes)));
-                auto marker = seth_host.get_storage(ca, sethvm::kIsCrossShardBaseSlot);
-                uint64_t marker_u64 = sethvm::EvmcBytes32ToUint64(marker);
-                SETH_INFO("CrossShardBase sentinel check: contract=%s marker_u64=%lu marker_b31=0x%02x accounts_size=%zu",
+                auto marker = shardora_host.get_storage(ca, shardoravm::kIsCrossShardBaseSlot);
+                uint64_t marker_u64 = shardoravm::EvmcBytes32ToUint64(marker);
+                SHARDORA_INFO("CrossShardBase sentinel check: contract=%s marker_u64=%lu marker_b31=0x%02x accounts_size=%zu",
                     common::Encode::HexEncode(block_tx.to()).c_str(),
                     marker_u64,
                     (unsigned)marker.bytes[31],
-                    seth_host.accounts_.size());
+                    shardora_host.accounts_.size());
                 // Dump all storage keys for recipient to diagnose slot mismatch
                 {
-                    auto dbg_it = seth_host.accounts_.find(ca);
-                    if (dbg_it != seth_host.accounts_.end()) {
-                        SETH_INFO("CrossShardBase: recipient storage entries=%zu",
+                    auto dbg_it = shardora_host.accounts_.find(ca);
+                    if (dbg_it != shardora_host.accounts_.end()) {
+                        SHARDORA_INFO("CrossShardBase: recipient storage entries=%zu",
                             dbg_it->second.storage.size());
                         size_t n = 0;
                         for (auto& [k, sv] : dbg_it->second.storage) {
-                            SETH_INFO("  storage[%zu] slot=%s val_b31=0x%02x",
+                            SHARDORA_INFO("  storage[%zu] slot=%s val_b31=0x%02x",
                                 n++,
                                 common::Encode::HexEncode(std::string((char*)k.bytes, 32)).c_str(),
                                 (unsigned)sv.value.bytes[31]);
                             if (n >= 8) break;
                         }
                     } else {
-                        SETH_INFO("CrossShardBase: recipient NOT in accounts_!");
+                        SHARDORA_INFO("CrossShardBase: recipient NOT in accounts_!");
                     }
                 }
                 if (marker_u64 == 1u) {
-                    gas_used *= sethvm::kCrossShardBaseGasMultiplier;
-                    SETH_INFO("CrossShardBase 16x gas applied: %lu, limit: %lu, contract: %s",
+                    gas_used *= shardoravm::kCrossShardBaseGasMultiplier;
+                    SHARDORA_INFO("CrossShardBase 16x gas applied: %lu, limit: %lu, contract: %s",
                         gas_used, block_tx.gas_limit(),
                         common::Encode::HexEncode(block_tx.to()).c_str());
                 }
@@ -215,13 +215,13 @@ int ContractUserCreateCall::HandleTx(
 
             if (gas_used > block_tx.gas_limit()) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-                SETH_DEBUG("1 balance error: %lu, %lu, %lu", tmp_from_balance, block_tx.gas_limit(), gas_more);
+                SHARDORA_DEBUG("1 balance error: %lu, %lu, %lu", tmp_from_balance, block_tx.gas_limit(), gas_more);
                 break;
             }
 
             if (tmp_from_balance < int64_t(gas_used * block_tx.gas_price())) {
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("balance error: %llu, %llu", tmp_from_balance, gas_more * block_tx.gas_price());
+                SHARDORA_ERROR("balance error: %llu, %llu", tmp_from_balance, gas_more * block_tx.gas_price());
                 break;
             }
 
@@ -232,7 +232,7 @@ int ContractUserCreateCall::HandleTx(
                 static_cast<int64_t>(gas_used * block_tx.gas_price());
             if ((int64_t)tmp_from_balance < dec_amount) {
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("leader balance error: %llu, %llu", tmp_from_balance, caller_balance_add);
+                SHARDORA_ERROR("leader balance error: %llu, %llu", tmp_from_balance, caller_balance_add);
                 break;
             }
 
@@ -245,11 +245,11 @@ int ContractUserCreateCall::HandleTx(
             contract_info->set_sharding_id(view_block.qc().network_id());
             contract_info->set_pool_index(view_block.qc().pool_index());
             contract_info->set_type(address::protobuf::kNormal);
-            contract_info->set_bytes_code(seth_host.create_bytes_code_);
+            contract_info->set_bytes_code(shardora_host.create_bytes_code_);
             contract_info->set_latest_height(view_block.block_info().height());
             contract_info->set_tx_index(tx_index);
             contract_info->set_nonce(0);
-            SETH_DEBUG("success add contract address info: %s, %s", 
+            SHARDORA_DEBUG("success add contract address info: %s, %s", 
                 common::Encode::HexEncode(block_tx.to()).c_str(), 
                 ProtobufToJson(*contract_info).c_str());
             acc_balance_map[block_tx.to()] = contract_info;
@@ -263,7 +263,7 @@ int ContractUserCreateCall::HandleTx(
             contract_prefund_info->set_latest_height(view_block.block_info().height());
             contract_prefund_info->set_tx_index(tx_index);
             contract_prefund_info->set_nonce(0);
-            SETH_DEBUG("success add contract address prefund info: %s, %s, prefund: %lu", 
+            SHARDORA_DEBUG("success add contract address prefund info: %s, %s, prefund: %lu", 
                 common::Encode::HexEncode(block_tx.to() + from).c_str(), 
                 ProtobufToJson(*contract_prefund_info).c_str(),
                 block_tx.contract_prefund());
@@ -276,12 +276,12 @@ int ContractUserCreateCall::HandleTx(
     acc_balance_map[from]->set_nonce(block_tx.nonce());
     acc_balance_map[from]->set_latest_height(view_block.block_info().height());
     acc_balance_map[from]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s", 
+    SHARDORA_DEBUG("success add addr: %s, value: %s", 
         common::Encode::HexEncode(from).c_str(), 
         ProtobufToJson(*(acc_balance_map[from])).c_str());
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    SETH_DEBUG("create contract called %s, user: %s, new balance: %lu, "
+    SHARDORA_DEBUG("create contract called %s, user: %s, new balance: %lu, "
         "gas used: %lu, gas_price: %lu, prefund: %lu, amount: %lu, status: %d",
         common::Encode::HexEncode(block_tx.to()).c_str(),
         common::Encode::HexEncode(block_tx.from()).c_str(),
@@ -291,8 +291,8 @@ int ContractUserCreateCall::HandleTx(
         block_tx.contract_prefund(),
         block_tx.amount(),
         block_tx.status());
-    for (auto event_iter = seth_host.recorded_logs_.begin();
-            event_iter != seth_host.recorded_logs_.end(); ++event_iter) {
+    for (auto event_iter = shardora_host.recorded_logs_.begin();
+            event_iter != shardora_host.recorded_logs_.end(); ++event_iter) {
         auto log = block_tx.add_events();
         log->set_data((*event_iter).data);
         for (auto topic_iter = (*event_iter).topics.begin();
@@ -321,7 +321,7 @@ int ContractUserCreateCall::HandleTx(
     }
 
     auto status_val = tx_hash_status.SerializeAsString();
-    SETH_DEBUG("create contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
+    SHARDORA_DEBUG("create contract status: %d, rel: %d, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tx_hash_status.status(),
         ProtobufToJson(tx_hash_status).c_str(),
@@ -329,10 +329,10 @@ int ContractUserCreateCall::HandleTx(
         common::Encode::HexEncode(block_tx.to()).c_str());
     if (block_tx.status() == kConsensusSuccess) {
         // ── pending_cross_actions_ → cross_to_map_（构造函数中的跨链调用）────
-        for (auto& action : seth_host.pending_cross_actions_) {
+        for (auto& action : shardora_host.pending_cross_actions_) {
             if (action.base_root_address.empty()) continue;
 
-            if (action.type == sethvm::CrossShardActionType::kTransfer) {
+            if (action.type == shardoravm::CrossShardActionType::kTransfer) {
                 if (action.to.empty()) continue;
                 std::string key = action.emitter + std::to_string(action.nonce);
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
@@ -349,12 +349,12 @@ int ContractUserCreateCall::HandleTx(
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
                     cross_to_map_[key] = item;
-                    SETH_INFO("CrossShardBase constructor cross-transfer queued: base=%s, to=%s, amount=%lu, dest_shard=%u pool=%u",
+                    SHARDORA_INFO("CrossShardBase constructor cross-transfer queued: base=%s, to=%s, amount=%lu, dest_shard=%u pool=%u",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
                         common::Encode::HexEncode(action.to).c_str(),
                         action.amount, action.dest_shard_id, action.dest_pool_index);
                 }
-            } else if (action.type == sethvm::CrossShardActionType::kSetStorage) {
+            } else if (action.type == shardoravm::CrossShardActionType::kSetStorage) {
                 if (action.storage_key.empty()) continue;
                 std::string key = action.emitter + "s" + std::to_string(action.nonce);
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
@@ -370,7 +370,7 @@ int ContractUserCreateCall::HandleTx(
                     item->set_cross_storage_key(action.storage_key);
                     item->set_cross_storage_value(action.storage_val);
                     cross_to_map_[key] = item;
-                    SETH_INFO("CrossShardBase constructor cross-storage queued: base=%s, key_len=%zu, nonce=%lu, dest_shard=%u pool=%u",
+                    SHARDORA_INFO("CrossShardBase constructor cross-storage queued: base=%s, key_len=%zu, nonce=%lu, dest_shard=%u pool=%u",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
                         action.storage_key.size(), action.nonce,
                         action.dest_shard_id, action.dest_pool_index);
@@ -379,35 +379,35 @@ int ContractUserCreateCall::HandleTx(
         }
         // ─────────────────────────────────────────────────────────────────────
 
-        // Detect CrossShardBase before MergeToPrev (storage/code still in seth_host)
+        // Detect CrossShardBase before MergeToPrev (storage/code still in shardora_host)
         std::string xsb_runtime_code;
         {
-            evmc::address new_addr_evmc = sethvm::StrToEvmcAddr(block_tx.to());
-            evmc::bytes32 sentinel = seth_host.get_storage(
-                new_addr_evmc, sethvm::kIsCrossShardBaseSlot);
+            evmc::address new_addr_evmc = shardoravm::StrToEvmcAddr(block_tx.to());
+            evmc::bytes32 sentinel = shardora_host.get_storage(
+                new_addr_evmc, shardoravm::kIsCrossShardBaseSlot);
             if (sentinel.bytes[31] == 1) {
-                auto c2_it = seth_host.create2_accounts_.find(new_addr_evmc);
-                if (c2_it != seth_host.create2_accounts_.end() &&
+                auto c2_it = shardora_host.create2_accounts_.find(new_addr_evmc);
+                if (c2_it != shardora_host.create2_accounts_.end() &&
                         !c2_it->second.code.empty()) {
                     xsb_runtime_code = std::string(
                         c2_it->second.code.begin(), c2_it->second.code.end());
-                } else if (!seth_host.create_bytes_code_.empty()) {
+                } else if (!shardora_host.create_bytes_code_.empty()) {
                     // Top-level deployment: runtime bytecode returned by constructor execution
-                    xsb_runtime_code = seth_host.create_bytes_code_;
-                    SETH_INFO("CrossShardBase top-level deploy: runtime bytecode %zu bytes from create_bytes_code_",
+                    xsb_runtime_code = shardora_host.create_bytes_code_;
+                    SHARDORA_INFO("CrossShardBase top-level deploy: runtime bytecode %zu bytes from create_bytes_code_",
                         xsb_runtime_code.size());
                 } else {
-                    SETH_WARN("CrossShardBase deployed but runtime bytecode not found: %s",
+                    SHARDORA_WARN("CrossShardBase deployed but runtime bytecode not found: %s",
                         common::Encode::HexEncode(block_tx.to()).c_str());
                 }
             }
         }
 
-        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-        seth_host.MergeToPrev();
-        auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());
+        shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        shardora_host.MergeToPrev();
+        auto iter = pre_shardora_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == pre_seth_host.cross_to_map_.end()) {
+        if (iter == pre_shardora_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(block_tx.to());  // 20 bytes: contract address only
             to_item_ptr->set_amount(0);  // create contract direct set balance, not cross by root
@@ -415,46 +415,46 @@ int ContractUserCreateCall::HandleTx(
             to_item_ptr->set_des_sharding_id(network::kUniversalNetworkId);
             if (!xsb_runtime_code.empty()) {
                 to_item_ptr->set_runtime_bytecode(xsb_runtime_code);
-                SETH_INFO("SaveContractCreateInfo: XSB broadcast bytecode %zu bytes for addr=%s",
+                SHARDORA_INFO("SaveContractCreateInfo: XSB broadcast bytecode %zu bytes for addr=%s",
                     xsb_runtime_code.size(),
                     common::Encode::HexEncode(block_tx.to()).c_str());
             }
 
-            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
-            SETH_DEBUG("success add to tx item addr prefund id: %s, prefund: %lu",
+            pre_shardora_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            SHARDORA_DEBUG("success add to tx item addr prefund id: %s, prefund: %lu",
                 common::Encode::HexEncode(to_item_ptr->des()).c_str(),
                 block_tx.contract_prefund());
         }
 
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
-            auto iter = pre_seth_host.cross_to_map_.find(exists_iter->first);
+            auto iter = pre_shardora_host.cross_to_map_.find(exists_iter->first);
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-            if (iter == pre_seth_host.cross_to_map_.end()) {
-                pre_seth_host.cross_to_map_[exists_iter->first] = exists_iter->second;
+            if (iter == pre_shardora_host.cross_to_map_.end()) {
+                pre_shardora_host.cross_to_map_[exists_iter->first] = exists_iter->second;
             } else {
                 to_item_ptr = iter->second;
                 to_item_ptr->set_amount(exists_iter->second->amount() + to_item_ptr->amount());
             }
 
-            SETH_DEBUG("success add to tx item addr: %s, balance: %lu",
+            SHARDORA_DEBUG("success add to tx item addr: %s, balance: %lu",
                 common::Encode::HexEncode(exists_iter->second->des()).c_str(),
                 exists_iter->second->amount());
         }
     } else {
-        pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        pre_shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     }
 
     return kConsensusSuccess;
 }
 
 int ContractUserCreateCall::SaveContractCreateInfo(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::BlockTx& block_tx,
         int64_t& contract_balance_add,
         int64_t& caller_balance_add) {
     int64_t other_add = 0;
-    for (auto transfer_iter = seth_host.to_account_value_.begin();
-            transfer_iter != seth_host.to_account_value_.end(); ++transfer_iter) {
+    for (auto transfer_iter = shardora_host.to_account_value_.begin();
+            transfer_iter != shardora_host.to_account_value_.end(); ++transfer_iter) {
         // transfer from must caller or contract address, other not allowed.
         if (transfer_iter->first != block_tx.from() && transfer_iter->first != block_tx.to()) {
             return kConsensusError;
@@ -525,20 +525,20 @@ int ContractUserCreateCall::SaveContractCreateInfo(
         }
     }
 
-    SETH_DEBUG("user success call create contract.");
+    SHARDORA_DEBUG("user success call create contract.");
     return kConsensusSuccess;
 }
 
 int ContractUserCreateCall::CreateContractCallExcute(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::BlockTx& tx,
         evmc::Result* out_res) {
-    uint32_t call_mode = sethvm::kJustCreate;
+    uint32_t call_mode = shardoravm::kJustCreate;
     if (tx.has_contract_input() && !tx.contract_input().empty()) {
-        call_mode = sethvm::kCreateAndCall;
+        call_mode = shardoravm::kCreateAndCall;
     }
 
-    int exec_res = sethvm::Execution::Instance()->execute(
+    int exec_res = shardoravm::Execution::Instance()->execute(
         tx.contract_code(),
         tx.contract_input(),
         tx.from(),
@@ -548,10 +548,10 @@ int ContractUserCreateCall::CreateContractCallExcute(
         tx.gas_limit(),
         0,
         call_mode,
-        seth_host,
+        shardora_host,
         out_res);
-    if (exec_res != sethvm::kSethvmSuccess) {
-        SETH_ERROR("CreateContractCallExcute failed: %d", exec_res);
+    if (exec_res != shardoravm::kShardoravmSuccess) {
+        SHARDORA_ERROR("CreateContractCallExcute failed: %d", exec_res);
         return kConsensusError;
     }
 
@@ -560,4 +560,4 @@ int ContractUserCreateCall::CreateContractCallExcute(
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

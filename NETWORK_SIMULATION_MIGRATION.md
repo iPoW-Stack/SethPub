@@ -10,7 +10,7 @@
 
 ## 解决方案
 
-采用**应用层延迟注入**方式，在 Seth 应用的 Transport 层添加网络延迟和抖动模拟。
+采用**应用层延迟注入**方式，在 Shardora 应用的 Transport 层添加网络延迟和抖动模拟。
 
 ### 优势
 
@@ -26,16 +26,16 @@
 
 ### 1. 环境变量配置
 
-在启动 Seth 节点时设置以下环境变量：
+在启动 Shardora 节点时设置以下环境变量：
 
 ```bash
 # 启用网络模拟
-export SETH_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_ENABLED=1
 
 # 网络参数 (模拟公网 50ms RTT)
-export SETH_NETWORK_DELAY_MS=25      # 单向延迟 25ms
-export SETH_NETWORK_JITTER_MS=10     # 抖动 10ms
-export SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
+export SHARDORA_NETWORK_DELAY_MS=25      # 单向延迟 25ms
+export SHARDORA_NETWORK_JITTER_MS=10     # 抖动 10ms
+export SHARDORA_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
 ```
 
 ### 2. 修改 temp_cmd.sh
@@ -70,10 +70,10 @@ export SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
 
 ```bash
 # 启用网络模拟
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=25
-export SETH_NETWORK_JITTER_MS=10
-export SETH_NETWORK_LOSS_RATE=0.0001
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=25
+export SHARDORA_NETWORK_JITTER_MS=10
+export SHARDORA_NETWORK_LOSS_RATE=0.0001
 
 # 启动部署脚本
 ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm> 1
@@ -93,7 +93,7 @@ source setup_app_layer_network_delay.sh
 
 ```bash
 # 禁用网络模拟 (正常运行)
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 
 # 或者不设置环境变量 (默认禁用)
 ./temp_cmd.sh <public_ip> <start_pos> <node_count> <bootstrap> <start_shard> <end_shard> <leader_init_tm>
@@ -101,13 +101,13 @@ export SETH_NETWORK_ENABLED=0
 
 ## 配置参数说明
 
-### SETH_NETWORK_ENABLED
+### SHARDORA_NETWORK_ENABLED
 
 - **类型**: 整数 (0 或 1)
 - **默认值**: 0 (禁用)
 - **说明**: 是否启用网络模拟
 
-### SETH_NETWORK_DELAY_MS
+### SHARDORA_NETWORK_DELAY_MS
 
 - **类型**: 整数 (毫秒)
 - **默认值**: 0
@@ -117,7 +117,7 @@ export SETH_NETWORK_ENABLED=0
   - 1ms: 模拟局域网
   - 50ms: 模拟高延迟网络 (100ms RTT)
 
-### SETH_NETWORK_JITTER_MS
+### SHARDORA_NETWORK_JITTER_MS
 
 - **类型**: 整数 (毫秒)
 - **默认值**: 0
@@ -127,7 +127,7 @@ export SETH_NETWORK_ENABLED=0
   - 0ms: 无抖动 (固定延迟)
   - 20ms: 高抖动
 
-### SETH_NETWORK_LOSS_RATE
+### SHARDORA_NETWORK_LOSS_RATE
 
 - **类型**: 浮点数 (0-1)
 - **默认值**: 0
@@ -142,10 +142,10 @@ export SETH_NETWORK_ENABLED=0
 ### 场景 1: 模拟公网 (推荐用于压测)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=25
-export SETH_NETWORK_JITTER_MS=10
-export SETH_NETWORK_LOSS_RATE=0.0001
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=25
+export SHARDORA_NETWORK_JITTER_MS=10
+export SHARDORA_NETWORK_LOSS_RATE=0.0001
 ```
 
 **特点**: 50ms RTT, 10ms 抖动, 0.01% 丢包率
@@ -153,10 +153,10 @@ export SETH_NETWORK_LOSS_RATE=0.0001
 ### 场景 2: 模拟局域网 (快速测试)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=1
-export SETH_NETWORK_JITTER_MS=0
-export SETH_NETWORK_LOSS_RATE=0
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=1
+export SHARDORA_NETWORK_JITTER_MS=0
+export SHARDORA_NETWORK_LOSS_RATE=0
 ```
 
 **特点**: 2ms RTT, 无抖动, 无丢包
@@ -164,10 +164,10 @@ export SETH_NETWORK_LOSS_RATE=0
 ### 场景 3: 模拟高延迟网络 (极限测试)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=50
-export SETH_NETWORK_JITTER_MS=20
-export SETH_NETWORK_LOSS_RATE=0.001
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=50
+export SHARDORA_NETWORK_JITTER_MS=20
+export SHARDORA_NETWORK_LOSS_RATE=0.001
 ```
 
 **特点**: 100ms RTT, 20ms 抖动, 0.1% 丢包率
@@ -175,7 +175,7 @@ export SETH_NETWORK_LOSS_RATE=0.001
 ### 场景 4: 禁用网络模拟 (正常运行)
 
 ```bash
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 # 或不设置任何环境变量
 ```
 
@@ -197,16 +197,16 @@ export SETH_NETWORK_ENABLED=0
 ### 1. 验证环境变量设置
 
 ```bash
-echo $SETH_NETWORK_ENABLED
-echo $SETH_NETWORK_DELAY_MS
-echo $SETH_NETWORK_JITTER_MS
-echo $SETH_NETWORK_LOSS_RATE
+echo $SHARDORA_NETWORK_ENABLED
+echo $SHARDORA_NETWORK_DELAY_MS
+echo $SHARDORA_NETWORK_JITTER_MS
+echo $SHARDORA_NETWORK_LOSS_RATE
 ```
 
 ### 2. 查看日志中的延迟信息
 
 ```bash
-grep "Network simulation" /root/seths/s*/log/seth.log
+grep "Network simulation" /root/shardoras/s*/log/shardora.log
 ```
 
 ### 3. 监控网络延迟

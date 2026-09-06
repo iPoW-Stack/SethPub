@@ -18,7 +18,7 @@
 #include "protos/init.pb.h"
 #include "init/init_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace block {
     class AccountManager;
@@ -176,4 +176,4 @@ void ComputeG2ForNode(const std::string &prikey, uint32_t k,
 
 };  // namespace init
 
-};  // namespace seth
+};  // namespace shardora

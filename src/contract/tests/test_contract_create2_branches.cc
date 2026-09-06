@@ -9,7 +9,7 @@
 #include "contract/contract_create2.h"
 #include "contract/contract_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -134,4 +134,4 @@ TEST(ContractCreate2Branches, IdenticalCallsProduceIdenticalAddress) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora

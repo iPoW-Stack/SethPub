@@ -5,13 +5,13 @@
 #include <common/encode.h>
 
 int main(int argc, char** argv) {
-    seth::security::Curve curve;
-    seth::security::PublicKey pubkey(curve);
-    seth::security::PrivateKey prikey(argv[0]);
+    shardora::security::Curve curve;
+    shardora::security::PublicKey pubkey(curve);
+    shardora::security::PrivateKey prikey(argv[0]);
 
     pubkey.FromPrivateKey(curve, prikey);
-    std::cout << seth::common::Encode::HexEncode(pubkey.str_pubkey()) << std::endl;
-    std::cout << seth::common::Encode::HexEncode(pubkey.str_pubkey_uncompressed()) << std::endl;
+    std::cout << shardora::common::Encode::HexEncode(pubkey.str_pubkey()) << std::endl;
+    std::cout << shardora::common::Encode::HexEncode(pubkey.str_pubkey_uncompressed()) << std::endl;
     
     return 0;
 }

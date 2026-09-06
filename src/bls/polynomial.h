@@ -17,7 +17,7 @@
 #include "common/utils.h"
 #include "protos/prefix_db.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -95,4 +95,4 @@ private:
 
 }  // namespace bls
 
-}  // namespace seth
+}  // namespace shardora

@@ -4,7 +4,7 @@
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -26,4 +26,4 @@ std::string Security::GetAddressWithPublicKey(const std::string& pubkey) {
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

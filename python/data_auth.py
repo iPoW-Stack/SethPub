@@ -57,7 +57,7 @@ class DataMarketFullClient:
         return bytes.fromhex(hex_str.replace('0x', ''))
 
     def compute_hash(self, nonce, pubkey_hex, to_hex, amount, gas_limit, gas_price, step, input_hex=''):
-        """计算交易哈希 (RLP-like serialization for Seth)"""
+        """计算交易哈希 (RLP-like serialization for Shardora)"""
         msg = bytearray()
         msg.extend(self._uint64_to_bytes(nonce))
         msg.extend(self._hex_to_bytes(pubkey_hex))

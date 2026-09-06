@@ -8,7 +8,7 @@
 #include "init/command.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -356,4 +356,4 @@ TEST(CommandBranches, CommandMapSize) {
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

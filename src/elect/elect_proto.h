@@ -5,7 +5,7 @@
 #include "protos/transport.pb.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace elect {
 
@@ -33,4 +33,4 @@ private:
 
 }  // namespace elect
 
-}  // namespace seth
+}  // namespace shardora

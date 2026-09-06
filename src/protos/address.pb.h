@@ -47,7 +47,7 @@ struct TableStruct {
 };
 void AddDescriptors();
 }  // namespace protobuf_protos_2faddress_2eproto
-namespace seth {
+namespace shardora {
 namespace address {
 namespace protobuf {
 class AddressInfo;
@@ -55,13 +55,13 @@ class AddressInfoDefaultTypeInternal;
 extern AddressInfoDefaultTypeInternal _AddressInfo_default_instance_;
 }  // namespace protobuf
 }  // namespace address
-}  // namespace seth
+}  // namespace shardora
 namespace google {
 namespace protobuf {
-template<> ::seth::address::protobuf::AddressInfo* Arena::CreateMaybeMessage<::seth::address::protobuf::AddressInfo>(Arena*);
+template<> ::shardora::address::protobuf::AddressInfo* Arena::CreateMaybeMessage<::shardora::address::protobuf::AddressInfo>(Arena*);
 }  // namespace protobuf
 }  // namespace google
-namespace seth {
+namespace shardora {
 namespace address {
 namespace protobuf {
 
@@ -94,7 +94,7 @@ inline bool AddressType_Parse(
 }
 // ===================================================================
 
-class AddressInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.address.protobuf.AddressInfo) */ {
+class AddressInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.address.protobuf.AddressInfo) */ {
  public:
   AddressInfo();
   virtual ~AddressInfo();
@@ -188,16 +188,16 @@ class AddressInfo : public ::google::protobuf::Message /* @@protoc_insertion_poi
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.bls.protobuf.BlsPublicKey g2s = 11;
+  // repeated .shardora.bls.protobuf.BlsPublicKey g2s = 11;
   int g2s_size() const;
   void clear_g2s();
   static const int kG2SFieldNumber = 11;
-  ::seth::bls::protobuf::BlsPublicKey* mutable_g2s(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::BlsPublicKey >*
+  ::shardora::bls::protobuf::BlsPublicKey* mutable_g2s(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::bls::protobuf::BlsPublicKey >*
       mutable_g2s();
-  const ::seth::bls::protobuf::BlsPublicKey& g2s(int index) const;
-  ::seth::bls::protobuf::BlsPublicKey* add_g2s();
-  const ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::BlsPublicKey >&
+  const ::shardora::bls::protobuf::BlsPublicKey& g2s(int index) const;
+  ::shardora::bls::protobuf::BlsPublicKey* add_g2s();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::bls::protobuf::BlsPublicKey >&
       g2s() const;
 
   // optional bytes pubkey = 1;
@@ -266,12 +266,12 @@ class AddressInfo : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::uint32 pool_index() const;
   void set_pool_index(::google::protobuf::uint32 value);
 
-  // required .seth.address.protobuf.AddressType type = 6;
+  // required .shardora.address.protobuf.AddressType type = 6;
   bool has_type() const;
   void clear_type();
   static const int kTypeFieldNumber = 6;
-  ::seth::address::protobuf::AddressType type() const;
-  void set_type(::seth::address::protobuf::AddressType value);
+  ::shardora::address::protobuf::AddressType type() const;
+  void set_type(::shardora::address::protobuf::AddressType value);
 
   // required uint32 tx_index = 9;
   bool has_tx_index() const;
@@ -322,7 +322,7 @@ class AddressInfo : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::uint32 elect_pos() const;
   void set_elect_pos(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.address.protobuf.AddressInfo)
+  // @@protoc_insertion_point(class_scope:shardora.address.protobuf.AddressInfo)
  private:
   void set_has_pubkey();
   void clear_has_pubkey();
@@ -359,7 +359,7 @@ class AddressInfo : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::BlsPublicKey > g2s_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::bls::protobuf::BlsPublicKey > g2s_;
   ::google::protobuf::internal::ArenaStringPtr pubkey_;
   ::google::protobuf::internal::ArenaStringPtr addr_;
   ::google::protobuf::internal::ArenaStringPtr bytes_code_;
@@ -402,41 +402,41 @@ inline void AddressInfo::clear_pubkey() {
   clear_has_pubkey();
 }
 inline const ::std::string& AddressInfo::pubkey() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.pubkey)
   return pubkey_.GetNoArena();
 }
 inline void AddressInfo::set_pubkey(const ::std::string& value) {
   set_has_pubkey();
   pubkey_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.pubkey)
 }
 #if LANG_CXX11
 inline void AddressInfo::set_pubkey(::std::string&& value) {
   set_has_pubkey();
   pubkey_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.address.protobuf.AddressInfo.pubkey)
 }
 #endif
 inline void AddressInfo::set_pubkey(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_pubkey();
   pubkey_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_set_char:shardora.address.protobuf.AddressInfo.pubkey)
 }
 inline void AddressInfo::set_pubkey(const void* value, size_t size) {
   set_has_pubkey();
   pubkey_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_set_pointer:shardora.address.protobuf.AddressInfo.pubkey)
 }
 inline ::std::string* AddressInfo::mutable_pubkey() {
   set_has_pubkey();
-  // @@protoc_insertion_point(field_mutable:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_mutable:shardora.address.protobuf.AddressInfo.pubkey)
   return pubkey_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* AddressInfo::release_pubkey() {
-  // @@protoc_insertion_point(field_release:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_release:shardora.address.protobuf.AddressInfo.pubkey)
   if (!has_pubkey()) {
     return NULL;
   }
@@ -450,7 +450,7 @@ inline void AddressInfo::set_allocated_pubkey(::std::string* pubkey) {
     clear_has_pubkey();
   }
   pubkey_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), pubkey);
-  // @@protoc_insertion_point(field_set_allocated:seth.address.protobuf.AddressInfo.pubkey)
+  // @@protoc_insertion_point(field_set_allocated:shardora.address.protobuf.AddressInfo.pubkey)
 }
 
 // required uint64 balance = 2;
@@ -468,13 +468,13 @@ inline void AddressInfo::clear_balance() {
   clear_has_balance();
 }
 inline ::google::protobuf::uint64 AddressInfo::balance() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.balance)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.balance)
   return balance_;
 }
 inline void AddressInfo::set_balance(::google::protobuf::uint64 value) {
   set_has_balance();
   balance_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.balance)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.balance)
 }
 
 // required uint32 sharding_id = 3;
@@ -492,13 +492,13 @@ inline void AddressInfo::clear_sharding_id() {
   clear_has_sharding_id();
 }
 inline ::google::protobuf::uint32 AddressInfo::sharding_id() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.sharding_id)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.sharding_id)
   return sharding_id_;
 }
 inline void AddressInfo::set_sharding_id(::google::protobuf::uint32 value) {
   set_has_sharding_id();
   sharding_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.sharding_id)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.sharding_id)
 }
 
 // required uint32 pool_index = 4;
@@ -516,13 +516,13 @@ inline void AddressInfo::clear_pool_index() {
   clear_has_pool_index();
 }
 inline ::google::protobuf::uint32 AddressInfo::pool_index() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.pool_index)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.pool_index)
   return pool_index_;
 }
 inline void AddressInfo::set_pool_index(::google::protobuf::uint32 value) {
   set_has_pool_index();
   pool_index_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.pool_index)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.pool_index)
 }
 
 // required bytes addr = 5;
@@ -540,41 +540,41 @@ inline void AddressInfo::clear_addr() {
   clear_has_addr();
 }
 inline const ::std::string& AddressInfo::addr() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.addr)
   return addr_.GetNoArena();
 }
 inline void AddressInfo::set_addr(const ::std::string& value) {
   set_has_addr();
   addr_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.addr)
 }
 #if LANG_CXX11
 inline void AddressInfo::set_addr(::std::string&& value) {
   set_has_addr();
   addr_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.address.protobuf.AddressInfo.addr)
 }
 #endif
 inline void AddressInfo::set_addr(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_addr();
   addr_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_set_char:shardora.address.protobuf.AddressInfo.addr)
 }
 inline void AddressInfo::set_addr(const void* value, size_t size) {
   set_has_addr();
   addr_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_set_pointer:shardora.address.protobuf.AddressInfo.addr)
 }
 inline ::std::string* AddressInfo::mutable_addr() {
   set_has_addr();
-  // @@protoc_insertion_point(field_mutable:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_mutable:shardora.address.protobuf.AddressInfo.addr)
   return addr_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* AddressInfo::release_addr() {
-  // @@protoc_insertion_point(field_release:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_release:shardora.address.protobuf.AddressInfo.addr)
   if (!has_addr()) {
     return NULL;
   }
@@ -588,10 +588,10 @@ inline void AddressInfo::set_allocated_addr(::std::string* addr) {
     clear_has_addr();
   }
   addr_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), addr);
-  // @@protoc_insertion_point(field_set_allocated:seth.address.protobuf.AddressInfo.addr)
+  // @@protoc_insertion_point(field_set_allocated:shardora.address.protobuf.AddressInfo.addr)
 }
 
-// required .seth.address.protobuf.AddressType type = 6;
+// required .shardora.address.protobuf.AddressType type = 6;
 inline bool AddressInfo::has_type() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
@@ -605,15 +605,15 @@ inline void AddressInfo::clear_type() {
   type_ = 0;
   clear_has_type();
 }
-inline ::seth::address::protobuf::AddressType AddressInfo::type() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.type)
-  return static_cast< ::seth::address::protobuf::AddressType >(type_);
+inline ::shardora::address::protobuf::AddressType AddressInfo::type() const {
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.type)
+  return static_cast< ::shardora::address::protobuf::AddressType >(type_);
 }
-inline void AddressInfo::set_type(::seth::address::protobuf::AddressType value) {
-  assert(::seth::address::protobuf::AddressType_IsValid(value));
+inline void AddressInfo::set_type(::shardora::address::protobuf::AddressType value) {
+  assert(::shardora::address::protobuf::AddressType_IsValid(value));
   set_has_type();
   type_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.type)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.type)
 }
 
 // optional bytes bytes_code = 7;
@@ -631,41 +631,41 @@ inline void AddressInfo::clear_bytes_code() {
   clear_has_bytes_code();
 }
 inline const ::std::string& AddressInfo::bytes_code() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.bytes_code)
   return bytes_code_.GetNoArena();
 }
 inline void AddressInfo::set_bytes_code(const ::std::string& value) {
   set_has_bytes_code();
   bytes_code_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.bytes_code)
 }
 #if LANG_CXX11
 inline void AddressInfo::set_bytes_code(::std::string&& value) {
   set_has_bytes_code();
   bytes_code_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.address.protobuf.AddressInfo.bytes_code)
 }
 #endif
 inline void AddressInfo::set_bytes_code(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_bytes_code();
   bytes_code_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_set_char:shardora.address.protobuf.AddressInfo.bytes_code)
 }
 inline void AddressInfo::set_bytes_code(const void* value, size_t size) {
   set_has_bytes_code();
   bytes_code_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_set_pointer:shardora.address.protobuf.AddressInfo.bytes_code)
 }
 inline ::std::string* AddressInfo::mutable_bytes_code() {
   set_has_bytes_code();
-  // @@protoc_insertion_point(field_mutable:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_mutable:shardora.address.protobuf.AddressInfo.bytes_code)
   return bytes_code_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* AddressInfo::release_bytes_code() {
-  // @@protoc_insertion_point(field_release:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_release:shardora.address.protobuf.AddressInfo.bytes_code)
   if (!has_bytes_code()) {
     return NULL;
   }
@@ -679,7 +679,7 @@ inline void AddressInfo::set_allocated_bytes_code(::std::string* bytes_code) {
     clear_has_bytes_code();
   }
   bytes_code_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), bytes_code);
-  // @@protoc_insertion_point(field_set_allocated:seth.address.protobuf.AddressInfo.bytes_code)
+  // @@protoc_insertion_point(field_set_allocated:shardora.address.protobuf.AddressInfo.bytes_code)
 }
 
 // required uint64 latest_height = 8;
@@ -697,13 +697,13 @@ inline void AddressInfo::clear_latest_height() {
   clear_has_latest_height();
 }
 inline ::google::protobuf::uint64 AddressInfo::latest_height() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.latest_height)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.latest_height)
   return latest_height_;
 }
 inline void AddressInfo::set_latest_height(::google::protobuf::uint64 value) {
   set_has_latest_height();
   latest_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.latest_height)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.latest_height)
 }
 
 // required uint32 tx_index = 9;
@@ -721,13 +721,13 @@ inline void AddressInfo::clear_tx_index() {
   clear_has_tx_index();
 }
 inline ::google::protobuf::uint32 AddressInfo::tx_index() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.tx_index)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.tx_index)
   return tx_index_;
 }
 inline void AddressInfo::set_tx_index(::google::protobuf::uint32 value) {
   set_has_tx_index();
   tx_index_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.tx_index)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.tx_index)
 }
 
 // optional int32 credit = 10 [default = 0];
@@ -745,39 +745,39 @@ inline void AddressInfo::clear_credit() {
   clear_has_credit();
 }
 inline ::google::protobuf::int32 AddressInfo::credit() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.credit)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.credit)
   return credit_;
 }
 inline void AddressInfo::set_credit(::google::protobuf::int32 value) {
   set_has_credit();
   credit_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.credit)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.credit)
 }
 
-// repeated .seth.bls.protobuf.BlsPublicKey g2s = 11;
+// repeated .shardora.bls.protobuf.BlsPublicKey g2s = 11;
 inline int AddressInfo::g2s_size() const {
   return g2s_.size();
 }
-inline ::seth::bls::protobuf::BlsPublicKey* AddressInfo::mutable_g2s(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.address.protobuf.AddressInfo.g2s)
+inline ::shardora::bls::protobuf::BlsPublicKey* AddressInfo::mutable_g2s(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.address.protobuf.AddressInfo.g2s)
   return g2s_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::BlsPublicKey >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::bls::protobuf::BlsPublicKey >*
 AddressInfo::mutable_g2s() {
-  // @@protoc_insertion_point(field_mutable_list:seth.address.protobuf.AddressInfo.g2s)
+  // @@protoc_insertion_point(field_mutable_list:shardora.address.protobuf.AddressInfo.g2s)
   return &g2s_;
 }
-inline const ::seth::bls::protobuf::BlsPublicKey& AddressInfo::g2s(int index) const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.g2s)
+inline const ::shardora::bls::protobuf::BlsPublicKey& AddressInfo::g2s(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.g2s)
   return g2s_.Get(index);
 }
-inline ::seth::bls::protobuf::BlsPublicKey* AddressInfo::add_g2s() {
-  // @@protoc_insertion_point(field_add:seth.address.protobuf.AddressInfo.g2s)
+inline ::shardora::bls::protobuf::BlsPublicKey* AddressInfo::add_g2s() {
+  // @@protoc_insertion_point(field_add:shardora.address.protobuf.AddressInfo.g2s)
   return g2s_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::bls::protobuf::BlsPublicKey >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::bls::protobuf::BlsPublicKey >&
 AddressInfo::g2s() const {
-  // @@protoc_insertion_point(field_list:seth.address.protobuf.AddressInfo.g2s)
+  // @@protoc_insertion_point(field_list:shardora.address.protobuf.AddressInfo.g2s)
   return g2s_;
 }
 
@@ -796,13 +796,13 @@ inline void AddressInfo::clear_elect_pos() {
   clear_has_elect_pos();
 }
 inline ::google::protobuf::uint32 AddressInfo::elect_pos() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.elect_pos)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.elect_pos)
   return elect_pos_;
 }
 inline void AddressInfo::set_elect_pos(::google::protobuf::uint32 value) {
   set_has_elect_pos();
   elect_pos_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.elect_pos)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.elect_pos)
 }
 
 // optional bool destructed = 13;
@@ -820,13 +820,13 @@ inline void AddressInfo::clear_destructed() {
   clear_has_destructed();
 }
 inline bool AddressInfo::destructed() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.destructed)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.destructed)
   return destructed_;
 }
 inline void AddressInfo::set_destructed(bool value) {
   set_has_destructed();
   destructed_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.destructed)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.destructed)
 }
 
 // optional uint64 consensus_gap = 14;
@@ -844,13 +844,13 @@ inline void AddressInfo::clear_consensus_gap() {
   clear_has_consensus_gap();
 }
 inline ::google::protobuf::uint64 AddressInfo::consensus_gap() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.consensus_gap)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.consensus_gap)
   return consensus_gap_;
 }
 inline void AddressInfo::set_consensus_gap(::google::protobuf::uint64 value) {
   set_has_consensus_gap();
   consensus_gap_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.consensus_gap)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.consensus_gap)
 }
 
 // required uint64 nonce = 15;
@@ -868,13 +868,13 @@ inline void AddressInfo::clear_nonce() {
   clear_has_nonce();
 }
 inline ::google::protobuf::uint64 AddressInfo::nonce() const {
-  // @@protoc_insertion_point(field_get:seth.address.protobuf.AddressInfo.nonce)
+  // @@protoc_insertion_point(field_get:shardora.address.protobuf.AddressInfo.nonce)
   return nonce_;
 }
 inline void AddressInfo::set_nonce(::google::protobuf::uint64 value) {
   set_has_nonce();
   nonce_ = value;
-  // @@protoc_insertion_point(field_set:seth.address.protobuf.AddressInfo.nonce)
+  // @@protoc_insertion_point(field_set:shardora.address.protobuf.AddressInfo.nonce)
 }
 
 #ifdef __GNUC__
@@ -885,15 +885,15 @@ inline void AddressInfo::set_nonce(::google::protobuf::uint64 value) {
 
 }  // namespace protobuf
 }  // namespace address
-}  // namespace seth
+}  // namespace shardora
 
 namespace google {
 namespace protobuf {
 
-template <> struct is_proto_enum< ::seth::address::protobuf::AddressType> : ::std::true_type {};
+template <> struct is_proto_enum< ::shardora::address::protobuf::AddressType> : ::std::true_type {};
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::seth::address::protobuf::AddressType>() {
-  return ::seth::address::protobuf::AddressType_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::shardora::address::protobuf::AddressType>() {
+  return ::shardora::address::protobuf::AddressType_descriptor();
 }
 
 }  // namespace protobuf

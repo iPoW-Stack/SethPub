@@ -10,7 +10,7 @@
 #include "protos/prefix_db.h"
 #include "protos/bls.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace bls {
 
 class DkgCache {
@@ -70,4 +70,4 @@ private:
 };
 
 }  // namespace bls
-}  // namespace seth
+}  // namespace shardora

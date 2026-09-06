@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cassert>
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -106,4 +106,4 @@ private:
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

@@ -88,7 +88,7 @@ For cases where contracts are in different pools, the prefund mechanism (`contra
 ```cpp
 // ContractCall::HandleTx()
 auto preppayment_id = block_tx.to() + block_tx.from();
-auto res = GetTempAccountBalance(pre_seth_host, preppayment_id, 
+auto res = GetTempAccountBalance(pre_shardora_host, preppayment_id, 
                                   acc_balance_map, &from_balance, &from_nonce);
 // Gas is deducted from the prepayment account, not the user's main balance
 // Failure only costs gas — no asset transfer occurs until execution succeeds

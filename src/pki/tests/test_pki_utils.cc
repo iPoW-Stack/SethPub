@@ -4,7 +4,7 @@
 
 #include "pki/utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pki {
 namespace test {
 
@@ -59,4 +59,4 @@ TEST(PkiUtils, XorStringsEqualLengthAllZerosOrOnes) {
 
 }  // namespace test
 }  // namespace pki
-}  // namespace seth
+}  // namespace shardora

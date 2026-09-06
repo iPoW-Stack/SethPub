@@ -2,7 +2,7 @@
 
 ## 概述
 
-本次修改为 Seth 区块链添加了完整的 EIP-1559 (Type 2) 交易支持，使其与以太坊生态系统（包括 MetaMask）完全兼容。
+本次修改为 Shardora 区块链添加了完整的 EIP-1559 (Type 2) 交易支持，使其与以太坊生态系统（包括 MetaMask）完全兼容。
 
 ## 修改的文件
 
@@ -14,7 +14,7 @@
   - 支持 `maxFeePerGas` 和 `maxPriorityFeePerGas` 参数
 
 ### 2. Python SDK
-- **文件**: `clipy/seth3.py`
+- **文件**: `clipy/shardora3.py`
 - **修改内容**:
   - 增强 `_eth_sign_and_send` 函数以支持 EIP-1559 交易
   - 添加 `use_eip1559` 参数控制交易类型
@@ -93,13 +93,13 @@
 
 ```bash
 # 编译 C++ 代码
-cd /path/to/seth
+cd /path/to/shardora
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
 
 # 启动节点
-./seth_node --config config.json
+./shardora_node --config config.json
 ```
 
 ### 2. 运行测试
@@ -126,10 +126,10 @@ python eip1559_example.py
 ### 3. 在代码中使用
 
 ```python
-from seth_sdk import SethWeb3Mock, _eth_sign_and_send
+from shardora_sdk import ShardoraWeb3Mock, _eth_sign_and_send
 
 # 初始化
-w3 = SethWeb3Mock("127.0.0.1", 23001)
+w3 = ShardoraWeb3Mock("127.0.0.1", 23001)
 sender = w3.client.get_address(private_key)
 nonce = w3.client.get_nonce(sender)
 
@@ -185,7 +185,7 @@ tx_hash = _eth_sign_and_send(
 )
 
 # 调用合约
-contract = w3.seth.contract(address=contract_addr, abi=abi)
+contract = w3.shardora.contract(address=contract_addr, abi=abi)
 receipt = contract.functions.myFunction(arg1, arg2).transact(
     key, use_eip1559=True
 )
@@ -290,7 +290,7 @@ for i, recipient in enumerate(recipients):
 ### 代码示例
 - `clipy/test_eip1559.py`: 完整测试套件
 - `clipy/eip1559_example.py`: 简单示例
-- `clipy/seth3.py`: SDK 实现
+- `clipy/shardora3.py`: SDK 实现
 
 ### 外部资源
 - [EIP-1559 规范](https://eips.ethereum.org/EIPS/eip-1559)
@@ -324,9 +324,9 @@ for i, recipient in enumerate(recipients):
 4. 联系开发团队
 
 ### 社区
-- GitHub: [Seth Blockchain](https://github.com/seth-blockchain)
-- Discord: Seth Community
-- Email: support@seth-blockchain.io
+- GitHub: [Shardora Blockchain](https://github.com/shardora-blockchain)
+- Discord: Shardora Community
+- Email: support@shardora-blockchain.io
 
 ## 版本历史
 
@@ -343,10 +343,10 @@ for i, recipient in enumerate(recipients):
 
 ## 许可证
 
-本实现遵循 Seth 项目的开源许可证。
+本实现遵循 Shardora 项目的开源许可证。
 
 ---
 
 **最后更新**: 2024年
-**维护者**: Seth 开发团队
+**维护者**: Shardora 开发团队
 **状态**: 生产就绪 ✅

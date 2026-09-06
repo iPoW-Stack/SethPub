@@ -113,17 +113,17 @@ python test_contract_chain_demo.py
 MY_KEY = "your_private_key_here"
 
 # Or use environment variable
-export SETH_PRIVATE_KEY="your_private_key_here"
+export SHARDORA_PRIVATE_KEY="your_private_key_here"
 ```
 
-### Integration with seth3.py
+### Integration with shardora3.py
 
-Add to `seth3.py`:
+Add to `shardora3.py`:
 ```python
 from test_contract_chain_demo import test_contract_chain_same_shard_pool
 
 if __name__ == "__main__":
-    w3 = SethWeb3Mock("127.0.0.1", 8080)
+    w3 = ShardoraWeb3Mock("127.0.0.1", 8080)
     MY_KEY = "your_private_key"
     MY_ADDR = w3.client.get_address(MY_KEY)
     
@@ -287,7 +287,7 @@ w3.send_transaction({'to': user_addr, 'value': 1000000}, FUNDER_KEY)
 ## Related Files
 
 - `clipy/test_contract_chain_demo.py` - Standalone demo script
-- `clipy/seth_sdk.py` - SDK with hash functions
+- `clipy/shardora_sdk.py` - SDK with hash functions
 - `src/consensus/zbft/root_to_tx_item.cc` - C++ shard assignment logic
 - `src/common/utils.cc` - C++ pool calculation (GetAddressPoolIndex)
 - `src/common/hash.h` - C++ hash function definitions
@@ -296,7 +296,7 @@ w3.send_transaction({'to': user_addr, 'value': 1000000}, FUNDER_KEY)
 
 - [User Specified Shard Feature](USER_SPECIFIED_SHARD_FEATURE.md)
 - [AMM Solution Demo](AMM_SOLUTION_DEMO.md)
-- [Seth Reviewer Response](SETH_REVIEWER_RESPONSE.md)
+- [Shardora Reviewer Response](SHARDORA_REVIEWER_RESPONSE.md)
 
 ## Future Enhancements
 

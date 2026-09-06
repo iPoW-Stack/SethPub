@@ -64,7 +64,7 @@ This comprehensive test suite provides complete testing coverage for the C2CSell
 
 ### Prerequisites
 
-1. **Seth Node Running**: Ensure your Seth blockchain node is running
+1. **Shardora Node Running**: Ensure your Shardora blockchain node is running
 2. **Python Dependencies**: Install required packages:
    ```bash
    cd clipy
@@ -81,11 +81,11 @@ This comprehensive test suite provides complete testing coverage for the C2CSell
    python test_c2c_contract.py
    ```
 
-2. **Custom Seth Node Connection**:
+2. **Custom Shardora Node Connection**:
    ```python
    # Edit the main() function in test_c2c_contract.py
-   HOST = "your-seth-node-ip"
-   PORT = 9001  # Your Seth node port
+   HOST = "your-shardora-node-ip"
+   PORT = 9001  # Your Shardora node port
    ```
 
 ### Test Configuration
@@ -101,7 +101,7 @@ The test suite automatically generates test accounts for different roles:
 ```
 🚀 C2CSellOrder Contract Test Suite
 ================================================================================
-📡 Connected to Seth node: 127.0.0.1:9001
+📡 Connected to Shardora node: 127.0.0.1:9001
   📝 Generated owner: a1b2c3d4...
   📝 Generated manager1: e5f6g7h8...
   ...
@@ -163,7 +163,7 @@ Success Rate: 100.0%
    ```
    Error: Connection refused to 127.0.0.1:9001
    ```
-   - Ensure Seth node is running
+   - Ensure Shardora node is running
    - Check host/port configuration
    - Verify network connectivity
 

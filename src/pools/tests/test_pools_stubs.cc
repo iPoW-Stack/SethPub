@@ -14,7 +14,7 @@
 #include "sync/key_value_sync.h"
 #include "test_tx_pool_mocks.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 namespace test {
@@ -69,4 +69,4 @@ uint64_t ElectManager::latest_height(uint32_t /*network_id*/) {
 
 }  // namespace elect
 
-}  // namespace seth
+}  // namespace shardora

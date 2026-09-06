@@ -6,7 +6,7 @@
 #include "libff/common/profiling.hpp"
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -78,7 +78,7 @@ void BlsSign::Sign(
 #else
         EnsureCurveInit();
         *sign = libBLS::Bls::Signing(g1_hash, secret_key);
-        SETH_DEBUG("sign message success sec: %s, hash: %s, %s, %s",
+        SHARDORA_DEBUG("sign message success sec: %s, hash: %s, %s, %s",
             libBLS::ThresholdUtils::fieldElementToString(secret_key).c_str(),
             libBLS::ThresholdUtils::fieldElementToString(g1_hash.X).c_str(),
             libBLS::ThresholdUtils::fieldElementToString(g1_hash.Y).c_str(),
@@ -259,4 +259,4 @@ int BlsSign::GetLibffHash(const std::string& str_hash, libff::alt_bn128_G1* g1_h
 
 };  // namespace bls
 
-};  // namespace seth
+};  // namespace shardora

@@ -6,7 +6,7 @@
 #include "pbc/pbc.h"
 #include "pbc/pbcxx.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pkicl {
 

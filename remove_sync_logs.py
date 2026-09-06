@@ -23,23 +23,23 @@ def remove_sync_logs_from_file(filepath):
     
     original_content = content
     
-    # Pattern 1: Remove [SYNC_PERF] SETH_WARN/DEBUG lines
-    # Matches: SETH_WARN("[SYNC_PERF] ... ", ...);
+    # Pattern 1: Remove [SYNC_PERF] SHARDORA_WARN/DEBUG lines
+    # Matches: SHARDORA_WARN("[SYNC_PERF] ... ", ...);
     content = re.sub(
-        r'\s*SETH_WARN\(\s*"\[SYNC_PERF\][^"]*"[^)]*\);?\n?',
+        r'\s*SHARDORA_WARN\(\s*"\[SYNC_PERF\][^"]*"[^)]*\);?\n?',
         '',
         content
     )
     content = re.sub(
-        r'\s*SETH_DEBUG\(\s*"\[SYNC_PERF\][^"]*"[^)]*\);?\n?',
+        r'\s*SHARDORA_DEBUG\(\s*"\[SYNC_PERF\][^"]*"[^)]*\);?\n?',
         '',
         content
     )
     
-    # Pattern 2: Remove [SYNC_GAP] SETH_WARN lines
-    # Matches: SETH_WARN("[SYNC_GAP] ... ", ...);
+    # Pattern 2: Remove [SYNC_GAP] SHARDORA_WARN lines
+    # Matches: SHARDORA_WARN("[SYNC_GAP] ... ", ...);
     content = re.sub(
-        r'\s*SETH_WARN\(\s*"\[SYNC_GAP\][^"]*"[^)]*\);?\n?',
+        r'\s*SHARDORA_WARN\(\s*"\[SYNC_GAP\][^"]*"[^)]*\);?\n?',
         '',
         content
     )

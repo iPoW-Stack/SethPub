@@ -22,7 +22,7 @@
 #error "The compilation parameter REPLACE_WHITEBOX_SK must be set." 
 #endif
 
-namespace seth {
+namespace shardora {
 namespace security {
 
 class KeyManager {
@@ -74,7 +74,7 @@ public:
         if (sodium_init() < 0) return -1;
 
         if (sealed_prikey.size() < crypto_box_SEALBYTES) {
-            SETH_DEBUG("Ciphertext size: %zu is too short to be valid", sealed_prikey.size());
+            SHARDORA_DEBUG("Ciphertext size: %zu is too short to be valid", sealed_prikey.size());
             return kSecurityError; // Ciphertext too short
         }
 
@@ -86,7 +86,7 @@ public:
          */
         protected_key_ = (unsigned char*)sodium_malloc(decrypted_len);
         if (!protected_key_) {
-            SETH_DEBUG("Failed to allocate protected memory for decrypted key");
+            SHARDORA_DEBUG("Failed to allocate protected memory for decrypted key");
             return kSecurityError;
         }
         /**
@@ -100,7 +100,7 @@ public:
                 kWhiteboxPublicKey, 
                 kWhiteboxPrivateKey) != 0) {
             CleanupInternal();
-            SETH_DEBUG("Failed to decrypt sealed key with Whitebox Keypair");
+            SHARDORA_DEBUG("Failed to decrypt sealed key with Whitebox Keypair");
             return kSecurityError;
         }
 
@@ -151,4 +151,4 @@ private:
 };
 
 } // namespace security
-} // namespace seth
+} // namespace shardora

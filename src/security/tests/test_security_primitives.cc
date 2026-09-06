@@ -15,7 +15,7 @@
 #include "security/security.h"
 #include "security/security_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace security {
 namespace test {
 
@@ -311,7 +311,7 @@ TEST(TestSecurityPrimitives, ContractAddressUsesLongRlpWhenNonceExceeds55Bytes) 
 }
 
 // Stubs must not abort the test process: use std::logic_error (catchable) instead
-// of SETH_FATAL/assert so this runs reliably without death-test fork quirks.
+// of SHARDORA_FATAL/assert so this runs reliably without death-test fork quirks.
 TEST(TestSecurityPrimitives, UnreachableGmSslAndOqsStubsThrowLogicError) {
     GmSsl gmssl;
     Oqs oqs;
@@ -333,4 +333,4 @@ TEST(TestSecurityPrimitives, UnreachableGmSslAndOqsStubsThrowLogicError) {
 
 }  // namespace test
 }  // namespace security
-}  // namespace seth
+}  // namespace shardora

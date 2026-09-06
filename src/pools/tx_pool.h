@@ -27,7 +27,7 @@
 #include "pools/height_tree_level.h"
 #include "sync/key_value_sync.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -82,7 +82,7 @@ public:
 
     bool PoolChainIsFull(uint64_t height) const {
         if (latest_height_ < height) {
-            SETH_DEBUG("pool: %d, check pool chain is full height: %lu, latest_height_: %lu", 
+            SHARDORA_DEBUG("pool: %d, check pool chain is full height: %lu, latest_height_: %lu", 
                 pool_index_, height, latest_height_);
             return false;
         }
@@ -95,7 +95,7 @@ public:
         if (iter != tx_map_.end()) {
             auto nonce_iter = iter->second.find(nonce);
             if (nonce_iter != iter->second.end()) {
-                SETH_DEBUG("pool: %d, check tx key exists addr: %s, nonce: %lu, key: %s, exist key: %s", 
+                SHARDORA_DEBUG("pool: %d, check tx key exists addr: %s, nonce: %lu, key: %s, exist key: %s", 
                     pool_index_,
                     common::Encode::HexEncode(addr).c_str(),
                     nonce,
@@ -104,7 +104,7 @@ public:
                 if (nonce_iter->second->tx_info->key() == key) {
                     return true;
                 } else {
-                    SETH_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s, exist key: %s", 
+                    SHARDORA_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s, exist key: %s", 
                         pool_index_,
                         common::Encode::HexEncode(addr).c_str(),
                         nonce,
@@ -112,14 +112,14 @@ public:
                         common::Encode::HexEncode(nonce_iter->second->tx_info->key()).c_str());
                 }
             } else {
-                SETH_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s", 
+                SHARDORA_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s", 
                     pool_index_,
                     common::Encode::HexEncode(addr).c_str(),
                     nonce,
                     common::Encode::HexEncode(key).c_str());
             }
         } else {
-            SETH_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s", 
+            SHARDORA_DEBUG("pool: %d, check tx key not exist addr: %s, nonce: %lu, key: %s", 
                     pool_index_,
                     common::Encode::HexEncode(addr).c_str(),
                     nonce,
@@ -140,7 +140,7 @@ public:
         uint64_t over_nonce = 0lu;
         if (add_addr_nonce_map_.Get(addr, over_nonce)) {
             if (over_nonce >= nonce || (over_nonce + 4 * common::kMaxTxCount) <= nonce) {
-                SETH_DEBUG("trace tx pool: %d, failed add tx %s, nonce: %lu, over_nonce: %lu, max nonce: %lu", 
+                SHARDORA_DEBUG("trace tx pool: %d, failed add tx %s, nonce: %lu, over_nonce: %lu, max nonce: %lu", 
                     pool_index_,
                     common::Encode::HexEncode(addr).c_str(),
                     nonce,
@@ -174,7 +174,7 @@ public:
             auto tmp_tree_ptr = height_tree_ptr_;
             std::vector<uint64_t> invalid_heights;
             tmp_tree_ptr->GetMissingHeights(&invalid_heights, latest_height_);
-            SETH_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
+            SHARDORA_DEBUG("%u get invalid heights size: %u, latest_height_: %lu", 
                 pool_index_, invalid_heights.size(), latest_height_);
             if (invalid_heights.size() > 0 && invalid_heights[0] <= latest_height_) {
                 has_missing_height_ = true;
@@ -281,4 +281,4 @@ private:
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

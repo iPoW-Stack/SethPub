@@ -27,7 +27,7 @@
 #include "protos/pools.pb.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -445,4 +445,4 @@ TEST_F(PoolsCoverageEnhancementTest, ConcurrentAccessPatterns) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

@@ -14,7 +14,7 @@
 #include "protos/vss.pb.h"
 #include "protos/zbft.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace protos {
 
@@ -276,4 +276,4 @@ TEST_F(TestGetProtoHash, TxStorageKeyConstants) {
 
 }  // namespace protos
 
-}  // namespace seth
+}  // namespace shardora

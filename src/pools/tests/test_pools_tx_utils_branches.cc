@@ -8,7 +8,7 @@
 #include "network/network_utils.h"
 #include "pools/tx_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -379,4 +379,4 @@ TEST(PoolsTxUtilsBranches, GetTxMessageHashValueWithoutKeyDoesNotAffectDigest) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

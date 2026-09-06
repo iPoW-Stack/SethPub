@@ -6,7 +6,7 @@
 #include <consensus/hotstuff/view_block_chain.h>
 #include <exception>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -24,13 +24,13 @@ Status Crypto::PartialSign(
     
     if (elect_item->local_sk() == libff::alt_bn128_Fr::zero()) {
         // //assert(false);
-        SETH_DEBUG("local sk is invalid.");
+        SHARDORA_DEBUG("local sk is invalid.");
         return Status::kError;
     }
 
     if (elect_item->LocalMember()->bls_publick_key == libff::alt_bn128_G2::zero()) {
         // //assert(false);
-        SETH_DEBUG("local public key is invalid.");
+        SHARDORA_DEBUG("local public key is invalid.");
         return Status::kError;
     }
 
@@ -51,7 +51,7 @@ Status Crypto::PartialSign(
 // #ifndef NDEBUG
 //     auto member_bls_pk = libBLS::ThresholdUtils::fieldElementToString(
 //             elect_item->LocalMember()->bls_publick_key.X.c0);
-//     SETH_DEBUG("bls parial sign t: %u, n: %u, member index: %u, "
+//     SHARDORA_DEBUG("bls parial sign t: %u, n: %u, member index: %u, "
 //         "local seckey: %s, bls pk: %s, sign x: %s, y: %s, hash: %s, elect height: %lu",
 //         elect_item->t(),
 //         elect_item->n(),
@@ -78,14 +78,14 @@ Status Crypto::ReconstructAndVerifyThresSign(
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto elect_item = GetElectItem(common::GlobalInfo::Instance()->network_id(), elect_height);
     if (!elect_item) {
-        SETH_DEBUG("get elect item failed bls_collection_ && bls_collection_->view > view: %lu, %lu, "
+        SHARDORA_DEBUG("get elect item failed bls_collection_ && bls_collection_->view > view: %lu, %lu, "
             "index: %u, pool_idx_: %d", 
             vote_view_, view, index, pool_idx_);
         return Status::kError;
     }
 
     if ((*elect_item->Members())[index]->bls_publick_key == libff::alt_bn128_G2::zero()) {
-        SETH_DEBUG("bls public key failed bls_collection_ && bls_collection_->view > view: %lu, %lu, "
+        SHARDORA_DEBUG("bls public key failed bls_collection_ && bls_collection_->view > view: %lu, %lu, "
             "index: %u, pool_idx_: %d", 
             vote_view_, view, index, pool_idx_);
         // //assert(false);
@@ -124,7 +124,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
 
     // Reconstruct sign
     map_iter->second[index] = partial_sign;
-    SETH_DEBUG("msg hash: %s, ok count: %u, t: %u, index: %u, elect_height: %lu, pool: %u",
+    SHARDORA_DEBUG("msg hash: %s, ok count: %u, t: %u, index: %u, elect_height: %lu, pool: %u",
         common::Encode::HexEncode(msg_hash).c_str(), 
         map_iter->second.size(), 
         elect_item->t(),
@@ -164,7 +164,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
         // TODO: check each partial sign
-        SETH_ERROR("verify thresh sign failed!");
+        SHARDORA_ERROR("verify thresh sign failed!");
         //assert(false);
         return s;
     }
@@ -174,7 +174,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
 //         elect_item->common_pk().X.c0);
 //     auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
 //         reconstructed_sign->X);
-//     SETH_DEBUG("success construct agg msg_hash: %s, net: %u, pool: %u, "
+//     SHARDORA_DEBUG("success construct agg msg_hash: %s, net: %u, pool: %u, "
 //             "elect height: %lu, common PK: %s, agg sign: %s", 
 //             common::Encode::HexEncode(msg_hash).c_str(),
 //             common::GlobalInfo::Instance()->network_id(), 
@@ -186,7 +186,7 @@ Status Crypto::ReconstructAndVerifyThresSign(
     ADD_DEBUG_PROCESS_TIMESTAMP();
     return s;
 } catch (std::exception& e) {
-    SETH_ERROR("crypto verify exception %s", e.what());
+    SHARDORA_ERROR("crypto verify exception %s", e.what());
     return Status::kBlsVerifyWaiting;
 };
 
@@ -198,21 +198,21 @@ Status Crypto::VerifyThresSign(
     auto b = common::TimeUtils::TimestampMs();
     defer({
         auto e = common::TimeUtils::TimestampMs();
-        SETH_DEBUG("sharding_id: %d VerifyThresSign duration: %lu ms", sharding_id, e-b);
+        SHARDORA_DEBUG("sharding_id: %d VerifyThresSign duration: %lu ms", sharding_id, e-b);
     });
 
 #ifdef HOTSTUFF_TEST
     return Status::kSuccess;
 #endif
     if (reconstructed_sign == libff::alt_bn128_G1::zero()) {
-        SETH_WARN("reconstructed_sign == nullptr");
+        SHARDORA_WARN("reconstructed_sign == nullptr");
         //assert(false);
         return Status::kBlsVerifyFailed;
     }
 
     auto elect_item = GetElectItem(sharding_id, elect_height);
     if (!elect_item || elect_item->common_pk() == libff::alt_bn128_G2::zero()) {
-        SETH_ERROR("elect_item not found, elect_height: %lu", elect_height);
+        SHARDORA_ERROR("elect_item not found, elect_height: %lu", elect_height);
         return Status::kElectItemNotFound;
     }
 
@@ -223,7 +223,7 @@ Status Crypto::VerifyThresSign(
             elect_item->common_pk().X.c0);
         auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
             reconstructed_sign.X);
-        SETH_WARN("verify thresh sign failed, msg_hash: %s, "
+        SHARDORA_WARN("verify thresh sign failed, msg_hash: %s, "
             "net: %u, pool: %u, elect height: %lu, common PK: %s, agg sign: %s",
             common::Encode::HexEncode(msg_hash).c_str(),
             sharding_id,
@@ -239,7 +239,7 @@ Status Crypto::VerifyThresSign(
         elect_item->common_pk().X.c0);
     auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
         reconstructed_sign.X);
-    SETH_DEBUG("success verify agg sign msg_hash: %s, net: %u, pool: %u, "
+    SHARDORA_DEBUG("success verify agg sign msg_hash: %s, net: %u, pool: %u, "
             "elect height: %lu, common PK: %s, agg sign: %s",
             common::Encode::HexEncode(msg_hash).c_str(),
             sharding_id,
@@ -271,14 +271,14 @@ Status Crypto::VerifyQC(
         msg_hash, 
         bls_sign);
     if (s != Status::kSuccess) {
-        SETH_ERROR("verify qc failed, sharding id: %u, elect height: %lu, hash: %s, sign: %s, qc: %s",
+        SHARDORA_ERROR("verify qc failed, sharding id: %u, elect height: %lu, hash: %s, sign: %s, qc: %s",
             sharding_id, qc.elect_height(), common::Encode::HexEncode(msg_hash).c_str(),
             qc.sign_x().c_str(),
             ProtobufToJson(qc).c_str());
         return s;
     }
     
-    SETH_DEBUG("verify qc success, sharding id: %u, elect height: %lu, hash: %s, sign: %s, qc: %s",
+    SHARDORA_DEBUG("verify qc success, sharding id: %u, elect height: %lu, hash: %s, sign: %s, qc: %s",
         sharding_id, qc.elect_height(), common::Encode::HexEncode(msg_hash).c_str(),
         qc.sign_x().c_str(),
         ProtobufToJson(qc).c_str());
@@ -305,7 +305,7 @@ Status Crypto::VerifyTC(
         msg_hash, 
         bls_sign);
     if (s != Status::kSuccess) {
-        SETH_ERROR("Verify qc is error sharding id: %u, elect height: %lu, msg hash: %s",
+        SHARDORA_ERROR("Verify qc is error sharding id: %u, elect height: %lu, msg hash: %s",
             sharding_id, tc.elect_height(), common::Encode::HexEncode(msg_hash).c_str());
         return s;
     }
@@ -321,7 +321,7 @@ Status Crypto::SignMessage(transport::MessagePtr& msg_ptr) {
     }
     
     msg_ptr->header.set_sign(sign);
-    SETH_DEBUG("leader sign message success hash: %s, sign: %s, hash64: %lu, pk: %s",
+    SHARDORA_DEBUG("leader sign message success hash: %s, sign: %s, hash64: %lu, pk: %s",
         common::Encode::HexEncode(msg_hash).c_str(),
         common::Encode::HexEncode(sign).c_str(),
         msg_ptr->header.hash64(),
@@ -357,13 +357,13 @@ Status Crypto::VerifyMessage(const transport::MessagePtr& msg_ptr) {
     auto mem_ptr = elect_item->GetMemberByIdx(leader_idx);
     // Check if member pointer is valid
     if (!mem_ptr) {
-        SETH_ERROR("VerifyMessage: failed to get member by idx %u, elect_height: %lu",
+        SHARDORA_ERROR("VerifyMessage: failed to get member by idx %u, elect_height: %lu",
             leader_idx, elect_item->ElectHeight());
         return Status::kError;
     }
     
     if (mem_ptr->bls_publick_key == libff::alt_bn128_G2::zero()) {
-        SETH_DEBUG("verify sign failed, backup invalid bls pk: %s",
+        SHARDORA_DEBUG("verify sign failed, backup invalid bls pk: %s",
             common::Encode::HexEncode(mem_ptr->id).c_str());
         return Status::kError;
     }
@@ -373,7 +373,7 @@ Status Crypto::VerifyMessage(const transport::MessagePtr& msg_ptr) {
             msg_hash,
             mem_ptr->pubkey,
             msg_ptr->header.sign()) != security::kSecuritySuccess) {
-        SETH_DEBUG("verify leader sign failed: %s", common::Encode::HexEncode(mem_ptr->id).c_str());
+        SHARDORA_DEBUG("verify leader sign failed: %s", common::Encode::HexEncode(mem_ptr->id).c_str());
         return Status::kError;
     }
 
@@ -382,4 +382,4 @@ Status Crypto::VerifyMessage(const transport::MessagePtr& msg_ptr) {
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

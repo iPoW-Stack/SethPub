@@ -20,7 +20,7 @@
 #include "consensus/zbft/contract_prefund.h"
 #include "consensus/zbft/contract_refund.h"
 #include "consensus/zbft/contract_create.h"
-#include "sethvm/sethvm_utils.h"
+#include "shardoravm/shardoravm_utils.h"
 #include "consensus/zbft/create_library.h"
 #include "consensus/zbft/elect_tx_item.h"
 #include "consensus/zbft/from_tx_item.h"
@@ -39,9 +39,9 @@
 #include "security/eth_verify.h"
 #include "security/gmssl/gmssl.h"
 #include "security/oqs/oqs.h"
-#include "sethvm/sethvm_utils.h"
+#include "shardoravm/shardoravm_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -204,7 +204,7 @@ bool ToTxMessageItemFieldsMatchForBackup(
         leader.des_sharding_id() == network::kRootCongressNetworkId;
     if (leader_des_is_root) {
         if (local.des_sharding_id() != network::kRootCongressNetworkId) {
-            SETH_DEBUG("kNormalTo backup: leader root classification accepted, des=%s, "
+            SHARDORA_DEBUG("kNormalTo backup: leader root classification accepted, des=%s, "
                 "local_des_sharding_id=%u, amount=%lu",
                 common::Encode::HexEncode(leader.des()).c_str(),
                 local.des_sharding_id(),
@@ -244,14 +244,14 @@ bool ValidateBackupNormalToAgainstLeader(
         uint32_t pool_index) {
     if (leader_all.to_heights().SerializeAsString() !=
             local_all.to_heights().SerializeAsString()) {
-        SETH_WARN("kNormalTo backup: to_heights mismatch pool=%u", pool_index);
+        SHARDORA_WARN("kNormalTo backup: to_heights mismatch pool=%u", pool_index);
         return false;
     }
 
     const auto leader_items = FlattenNormalToItems(leader_all);
     const auto local_items = FlattenNormalToItems(local_all);
     if (leader_items.size() != local_items.size()) {
-        SETH_WARN("kNormalTo backup: tos item count mismatch pool=%u leader=%zu local=%zu",
+        SHARDORA_WARN("kNormalTo backup: tos item count mismatch pool=%u leader=%zu local=%zu",
             pool_index,
             leader_items.size(),
             local_items.size());
@@ -261,13 +261,13 @@ bool ValidateBackupNormalToAgainstLeader(
     for (const auto& kv : leader_items) {
         const auto lit = local_items.find(kv.first);
         if (lit == local_items.end()) {
-            SETH_WARN("kNormalTo backup: missing local ToTxMessageItem des=%s pool=%u",
+            SHARDORA_WARN("kNormalTo backup: missing local ToTxMessageItem des=%s pool=%u",
                 common::Encode::HexEncode(kv.first).c_str(),
                 pool_index);
             return false;
         }
         if (!ToTxMessageItemFieldsMatchForBackup(kv.second, lit->second)) {
-            SETH_WARN("kNormalTo backup: ToTxMessageItem mismatch des=%s pool=%u "
+            SHARDORA_WARN("kNormalTo backup: ToTxMessageItem mismatch des=%s pool=%u "
                 "leader_des_sharding_id=%u local_des_sharding_id=%u",
                 common::Encode::HexEncode(kv.first).c_str(),
                 pool_index,
@@ -287,7 +287,7 @@ bool ValidateProposeBlockGasLimit(
     for (int32_t i = 0; i < tx_propose.txs_size(); ++i) {
         const auto& tx = tx_propose.txs(i);
         if (!consensus::CanAddBlockGas(proposed_gas_limit, tx.gas_limit())) {
-            SETH_WARN("proposal exceeds block gas limit: %u_%u_%lu, tx_index: %d, "
+            SHARDORA_WARN("proposal exceeds block gas limit: %u_%u_%lu, tx_index: %d, "
                 "tx step: %d, nonce: %lu, proposed_gas_limit: %lu, "
                 "tx_gas_limit: %lu, block_gas_limit: %lu",
                 view_block.qc().network_id(),
@@ -364,7 +364,7 @@ Status BlockAcceptor::Accept(
         bool no_tx_allowed,
         bool directly_user_leader_txs,
         BalanceAndNonceMap& balance_and_nonce_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
     auto accept_begin_ms = common::TimeUtils::TimestampMs();
     auto& msg_ptr = pro_msg_wrap->msg_ptr;
@@ -373,7 +373,7 @@ Status BlockAcceptor::Accept(
     auto& view_block = *pro_msg_wrap->view_block_ptr;
     if (propose_msg.txs().empty()) {
         if (no_tx_allowed) {
-            SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu_%lu, "
+            SHARDORA_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu_%lu, "
                 "height: %lu, view hash: %s", 
                 0, 
                 view_block.block_info().tx_list_size(), 
@@ -385,7 +385,7 @@ Status BlockAcceptor::Accept(
                 common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str());
             // //assert(view_block.qc().view_block_hash().empty());
             view_block.mutable_qc()->set_view_block_hash(GetBlockHash(view_block));
-            SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu, "
+            SHARDORA_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu, "
                 "chain has hash: %d, db has hash: %d",
                 common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
                 common::Encode::HexEncode(view_block.parent_hash()).c_str(),
@@ -406,14 +406,14 @@ Status BlockAcceptor::Accept(
             }
         }
 
-        SETH_DEBUG("propose_msg.txs().empty() error!");
+        SHARDORA_DEBUG("propose_msg.txs().empty() error!");
         return no_tx_allowed ? Status::kSuccess : Status::kAcceptorTxsEmpty;
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
     // 1. verify block
     if (!IsBlockValid(view_block)) {
-        SETH_WARN("IsBlockValid error!");
+        SHARDORA_WARN("IsBlockValid error!");
         return Status::kAcceptorBlockInvalid;
     }
 
@@ -422,10 +422,10 @@ Status BlockAcceptor::Accept(
         return Status::kAcceptorBlockInvalid;
     }
 
-    seth_host.parent_hash_ = view_block.parent_hash();
-    seth_host.view_block_chain_ = view_block_chain_;
-    //assert(seth_host.view_block_chain_ != nullptr);
-    seth_host.view_ = view_block.qc().view();
+    shardora_host.parent_hash_ = view_block.parent_hash();
+    shardora_host.view_block_chain_ = view_block_chain_;
+    //assert(shardora_host.view_block_chain_ != nullptr);
+    shardora_host.view_ = view_block.qc().view();
     // 2. Get txs from local pool
     auto txs_ptr = std::make_shared<consensus::WaitingTxsItem>();
     Status s = Status::kSuccess;
@@ -438,12 +438,12 @@ Status BlockAcceptor::Accept(
         directly_user_leader_txs, 
         txs_ptr, 
         balance_and_nonce_map,
-        seth_host,
+        shardora_host,
         out_leader_nonce_map);
     auto get_txs_end_ms = common::TimeUtils::TimestampMs();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (s != Status::kSuccess) {
-        SETH_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
+        SHARDORA_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
             "parent_hash=%s, get_txs_time=%lums, txs_count=%zu",
             (int)s, pool_idx(), view_block.block_info().height(), 
             common::Encode::HexEncode(view_block.parent_hash()).substr(0, 16).c_str(),
@@ -455,10 +455,10 @@ Status BlockAcceptor::Accept(
     // 3. Do txs and create block_tx.
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto do_tx_begin_ms = common::TimeUtils::TimestampMs();
-    s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, seth_host);
+    s = DoTransactions(txs_ptr, &view_block, balance_and_nonce_map, shardora_host);
     auto do_tx_end_ms = common::TimeUtils::TimestampMs();
     if (s != Status::kSuccess) {
-        SETH_WARN("DoTransactions error!");
+        SHARDORA_WARN("DoTransactions error!");
         return s;
     }
 
@@ -478,7 +478,7 @@ Status BlockAcceptor::Accept(
         if (!addr_ptr->has_balance() || !addr_ptr->has_nonce() || !addr_ptr->has_sharding_id() || 
                 !addr_ptr->has_pool_index() || !addr_ptr->has_addr() || !addr_ptr->has_type() ||
                 !addr_ptr->has_latest_height()) {
-            SETH_WARN("invalid addr, %u_%u_%lu_%lu, success addr info: %s", 
+            SHARDORA_WARN("invalid addr, %u_%u_%lu_%lu, success addr info: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
                 view_block.block_info().height(),
@@ -495,7 +495,7 @@ Status BlockAcceptor::Accept(
 
         auto* addr_info = view_block.mutable_block_info()->add_address_array();
         *addr_info = *addr_ptr;
-        SETH_DEBUG("%u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu, destrcuted: %d", 
+        SHARDORA_DEBUG("%u_%u_%lu_%lu, success addr info: %s, balance: %lu, nonce: %lu, destrcuted: %d", 
             view_block.qc().network_id(),
             view_block.qc().pool_index(),
             view_block.block_info().height(),
@@ -504,11 +504,11 @@ Status BlockAcceptor::Accept(
             addr_info->balance(),
             addr_info->nonce(),
             addr_info->destructed());
-        prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, seth_host.db_batch_);
+        prefix_db_->AddAddressInfo(addr_info->addr(), *addr_info, shardora_host.db_batch_);
     }
 
-    for (auto account_iter = seth_host.accounts_.begin();
-            account_iter != seth_host.accounts_.end(); ++account_iter) {
+    for (auto account_iter = shardora_host.accounts_.begin();
+            account_iter != shardora_host.accounts_.end(); ++account_iter) {
         for (auto storage_iter = account_iter->second.storage.begin();
                 storage_iter != account_iter->second.storage.end(); ++storage_iter) {
             auto& kv_info = *view_block.mutable_block_info()->add_key_value_array();
@@ -521,8 +521,8 @@ Status BlockAcceptor::Accept(
             prefix_db_->SaveTemporaryKv(
                 kv_info.addr() + kv_info.key(), 
                 kv_info.SerializeAsString(), 
-                seth_host.db_batch_);
-            SETH_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
+                shardora_host.db_batch_);
+            SHARDORA_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
                 view_block.block_info().height(),
@@ -543,8 +543,8 @@ Status BlockAcceptor::Accept(
             prefix_db_->SaveTemporaryKv(
                 kv_info.addr() + kv_info.key(), 
                 kv_info.SerializeAsString(), 
-                seth_host.db_batch_);
-            SETH_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
+                shardora_host.db_batch_);
+            SHARDORA_DEBUG("%u_%u_%lu_%lu, success add key value addr: %s, key: %s", 
                 view_block.qc().network_id(),
                 view_block.qc().pool_index(),
                 view_block.block_info().height(),
@@ -560,34 +560,34 @@ Status BlockAcceptor::Accept(
         prefix_db_->SaveNodeVerificationVector(
             addr,
             join_info,
-            seth_host.db_batch_);
+            shardora_host.db_batch_);
 #ifndef NDEBUG
         auto n = common::GlobalInfo::Instance()->each_shard_max_members();
         auto t = common::GetSignerCount(n);
         //assert(join_info.g2_req().verify_vec_size() >= t);
 #endif
-        prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host.db_batch_);
+        prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), shardora_host.db_batch_);
     }
 
-    for (auto iter = seth_host.cross_to_map_.begin(); iter != seth_host.cross_to_map_.end(); ++iter) {
+    for (auto iter = shardora_host.cross_to_map_.begin(); iter != shardora_host.cross_to_map_.end(); ++iter) {
         auto* cross_to_item = view_block.mutable_block_info()->add_cross_shard_to_array();
         *cross_to_item = *iter->second;
-        UpdateDesShardingId(cross_to_item, seth_host);
-        SETH_DEBUG("success add cross to item: %s, amount: %lu, prefund: %lu",
+        UpdateDesShardingId(cross_to_item, shardora_host);
+        SHARDORA_DEBUG("success add cross to item: %s, amount: %lu, prefund: %lu",
             common::Encode::HexEncode(cross_to_item->des()).c_str(),
             cross_to_item->amount(), cross_to_item->prefund());
     }
 
 
     if (view_block.block_info().cross_shard_to_array_size() > 0) {
-        SETH_DEBUG("success add cross to shard: %u_%u_%lu, %s",
+        SHARDORA_DEBUG("success add cross to shard: %u_%u_%lu, %s",
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
             view_block.qc().view(),
             ProtobufToJson(view_block).c_str());
     }
 
-    SETH_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu_%lu, height: %lu, "
+    SHARDORA_DEBUG("success do transaction tx size: %u, add: %u, %u_%u_%lu_%lu, height: %lu, "
         "timeblock height: %lu, local latest timeblock height: %lu", 
         txs_ptr->txs.size(), 
         view_block.block_info().tx_list_size(), 
@@ -599,7 +599,7 @@ Status BlockAcceptor::Accept(
         view_block.block_info().timeblock_height(),
         tm_block_mgr_->LatestTimestampHeight());
     view_block.mutable_qc()->set_view_block_hash(GetBlockHash(view_block));
-    SETH_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu",
+    SHARDORA_DEBUG("success set view block hash: %s, parent: %s, %u_%u_%lu_%lu",
         common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
         common::Encode::HexEncode(view_block.parent_hash()).c_str(),
         view_block.qc().network_id(),
@@ -618,7 +618,7 @@ Status BlockAcceptor::Accept(
 
 void BlockAcceptor::UpdateDesShardingId(
         pools::protobuf::ToTxMessageItem* to_addr_info, 
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     if (to_addr_info->has_des_sharding_id()) {
         return;
     }
@@ -637,12 +637,12 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     pools::protobuf::ElectStatistic local_statistic;
     // Placeholder: In production, uncomment this when GetLocalStatisticFromTxPool is implemented
     // if (!GetLocalStatisticFromTxPool(pool_index, &local_statistic)) {
-    //     SETH_DEBUG("pool=%u, no local statistic found, accepting leader's version", pool_index);
+    //     SHARDORA_DEBUG("pool=%u, no local statistic found, accepting leader's version", pool_index);
     //     return true;
     // }
     
     // Temporary: Accept leader's version until we can get local statistic
-    SETH_DEBUG("pool=%u, statistic validation: accepting leader's version (local retrieval not implemented)",
+    SHARDORA_DEBUG("pool=%u, statistic validation: accepting leader's version (local retrieval not implemented)",
         pool_index);
     return true;
     
@@ -651,34 +651,34 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     
     // 2.1 Verify sharding_id
     if (leader_statistic.sharding_id() != local_statistic.sharding_id()) {
-        SETH_WARN("pool=%u, sharding_id mismatch: leader=%u, local=%u",
+        SHARDORA_WARN("pool=%u, sharding_id mismatch: leader=%u, local=%u",
             pool_index, leader_statistic.sharding_id(), local_statistic.sharding_id());
         return false;
     }
     
     // 2.2 Verify statistic_height
     if (leader_statistic.statistic_height() != local_statistic.statistic_height()) {
-        SETH_WARN("pool=%u, statistic_height mismatch: leader=%lu, local=%lu",
+        SHARDORA_WARN("pool=%u, statistic_height mismatch: leader=%lu, local=%lu",
             pool_index, leader_statistic.statistic_height(), local_statistic.statistic_height());
         return false;
     }
     
     // 2.3 Verify gas_amount
     if (leader_statistic.gas_amount() != local_statistic.gas_amount()) {
-        SETH_WARN("pool=%u, gas_amount mismatch: leader=%lu, local=%lu",
+        SHARDORA_WARN("pool=%u, gas_amount mismatch: leader=%lu, local=%lu",
             pool_index, leader_statistic.gas_amount(), local_statistic.gas_amount());
         return false;
     }
     
     // 2.4 Verify lof_leaders (list of leaders)
     if (leader_statistic.lof_leaders_size() != local_statistic.lof_leaders_size()) {
-        SETH_WARN("pool=%u, lof_leaders size mismatch: leader=%d, local=%d",
+        SHARDORA_WARN("pool=%u, lof_leaders size mismatch: leader=%d, local=%d",
             pool_index, leader_statistic.lof_leaders_size(), local_statistic.lof_leaders_size());
         return false;
     }
     for (int i = 0; i < leader_statistic.lof_leaders_size(); ++i) {
         if (leader_statistic.lof_leaders(i) != local_statistic.lof_leaders(i)) {
-            SETH_WARN("pool=%u, lof_leaders[%d] mismatch: leader=%u, local=%u",
+            SHARDORA_WARN("pool=%u, lof_leaders[%d] mismatch: leader=%u, local=%u",
                 pool_index, i, leader_statistic.lof_leaders(i), local_statistic.lof_leaders(i));
             return false;
         }
@@ -686,7 +686,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     
     // 2.5 Verify statistics (PoolStatisticItem array)
     if (leader_statistic.statistics_size() != local_statistic.statistics_size()) {
-        SETH_WARN("pool=%u, statistics size mismatch: leader=%d, local=%d",
+        SHARDORA_WARN("pool=%u, statistics size mismatch: leader=%d, local=%d",
             pool_index, leader_statistic.statistics_size(), local_statistic.statistics_size());
         return false;
     }
@@ -702,38 +702,38 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
             leader_stat.gas_sum_size() != local_stat.gas_sum_size() ||
             leader_stat.credit_size() != local_stat.credit_size() ||
             leader_stat.consensus_gap_size() != local_stat.consensus_gap_size()) {
-            SETH_WARN("pool=%u, statistics[%d] structure mismatch", pool_index, i);
+            SHARDORA_WARN("pool=%u, statistics[%d] structure mismatch", pool_index, i);
             return false;
         }
         
         // Compare arrays
         for (int j = 0; j < leader_stat.tx_count_size(); ++j) {
             if (leader_stat.tx_count(j) != local_stat.tx_count(j)) {
-                SETH_WARN("pool=%u, statistics[%d].tx_count[%d] mismatch", pool_index, i, j);
+                SHARDORA_WARN("pool=%u, statistics[%d].tx_count[%d] mismatch", pool_index, i, j);
                 return false;
             }
         }
         for (int j = 0; j < leader_stat.stokes_size(); ++j) {
             if (leader_stat.stokes(j) != local_stat.stokes(j)) {
-                SETH_WARN("pool=%u, statistics[%d].stokes[%d] mismatch", pool_index, i, j);
+                SHARDORA_WARN("pool=%u, statistics[%d].stokes[%d] mismatch", pool_index, i, j);
                 return false;
             }
         }
         for (int j = 0; j < leader_stat.gas_sum_size(); ++j) {
             if (leader_stat.gas_sum(j) != local_stat.gas_sum(j)) {
-                SETH_WARN("pool=%u, statistics[%d].gas_sum[%d] mismatch", pool_index, i, j);
+                SHARDORA_WARN("pool=%u, statistics[%d].gas_sum[%d] mismatch", pool_index, i, j);
                 return false;
             }
         }
         for (int j = 0; j < leader_stat.credit_size(); ++j) {
             if (leader_stat.credit(j) != local_stat.credit(j)) {
-                SETH_WARN("pool=%u, statistics[%d].credit[%d] mismatch", pool_index, i, j);
+                SHARDORA_WARN("pool=%u, statistics[%d].credit[%d] mismatch", pool_index, i, j);
                 return false;
             }
         }
         for (int j = 0; j < leader_stat.consensus_gap_size(); ++j) {
             if (leader_stat.consensus_gap(j) != local_stat.consensus_gap(j)) {
-                SETH_WARN("pool=%u, statistics[%d].consensus_gap[%d] mismatch", pool_index, i, j);
+                SHARDORA_WARN("pool=%u, statistics[%d].consensus_gap[%d] mismatch", pool_index, i, j);
                 return false;
             }
         }
@@ -741,7 +741,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     
     // 2.6 Verify height_info (StatisticTxItem)
     if (leader_statistic.has_height_info() != local_statistic.has_height_info()) {
-        SETH_WARN("pool=%u, height_info presence mismatch", pool_index);
+        SHARDORA_WARN("pool=%u, height_info presence mismatch", pool_index);
         return false;
     }
     if (leader_statistic.has_height_info()) {
@@ -752,7 +752,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
             leader_height.block_height() != local_height.block_height() ||
             leader_height.tm_height() != local_height.tm_height() ||
             leader_height.heights_size() != local_height.heights_size()) {
-            SETH_WARN("pool=%u, height_info mismatch", pool_index);
+            SHARDORA_WARN("pool=%u, height_info mismatch", pool_index);
             return false;
         }
         
@@ -763,7 +763,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
             if (leader_pool_height.pool_index() != local_pool_height.pool_index() ||
                 leader_pool_height.min_height() != local_pool_height.min_height() ||
                 leader_pool_height.max_height() != local_pool_height.max_height()) {
-                SETH_WARN("pool=%u, height_info.heights[%d] mismatch", pool_index, i);
+                SHARDORA_WARN("pool=%u, height_info.heights[%d] mismatch", pool_index, i);
                 return false;
             }
         }
@@ -773,13 +773,13 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     uint32_t total_nodes = leader_statistic.join_elect_nodes_size();
     if (total_nodes == 0) {
         // No nodes to validate, accept
-        SETH_DEBUG("pool=%u, no nodes in statistic, accepting", pool_index);
+        SHARDORA_DEBUG("pool=%u, no nodes in statistic, accepting", pool_index);
         return true;
     }
     
     // Check if local has same number of nodes
     if (local_statistic.join_elect_nodes_size() != static_cast<int>(total_nodes)) {
-        SETH_WARN("pool=%u, node count mismatch: leader=%u, local=%d",
+        SHARDORA_WARN("pool=%u, node count mismatch: leader=%u, local=%d",
             pool_index, total_nodes, local_statistic.join_elect_nodes_size());
         return false;
     }
@@ -801,7 +801,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         auto it = local_nodes_map.find(pubkey_str);
         if (it == local_nodes_map.end()) {
-            SETH_DEBUG("pool=%u, node not found in local: %s",
+            SHARDORA_DEBUG("pool=%u, node not found in local: %s",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str());
             continue;
         }
@@ -813,7 +813,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         // Compare stoke
         if (leader_node.stoke() != local_node.stoke()) {
-            SETH_DEBUG("pool=%u, node %s stoke mismatch: leader=%lu, local=%lu",
+            SHARDORA_DEBUG("pool=%u, node %s stoke mismatch: leader=%lu, local=%lu",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
                 leader_node.stoke(), local_node.stoke());
             node_match = false;
@@ -821,7 +821,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         // Compare shard
         if (leader_node.shard() != local_node.shard()) {
-            SETH_DEBUG("pool=%u, node %s shard mismatch: leader=%u, local=%u",
+            SHARDORA_DEBUG("pool=%u, node %s shard mismatch: leader=%u, local=%u",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
                 leader_node.shard(), local_node.shard());
             node_match = false;
@@ -829,7 +829,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         // Compare elect_pos
         if (leader_node.elect_pos() != local_node.elect_pos()) {
-            SETH_DEBUG("pool=%u, node %s elect_pos mismatch: leader=%d, local=%d",
+            SHARDORA_DEBUG("pool=%u, node %s elect_pos mismatch: leader=%d, local=%d",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
                 leader_node.elect_pos(), local_node.elect_pos());
             node_match = false;
@@ -837,7 +837,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         // Compare credit
         if (leader_node.credit() != local_node.credit()) {
-            SETH_DEBUG("pool=%u, node %s credit mismatch: leader=%lu, local=%lu",
+            SHARDORA_DEBUG("pool=%u, node %s credit mismatch: leader=%lu, local=%lu",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
                 leader_node.credit(), local_node.credit());
             node_match = false;
@@ -845,7 +845,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         // Compare consensus_gap
         if (leader_node.consensus_gap() != local_node.consensus_gap()) {
-            SETH_DEBUG("pool=%u, node %s consensus_gap mismatch: leader=%lu, local=%lu",
+            SHARDORA_DEBUG("pool=%u, node %s consensus_gap mismatch: leader=%lu, local=%lu",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
                 leader_node.consensus_gap(), local_node.consensus_gap());
             node_match = false;
@@ -853,13 +853,13 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         // Compare area_point
         if (leader_node.has_area_point() != local_node.has_area_point()) {
-            SETH_DEBUG("pool=%u, node %s area_point presence mismatch",
+            SHARDORA_DEBUG("pool=%u, node %s area_point presence mismatch",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str());
             node_match = false;
         } else if (leader_node.has_area_point()) {
             if (leader_node.area_point().x() != local_node.area_point().x() ||
                 leader_node.area_point().y() != local_node.area_point().y()) {
-                SETH_DEBUG("pool=%u, node %s area_point mismatch: leader=(%d,%d), local=(%d,%d)",
+                SHARDORA_DEBUG("pool=%u, node %s area_point mismatch: leader=(%d,%d), local=(%d,%d)",
                     pool_index, common::Encode::HexEncode(pubkey_str).c_str(),
                     leader_node.area_point().x(), leader_node.area_point().y(),
                     local_node.area_point().x(), local_node.area_point().y());
@@ -869,7 +869,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
         
         if (node_match) {
             matched_nodes++;
-            SETH_DEBUG("pool=%u, node matched: %s",
+            SHARDORA_DEBUG("pool=%u, node matched: %s",
                 pool_index, common::Encode::HexEncode(pubkey_str).c_str());
         }
     }
@@ -878,7 +878,7 @@ bool BlockAcceptor::ValidateStatisticNodeConsistency(
     double consistency_rate = (double)matched_nodes / (double)total_nodes;
     bool is_valid = consistency_rate >= 0.90;
     
-    SETH_DEBUG("pool=%u, statistic validation: matched=%u, total=%u, consistency=%.2f%%, valid=%s",
+    SHARDORA_DEBUG("pool=%u, statistic validation: matched=%u, total=%u, consistency=%.2f%%, valid=%s",
         pool_index, matched_nodes, total_nodes, consistency_rate * 100.0,
         is_valid ? "true" : "false");
     
@@ -901,12 +901,12 @@ Status BlockAcceptor::addTxsToPool(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& now_balance_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
 
     // 0. Basic check
     if (txs.size() == 0) {
-        SETH_DEBUG("accepte empty called!");
+        SHARDORA_DEBUG("accepte empty called!");
         return Status::kAcceptorTxsEmpty;
     }
 
@@ -998,7 +998,7 @@ Status BlockAcceptor::addTxsToPool(
             address_info = view_block_chain_->ChainGetAccountInfo(tx->to() + from_id);
             contract_address_info = view_block_chain_->ChainGetAccountInfo(tx->to());
             if (!contract_address_info) {
-                SETH_WARN("get contract address failed %s, nonce: %lu", 
+                SHARDORA_WARN("get contract address failed %s, nonce: %lu", 
                     common::Encode::HexEncode(tx->to()).c_str(), tx->nonce());
                 verify_results[i] = -1; // Mark as failed
                 continue;
@@ -1006,7 +1006,7 @@ Status BlockAcceptor::addTxsToPool(
         } else if (tx->step() == pools::protobuf::kConsensusLocalTos) {
             pools::protobuf::ToTxMessageItem to_tx_item;
             if (!to_tx_item.ParseFromString(tx->value())) {
-                SETH_WARN("local get to txs info failed: %s, unique: %s",
+                SHARDORA_WARN("local get to txs info failed: %s, unique: %s",
                     common::Encode::HexEncode(tx->value()).c_str(),
                     common::Encode::HexEncode(tx->key()).c_str());
                 verify_results[i] = -1; // Mark as failed
@@ -1035,7 +1035,7 @@ Status BlockAcceptor::addTxsToPool(
         }
 
         if (!address_info) {
-            SETH_WARN("get address failed nonce: %lu", tx->nonce());
+            SHARDORA_WARN("get address failed nonce: %lu", tx->nonce());
             verify_results[i] = -1;
             continue;
         }
@@ -1054,7 +1054,7 @@ Status BlockAcceptor::addTxsToPool(
                 uint64_t now_nonce = 0lu;
                 int res = tx_valid_func(*address_info, *tx, &now_nonce);
                 if (res != 0) {
-                    SETH_WARN("nonce invalid (chain check) addr: %s, tx_nonce: %lu, "
+                    SHARDORA_WARN("nonce invalid (chain check) addr: %s, tx_nonce: %lu, "
                         "chain_nonce: %lu, res: %d, step: %u",
                         common::Encode::HexEncode(nonce_addr).c_str(),
                         tx->nonce(), now_nonce, res, (uint32_t)tx->step());
@@ -1067,7 +1067,7 @@ Status BlockAcceptor::addTxsToPool(
                 // Subsequent tx from same address: must be exactly prev + 1.
                 uint64_t expected = prev_it->second + 1;
                 if (tx->nonce() != expected) {
-                    SETH_WARN("nonce continuity violation addr: %s, expected: %lu, got: %lu, step: %u",
+                    SHARDORA_WARN("nonce continuity violation addr: %s, expected: %lu, got: %lu, step: %u",
                         common::Encode::HexEncode(nonce_addr).c_str(),
                         expected, tx->nonce(), (uint32_t)tx->step());
                     verify_results[i] = -1;
@@ -1083,8 +1083,8 @@ Status BlockAcceptor::addTxsToPool(
         if (now_map_iter == now_balance_map.end()) {
             if (!pools::IsUserTransaction(tx->step())) {
                 std::string val;
-                if (seth_host.GetKeyValue(tx->to(), tx->key(), &val) == sethvm::kSethvmSuccess) {
-                    SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
+                if (shardora_host.GetKeyValue(tx->to(), tx->key(), &val) == shardoravm::kShardoravmSuccess) {
+                    SHARDORA_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
                         common::Encode::HexEncode(tx->to()).c_str(),
                         common::Encode::HexEncode(tx->key()).c_str());
                     verify_results[i] = -1;
@@ -1139,8 +1139,8 @@ Status BlockAcceptor::addTxsToPool(
             tx_ptr = std::make_shared<consensus::ToTxLocalItem>(
                     msg_ptr, i, db_, account_mgr_, security_ptr_, address_info);
             std::string val;
-            if (seth_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == sethvm::kSethvmSuccess) {
-                SETH_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
+            if (shardora_host.GetKeyValue(tx_ptr->tx_info->to(), tx_ptr->tx_info->key(), &val) == shardoravm::kShardoravmSuccess) {
+                SHARDORA_WARN("invalid add tx now get local to tx to: %s, unique hash: %s", 
                     common::Encode::HexEncode(tx_ptr->tx_info->to()).c_str(),
                     common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
                 tx_ptr = nullptr;
@@ -1164,14 +1164,14 @@ Status BlockAcceptor::addTxsToPool(
                 auto tx_item = tx_pools_->GetToTxs(
                     pool_idx(), all_to_txs.to_heights().SerializeAsString());
                 if (tx_item == nullptr || tx_item->txs.empty()) {
-                    SETH_WARN("kNormalTo backup: no local tx found, discarding propose. pool=%u key=%s",
+                    SHARDORA_WARN("kNormalTo backup: no local tx found, discarding propose. pool=%u key=%s",
                         pool_idx(), common::Encode::HexEncode(tx->key()).c_str());
                     create_success = false;
                     break;
                 }
                 auto local_tx = *(tx_item->txs.begin());
                 if (local_tx->tx_info->key() != tx->key()) {
-                    SETH_WARN("kNormalTo backup: tx key mismatch, discarding propose. "
+                    SHARDORA_WARN("kNormalTo backup: tx key mismatch, discarding propose. "
                         "local_key=%s leader_key=%s pool=%u",
                         common::Encode::HexEncode(local_tx->tx_info->key()).c_str(),
                         common::Encode::HexEncode(tx->key()).c_str(),
@@ -1182,7 +1182,7 @@ Status BlockAcceptor::addTxsToPool(
                 pools::protobuf::AllToTxMessage local_all_to_txs;
                 if (!local_all_to_txs.ParseFromString(local_tx->tx_info->value()) ||
                         local_all_to_txs.to_tx_arr_size() == 0) {
-                    SETH_WARN("kNormalTo backup: invalid local AllToTxMessage pool=%u key=%s",
+                    SHARDORA_WARN("kNormalTo backup: invalid local AllToTxMessage pool=%u key=%s",
                         pool_idx(), common::Encode::HexEncode(tx->key()).c_str());
                     create_success = false;
                     break;
@@ -1202,7 +1202,7 @@ Status BlockAcceptor::addTxsToPool(
             // Parse leader's statistic transaction
             pools::protobuf::ElectStatistic leader_statistic;
             if (!leader_statistic.ParseFromString(tx->value())) {
-                SETH_WARN("failed to parse leader's elect statistic, rejecting proposal. "
+                SHARDORA_WARN("failed to parse leader's elect statistic, rejecting proposal. "
                     "pool=%u, key=%s",
                     pool_idx(),
                     common::Encode::HexEncode(tx->key()).c_str());
@@ -1212,7 +1212,7 @@ Status BlockAcceptor::addTxsToPool(
             
             // Verify sharding_id matches
             if (leader_statistic.sharding_id() != msg_ptr->header.hotstuff().net_id()) {
-                SETH_WARN("statistic sharding_id mismatch, rejecting proposal. "
+                SHARDORA_WARN("statistic sharding_id mismatch, rejecting proposal. "
                     "leader_shard=%u, expected_shard=%u, pool=%u",
                     leader_statistic.sharding_id(),
                     msg_ptr->header.hotstuff().net_id(),
@@ -1227,7 +1227,7 @@ Status BlockAcceptor::addTxsToPool(
                     tx->to(),
                     tx->nonce(),
                     tx->key())) {
-                SETH_WARN("statistic tx not found in local tx_pool, rejecting proposal. "
+                SHARDORA_WARN("statistic tx not found in local tx_pool, rejecting proposal. "
                     "pool=%u, to=%s, nonce=%lu, key=%s",
                     pool_idx(),
                     common::Encode::HexEncode(tx->to()).c_str(),
@@ -1239,7 +1239,7 @@ Status BlockAcceptor::addTxsToPool(
             
             // Verify node information consistency (90% threshold)
             if (!ValidateStatisticNodeConsistency(leader_statistic, pool_idx())) {
-                SETH_WARN("statistic node consistency validation failed (< 90%%), rejecting proposal. "
+                SHARDORA_WARN("statistic node consistency validation failed (< 90%%), rejecting proposal. "
                     "pool=%u, key=%s",
                     pool_idx(),
                     common::Encode::HexEncode(tx->key()).c_str());
@@ -1250,7 +1250,7 @@ Status BlockAcceptor::addTxsToPool(
             // Get address_info for statistic transaction
             address_info = account_mgr_->pools_address_info(tx->step(), pool_idx());
             if (!address_info) {
-                SETH_WARN("failed to get address_info for statistic tx, pool=%u", pool_idx());
+                SHARDORA_WARN("failed to get address_info for statistic tx, pool=%u", pool_idx());
                 create_success = false;
                 break;
             }
@@ -1266,13 +1266,13 @@ Status BlockAcceptor::addTxsToPool(
         case pools::protobuf::kConsensusRootElectShard: {
             pools::protobuf::ElectStatistic elect_statistic;
             if (!elect_statistic.ParseFromString(tx->value())) {
-                SETH_DEBUG("parse elect_statistic error!");
+                SHARDORA_DEBUG("parse elect_statistic error!");
                 create_success = false;
                 break;            
             }
 
             if (bls_mgr_->CheckBlsConsensusInfo(elect_statistic.elect_block()) != bls::kBlsSuccess) {
-                SETH_DEBUG("check bls consensus info failed!");
+                SHARDORA_DEBUG("check bls consensus info failed!");
                 create_success = false;
                 break;
             }
@@ -1285,7 +1285,7 @@ Status BlockAcceptor::addTxsToPool(
         }
         case pools::protobuf::kConsensusRootTimeBlock: {
             if (!tm_block_mgr_->CheckLeaderTimeblockTxValid(*tx, tx_valid_func)) {
-                SETH_ERROR("check leader timeblock tx valid failed!");
+                SHARDORA_ERROR("check leader timeblock tx valid failed!");
                 create_success = false;
                 break;
             }
@@ -1316,7 +1316,7 @@ Status BlockAcceptor::addTxsToPool(
             break;
         }
         default:
-            SETH_FATAL("invalid tx step: %d", (int32_t)tx->step());
+            SHARDORA_FATAL("invalid tx step: %d", (int32_t)tx->step());
             create_success = false;
         }
 
@@ -1426,7 +1426,7 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         bool directly_user_leader_txs,
         std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         std::unordered_map<std::string, uint64_t>* out_leader_nonce_map) {
     auto add_txs_status = addTxsToPool(
         msg_ptr,
@@ -1435,15 +1435,15 @@ Status BlockAcceptor::GetAndAddTxsLocally(
         directly_user_leader_txs, 
         txs_ptr,
         balance_map,
-        seth_host,
+        shardora_host,
         out_leader_nonce_map);
     if (add_txs_status != Status::kSuccess) {
-        SETH_ERROR("invalid consensus, add_txs_status failed: %d.", (int32_t)add_txs_status);
+        SHARDORA_ERROR("invalid consensus, add_txs_status failed: %d.", (int32_t)add_txs_status);
         return add_txs_status;
     }
 
     if (!txs_ptr) {
-        SETH_ERROR("invalid consensus, tx empty.");
+        SHARDORA_ERROR("invalid consensus, tx empty.");
         return Status::kAcceptorTxsEmpty;
     }
 
@@ -1451,10 +1451,10 @@ Status BlockAcceptor::GetAndAddTxsLocally(
 // #ifndef NDEBUG
 //         for (uint32_t i = 0; i < uint32_t(tx_propose.txs_size()); i++) {
 //             auto tx = &tx_propose.txs(i);
-//             SETH_WARN("leader tx step: %u, gid: %s", tx->step(), common::Encode::HexEncode(tx->gid()).c_str());
+//             SHARDORA_WARN("leader tx step: %u, gid: %s", tx->step(), common::Encode::HexEncode(tx->gid()).c_str());
 //         }
 // #endif
-        SETH_ERROR("invalid consensus, txs not equal to leader: local_txs=%zu, leader_txs=%d, pool_idx=%u, "
+        SHARDORA_ERROR("invalid consensus, txs not equal to leader: local_txs=%zu, leader_txs=%d, pool_idx=%u, "
             "local_first_tx_hash=%s, leader_first_tx_hash=%s",
             txs_ptr->txs.size(), tx_propose.txs_size(), pool_idx_,
             (txs_ptr->txs.empty() ? "empty" : common::Encode::HexEncode(
@@ -1471,18 +1471,18 @@ Status BlockAcceptor::GetAndAddTxsLocally(
 
 bool BlockAcceptor::IsBlockValid(const view_block::protobuf::ViewBlockItem& view_block) {
     // Verify block prehash, latest height, etc.
-    auto* seth_block = &view_block.block_info();
+    auto* shardora_block = &view_block.block_info();
     uint64_t pool_height = pools_mgr_->latest_height(pool_idx());
-    if (seth_block->height() <= pool_height || pool_height == common::kInvalidUint64) {
-        SETH_WARN("Accept height error: %lu, %lu", seth_block->height(), pool_height);
+    if (shardora_block->height() <= pool_height || pool_height == common::kInvalidUint64) {
+        SHARDORA_WARN("Accept height error: %lu, %lu", shardora_block->height(), pool_height);
         return false;
     }
 
     auto cur_time = common::TimeUtils::TimestampMs();
     // The timestamp of the new block must be greater than the timestamp of the previous block.
     uint64_t preblock_time = pools_mgr_->latest_timestamp(pool_idx());
-    if (seth_block->timestamp() <= preblock_time && seth_block->timestamp() + 10000lu >= cur_time) {
-        SETH_WARN("Accept timestamp error: %lu, %lu, cur: %lu", seth_block->timestamp(), preblock_time, cur_time);
+    if (shardora_block->timestamp() <= preblock_time && shardora_block->timestamp() + 10000lu >= cur_time) {
+        SHARDORA_WARN("Accept timestamp error: %lu, %lu, cur: %lu", shardora_block->timestamp(), preblock_time, cur_time);
         return false;
     }
     
@@ -1493,9 +1493,9 @@ Status BlockAcceptor::DoTransactions(
         const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     Status s = BlockExecutorFactory().Create(security_ptr_)->DoTransactionAndCreateTxBlock(
-            txs_ptr, view_block, balance_map, seth_host);
+            txs_ptr, view_block, balance_map, shardora_host);
     if (s != Status::kSuccess) {
         return s;
     }
@@ -1505,7 +1505,7 @@ Status BlockAcceptor::DoTransactions(
 //         bool valid = true;
 //         for (uint32_t i = 0; i < view_block->block_info().tx_list_size(); ++i) {
 //             auto& tx = view_block->block_info().tx_list(i);
-//             SETH_WARN("block tx from: %s, to: %s, amount: %lu, balance: %lu, %u_%u_%u, height: %lu",
+//             SHARDORA_WARN("block tx from: %s, to: %s, amount: %lu, balance: %lu, %u_%u_%u, height: %lu",
 //                 (tx.from().empty() ? 
 //                 "" : 
 //                 common::Encode::HexEncode(tx.from()).c_str()), 
@@ -1531,7 +1531,7 @@ Status BlockAcceptor::DoTransactions(
 //                     //assert(false);
 //                 }
                     
-//             SETH_WARN("transaction balance map addr: %s, balance: %lu, view_block_hash: %s, prehash: %s",
+//             SHARDORA_WARN("transaction balance map addr: %s, balance: %lu, view_block_hash: %s, prehash: %s",
 //                     common::Encode::HexEncode(*addr).c_str(), addr_iter->second, 
 //                     common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), 
 //                     common::Encode::HexEncode(view_block->parent_hash()).c_str());
@@ -1549,4 +1549,4 @@ Status BlockAcceptor::DoTransactions(
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

@@ -4,7 +4,7 @@
 
 ### 编译错误
 ```
-/root/seth/src/main/tx_cli.cc:438:5: error: expected ',' or ';' before '}' token
+/root/shardora/src/main/tx_cli.cc:438:5: error: expected ',' or ';' before '}' token
 438 |     };
     |     ^
 ```
@@ -21,7 +21,7 @@
 ```cpp
 // Only update nonce after successful send
 prikey_with_nonce[addr] = next_nonce;
-SETH_DEBUG("[NONCE_SEND] Tx sent successfully with nonce=%lu for %s",
+SHARDORA_DEBUG("[NONCE_SEND] Tx sent successfully with nonce=%lu for %s",
     next_nonce, common::Encode::HexEncode(addr).substr(0, 16).c_str());
 }  // <-- 多余的右括号
 
@@ -33,7 +33,7 @@ count++;
 ```cpp
 // Only update nonce after successful send
 prikey_with_nonce[addr] = next_nonce;
-SETH_DEBUG("[NONCE_SEND] Tx sent successfully with nonce=%lu for %s",
+SHARDORA_DEBUG("[NONCE_SEND] Tx sent successfully with nonce=%lu for %s",
     next_nonce, common::Encode::HexEncode(addr).substr(0, 16).c_str());
 
 count++;
@@ -52,7 +52,7 @@ count++;
 
 3. **重新编译**
    ```bash
-   cd /root/seth/cbuild_Release
+   cd /root/shardora/cbuild_Release
    make -j4
    ```
 

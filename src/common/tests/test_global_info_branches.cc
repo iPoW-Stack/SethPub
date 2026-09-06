@@ -11,7 +11,7 @@
 #include "common/global_info.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -26,9 +26,9 @@ void ResetThreadState(GlobalInfo* g) {
     g->begin_run_timestamp_ms_ = common::TimeUtils::TimestampMs() + 100000lu;
 }
 
-Config MakeMinimalSethConfig() {
+Config MakeMinimalShardoraConfig() {
     Config cfg;
-    constexpr const char* kIni = R"([seth]
+    constexpr const char* kIni = R"([shardora]
 local_ip=127.0.0.1
 country=US
 first_node=true
@@ -40,31 +40,31 @@ first_node=true
 }  // namespace
 
 TEST(GlobalInfoBranches, InitSetsHttpPortZeroWhenKeyMissing) {
-    Config cfg = MakeMinimalSethConfig();
+    Config cfg = MakeMinimalShardoraConfig();
     auto* g = GlobalInfo::Instance();
     ASSERT_EQ(g->Init(cfg), kCommonSuccess);
     EXPECT_EQ(g->http_port(), 0u);
 }
 
 TEST(GlobalInfoBranches, InitReadsHttpPortWhenPresent) {
-    Config cfg = MakeMinimalSethConfig();
-    ASSERT_TRUE(cfg.Set("seth", "http_port", std::string("8080")));
+    Config cfg = MakeMinimalShardoraConfig();
+    ASSERT_TRUE(cfg.Set("shardora", "http_port", std::string("8080")));
     auto* g = GlobalInfo::Instance();
     ASSERT_EQ(g->Init(cfg), kCommonSuccess);
     EXPECT_EQ(g->http_port(), 8080u);
 }
 
 TEST(GlobalInfoBranches, InitClampsEachTxPoolMaxTxsBelowMinimum) {
-    Config cfg = MakeMinimalSethConfig();
-    ASSERT_TRUE(cfg.Set("seth", "each_tx_pool_max_txs", std::string("100")));
+    Config cfg = MakeMinimalShardoraConfig();
+    ASSERT_TRUE(cfg.Set("shardora", "each_tx_pool_max_txs", std::string("100")));
     auto* g = GlobalInfo::Instance();
     ASSERT_EQ(g->Init(cfg), kCommonSuccess);
     EXPECT_EQ(g->each_tx_pool_max_txs(), 10240u);
 }
 
 TEST(GlobalInfoBranches, InitKeepsEachTxPoolMaxTxsWhenAlreadyHighEnough) {
-    Config cfg = MakeMinimalSethConfig();
-    ASSERT_TRUE(cfg.Set("seth", "each_tx_pool_max_txs", std::string("30000")));
+    Config cfg = MakeMinimalShardoraConfig();
+    ASSERT_TRUE(cfg.Set("shardora", "each_tx_pool_max_txs", std::string("30000")));
     auto* g = GlobalInfo::Instance();
     ASSERT_EQ(g->Init(cfg), kCommonSuccess);
     EXPECT_EQ(g->each_tx_pool_max_txs(), 30000u);
@@ -133,7 +133,7 @@ TEST(GlobalInfoBranches, SharedObjCountersUpdateInDebug) {
 
 TEST(GlobalInfoBranches, TimerUpdatesMaxWhenCountExceeds64) {
     auto* g = GlobalInfo::Instance();
-    Config cfg = MakeMinimalSethConfig();
+    Config cfg = MakeMinimalShardoraConfig();
     ASSERT_EQ(g->Init(cfg), kCommonSuccess);
 
     constexpr int32_t kSlot = 11;
@@ -153,7 +153,7 @@ TEST(GlobalInfoBranches, TimerUpdatesMaxWhenCountExceeds64) {
 
 TEST(GlobalInfoBranches, TimerDoesNotUpdateMaxWhenCountAtOrBelow64) {
     auto* g = GlobalInfo::Instance();
-    Config cfg = MakeMinimalSethConfig();
+    Config cfg = MakeMinimalShardoraConfig();
     ASSERT_EQ(g->Init(cfg), kCommonSuccess);
 
     constexpr int32_t kSlot = 12;
@@ -170,4 +170,4 @@ TEST(GlobalInfoBranches, TimerDoesNotUpdateMaxWhenCountAtOrBelow64) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

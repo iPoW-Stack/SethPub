@@ -35,7 +35,7 @@
 
 **实施**:
 ```bash
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 ```
 
 **预期效果**:
@@ -99,10 +99,10 @@ if (network_enabled) {
 
 编辑 `temp_cmd.sh`:
 ```bash
-export SETH_NETWORK_ENABLED=0
-export SETH_NETWORK_DELAY_MS=0
-export SETH_NETWORK_JITTER_MS=0
-export SETH_NETWORK_LOSS_RATE=0
+export SHARDORA_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_DELAY_MS=0
+export SHARDORA_NETWORK_JITTER_MS=0
+export SHARDORA_NETWORK_LOSS_RATE=0
 ```
 
 ### 第2步: 优化系统参数（立即）
@@ -123,7 +123,7 @@ sysctl -w net.ipv4.tcp_fin_timeout=30
 ### 第3步: 重新编译（立即）
 
 ```bash
-cd /root/seth/cbuild_Release
+cd /root/shardora/cbuild_Release
 make -j4
 ```
 
@@ -228,15 +228,15 @@ tail -f logfile.txt | grep -E "oversized|on_read error|connection refused|NETWOR
 
 ### 禁用网络延迟
 ```bash
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 ```
 
 ### 启用网络延迟（谨慎）
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=50
-export SETH_NETWORK_JITTER_MS=10
-export SETH_NETWORK_LOSS_RATE=0.01
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=50
+export SHARDORA_NETWORK_JITTER_MS=10
+export SHARDORA_NETWORK_LOSS_RATE=0.01
 ```
 
 ### 优化脚本

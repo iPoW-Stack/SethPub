@@ -11,7 +11,7 @@
 #include "pki/pki_cl_param.h"
 #include "pki/rabpre.h"
 
-using namespace seth;
+using namespace shardora;
 
 // int test_pki(int argc, char** argv) {
 //     common::ParserArgs parser_arg;

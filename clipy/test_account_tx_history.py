@@ -181,8 +181,8 @@ def main() -> int:
         nargs="*",
         help="Backward-compatible form: <host> <port> <funder_key> [recipient_key]",
     )
-    parser.add_argument("--host", help="Seth node HTTP host")
-    parser.add_argument("--port", type=int, help="Seth node HTTP port")
+    parser.add_argument("--host", help="Shardora node HTTP host")
+    parser.add_argument("--port", type=int, help="Shardora node HTTP port")
     parser.add_argument(
         "--key",
         "--funder-key",

@@ -21,7 +21,7 @@
 #include "dht/dht_key.h"
 #include "network/neighbor_ip_manager.h"
 
-namespace seth {
+namespace shardora {
 
 namespace dht {
 
@@ -74,14 +74,14 @@ int BaseDht::Join(NodePtr& node) {
     common::AutoSpinLock l(join_mutex_);
     auto& member_dht = dht_;
     // CheckThreadIdValid();
-    SETH_DEBUG("sharding: %u, now try join new node: %s:%d",
+    SHARDORA_DEBUG("sharding: %u, now try join new node: %s:%d",
         local_node_->sharding_id,
         node->public_ip.c_str(),
         node->public_port);
 
     if (node_join_cb_ != nullptr) {
         if (node_join_cb_(node) != kDhtSuccess) {
-            SETH_DEBUG("check callback join node failed! %s, %d, sharding id: %d",
+            SHARDORA_DEBUG("check callback join node failed! %s, %d, sharding id: %d",
                 common::Encode::HexEncode(node->id).c_str(), node->join_way, local_node_->sharding_id);
             return kDhtError;
         }
@@ -89,7 +89,7 @@ int BaseDht::Join(NodePtr& node) {
 
     int res = CheckJoin(node);
     if (res != kDhtSuccess) {
-        SETH_DEBUG("CheckJoin join node failed! %s, res: %d",
+        SHARDORA_DEBUG("CheckJoin join node failed! %s, res: %d",
             common::Encode::HexEncode(node->id).c_str(), res);
         return res;
     }
@@ -114,7 +114,7 @@ int BaseDht::Join(NodePtr& node) {
     }
 
     auto iter = node_map_.insert(std::make_pair(node->dht_key_hash, node));
-    SETH_DEBUG("MMMMMMMM node_map_ size: %u", node_map_.size());
+    SHARDORA_DEBUG("MMMMMMMM node_map_ size: %u", node_map_.size());
     if (!iter.second) {
         DHT_ERROR("kDhtNodeJoined join node failed! %s",
             common::Encode::HexEncode(node->id).c_str());
@@ -134,7 +134,7 @@ int BaseDht::Join(NodePtr& node) {
     readonly_hash_sort_dht_[invalid_idx] = tmp_dht_ptr;
     valid_dht_idx = invalid_idx;
     valid_count_ = member_dht.size() + 1;
-    SETH_DEBUG("sharding: %u, join new node: %s:%d, valid_count_: %u",
+    SHARDORA_DEBUG("sharding: %u, join new node: %s:%d, valid_count_: %u",
         local_node_->sharding_id,
         node->public_ip.c_str(),
         node->public_port,
@@ -164,7 +164,7 @@ int BaseDht::Drop(const std::string& id) {
     }
 
     dht_key_hash = (*iter)->dht_key_hash;
-    SETH_DEBUG("success drop node: %s:%d", (*iter)->public_ip.c_str(), (*iter)->public_port);
+    SHARDORA_DEBUG("success drop node: %s:%d", (*iter)->public_ip.c_str(), (*iter)->public_port);
     member_dht.erase(iter);
     auto miter = node_map_.find(dht_key_hash);
     if (miter != node_map_.end()) {
@@ -236,7 +236,7 @@ int BaseDht::Drop(NodePtr& node) {
         node_map_.erase(miter);
     }
 
-    SETH_DEBUG("success drop node: %s:%d", node->public_ip.c_str(), node->public_port);
+    SHARDORA_DEBUG("success drop node: %s:%d", node->public_ip.c_str(), node->public_port);
     return kDhtSuccess;
 }
 
@@ -276,7 +276,7 @@ int BaseDht::Drop(const std::string& ip, uint16_t port) {
     auto invalid_idx = (valid_dht_idx + 1) % 2;
     readonly_hash_sort_dht_[invalid_idx] = tmp_dht_ptr;
     valid_dht_idx = invalid_idx;
-    SETH_DEBUG("success drop node: %s:%d", ip.c_str(), port);
+    SHARDORA_DEBUG("success drop node: %s:%d", ip.c_str(), port);
     return kDhtSuccess;
 }
 
@@ -317,7 +317,7 @@ int BaseDht::Bootstrap(
                 boot_nodes[i]->public_ip.c_str(),
                 boot_nodes[i]->public_port);
         } else {
-            SETH_DEBUG("bootstrap from %s:%d success\n",
+            SHARDORA_DEBUG("bootstrap from %s:%d success\n",
                 boot_nodes[i]->public_ip.c_str(),
                 boot_nodes[i]->public_port);
         }
@@ -331,7 +331,7 @@ void BaseDht::SendToDesNetworkNodes(const transport::MessagePtr& msg_ptr) {
     uint32_t send_count = 0;
     auto dht_ptr = readonly_hash_sort_dht_[valid_dht_idx];
     uint32_t des_net_id = DhtKeyManager::DhtKeyGetNetId(message.des_dht_key());
-    SETH_DEBUG("send to des network: %d, hash: %lu", des_net_id, message.hash64());
+    SHARDORA_DEBUG("send to des network: %d, hash: %lu", des_net_id, message.hash64());
     for (auto iter = dht_ptr->begin(); iter != dht_ptr->end(); ++iter) {
         auto dht_node = (*iter);
         if (dht_node == nullptr) {
@@ -390,7 +390,7 @@ void BaseDht::SendToClosestNode(const transport::MessagePtr& msg_ptr) {
         closest_node->public_ip,
         closest_node->public_port,
         message);
-    SETH_DEBUG("send to closest node: %s:%u, hash64: %lu",
+    SHARDORA_DEBUG("send to closest node: %s:%u, hash64: %lu",
         closest_node->public_ip.c_str(), closest_node->public_port, message.hash64());
 }
 
@@ -422,31 +422,31 @@ void BaseDht::HandleMessage(const transport::MessagePtr& msg_ptr) {
 
 void BaseDht::DhtDispatchMessage(const transport::MessagePtr& msg_ptr) {
     if (msg_ptr->header.dht_proto().has_bootstrap_req()) {
-        // SETH_DEBUG("has_bootstrap_req");
+        // SHARDORA_DEBUG("has_bootstrap_req");
         ProcessBootstrapRequest(msg_ptr);
         return;
     }
 
     if (msg_ptr->header.dht_proto().has_bootstrap_res()) {
-        // SETH_DEBUG("has_bootstrap_res");
+        // SHARDORA_DEBUG("has_bootstrap_res");
         ProcessBootstrapResponse(msg_ptr);
         return;
     }
 
     if (msg_ptr->header.dht_proto().has_refresh_neighbors_req()) {
-        // SETH_DEBUG("has_refresh_neighbors_req");
+        // SHARDORA_DEBUG("has_refresh_neighbors_req");
         ProcessRefreshNeighborsRequest(msg_ptr);
         return;
     }
 
     if (msg_ptr->header.dht_proto().has_refresh_neighbors_res()) {
-        // SETH_DEBUG("has_refresh_neighbors_res");
+        // SHARDORA_DEBUG("has_refresh_neighbors_res");
         ProcessRefreshNeighborsResponse(msg_ptr);
         return;
     }
 
     if (msg_ptr->header.dht_proto().has_connect_req()) {
-        // SETH_DEBUG("has_connect_req");
+        // SHARDORA_DEBUG("has_connect_req");
         ProcessConnectRequest(msg_ptr);
         return;
     }
@@ -504,13 +504,13 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
     // Use conn's PeerIp/PeerPort (now updated) with a fallback safety check.
     auto send_ip = msg_ptr->conn->PeerIp();
     auto send_port = msg_ptr->conn->PeerPort();
-    SETH_DEBUG("bootstrap response to: %s:%d, node: %s:%d, hash: %lu",
+    SHARDORA_DEBUG("bootstrap response to: %s:%d, node: %s:%d, hash: %lu",
         send_ip.c_str(), send_port,
         req_public_ip.c_str(),
         req_public_port,
         msg.hash64());
     if (send_port == 0) {
-        SETH_WARN("bootstrap response skipped: peer port is 0 for %s", send_ip.c_str());
+        SHARDORA_WARN("bootstrap response skipped: peer port is 0 for %s", send_ip.c_str());
         return;
     }
     transport::TcpTransport::Instance()->Send(send_ip, send_port, msg);
@@ -527,7 +527,7 @@ void BaseDht::ProcessBootstrapRequest(const transport::MessagePtr& msg_ptr) {
 void BaseDht::ProcessBootstrapResponse(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     auto& dht_msg = header.dht_proto();
-    SETH_DEBUG("boot response coming: %lu", msg_ptr->header.hash64());
+    SHARDORA_DEBUG("boot response coming: %lu", msg_ptr->header.hash64());
     if (!CheckDestination(header.des_dht_key(), false)) {
         DHT_WARN("bootstrap request destination error[%s][%s]!",
             common::Encode::HexEncode(header.des_dht_key()).c_str(),
@@ -568,7 +568,7 @@ void BaseDht::ProcessBootstrapResponse(const transport::MessagePtr& msg_ptr) {
     }
 
     joined_ = true;
-    SETH_DEBUG("join success!");
+    SHARDORA_DEBUG("join success!");
     if (bootstrap_response_cb_ != nullptr) {
         // set global country
         bootstrap_response_cb_(this, dht_msg);
@@ -624,14 +624,14 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         common::AutoSpinLock l(join_mutex_);
         auto& closest_nodes = dht_;
         for (auto iter = closest_nodes.begin(); iter != closest_nodes.end(); ++iter) {
-            // SETH_DEBUG("port:%u, src_shard_id:%u, hash:%lu id:%s node_shard:%u", dht_msg.refresh_neighbors_req().public_port(), header.src_sharding_id(), (*iter)->dht_key_hash, common::Encode::HexSubstr((*iter)->id).c_str(), (*iter)->sharding_id);
+            // SHARDORA_DEBUG("port:%u, src_shard_id:%u, hash:%lu id:%s node_shard:%u", dht_msg.refresh_neighbors_req().public_port(), header.src_sharding_id(), (*iter)->dht_key_hash, common::Encode::HexSubstr((*iter)->id).c_str(), (*iter)->sharding_id);
             if (bloomfilter->Contain((*iter)->dht_key_hash)) {
-                // SETH_DEBUG("res refresh neighbers filter: %s:%u, hash: %lu",
+                // SHARDORA_DEBUG("res refresh neighbers filter: %s:%u, hash: %lu",
                 //     common::Encode::HexEncode((*iter)->dht_key).c_str(), msg_ptr->header.hash64());
                 continue;
             }
 
-            // SETH_DEBUG("res refresh neighbers new node: %s:%u, hash: %lu",
+            // SHARDORA_DEBUG("res refresh neighbers new node: %s:%u, hash: %lu",
             //     (*iter)->public_ip.c_str(), (*iter)->public_port, msg_ptr->header.hash64());
             tmp_dht.push_back((*iter));
         }
@@ -648,7 +648,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         dhtkey.StrKey(),
         kRefreshNeighborsDefaultCount + 1);
     if (close_nodes.empty()) {
-        // SETH_DEBUG("res refresh neighbers filter empty %lu", msg_ptr->header.hash64());
+        // SHARDORA_DEBUG("res refresh neighbers filter empty %lu", msg_ptr->header.hash64());
         return;
     }
 
@@ -660,7 +660,7 @@ void BaseDht::ProcessRefreshNeighborsRequest(const transport::MessagePtr& msg_pt
         close_nodes,
         res);
     transport::TcpTransport::Instance()->SetMessageHash(res);
-    // SETH_DEBUG("send refresh neighbers response hash: %lu", res.hash64());
+    // SHARDORA_DEBUG("send refresh neighbers response hash: %lu", res.hash64());
     // transport::TcpTransport::Instance()->Send(msg_ptr->conn, res);
     transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), res);
 }
@@ -672,7 +672,7 @@ void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_p
 
     auto& header = msg_ptr->header;
     auto& dht_msg = header.dht_proto();
-    // SETH_DEBUG("receive refresh neighbers response hash: %lu, size: %u",
+    // SHARDORA_DEBUG("receive refresh neighbers response hash: %lu, size: %u",
     //     msg_ptr->header.hash64(),
     //     dht_msg.refresh_neighbors_res().nodes_size());
     if (!dht_msg.has_refresh_neighbors_res()) {
@@ -708,7 +708,7 @@ void BaseDht::ProcessRefreshNeighborsResponse(const transport::MessagePtr& msg_p
     for (auto iter = waiting_refresh_nodes_map_.begin(); iter != waiting_refresh_nodes_map_.end(); ++iter) {
         if (iter->second.size() > 0) {
             NodePtr node = iter->second[0];
-            // SETH_DEBUG("connect neighbers new node: %s:%u",
+            // SHARDORA_DEBUG("connect neighbers new node: %s:%u",
             //           node->public_ip.c_str(), node->public_port);
             Connect(
                 node->public_ip,
@@ -727,7 +727,7 @@ void BaseDht::Connect(
         int32_t src_sharding_id,
         bool response) {
     if (des_ip == "0.0.0.0" || des_port == 0) {
-        SETH_DEBUG("des_ip == 0.0.0.0 || des_port == 0");
+        SHARDORA_DEBUG("des_ip == 0.0.0.0 || des_port == 0");
         return;
     }
 
@@ -740,7 +740,7 @@ void BaseDht::Connect(
     auto iter = connect_timeout_map_.find(peer_int);
     if (iter != connect_timeout_map_.end()) {
         if (iter->second >= now_tm_ms) {
-            SETH_DEBUG("iter->second >= now_tm_ms: %lu, %lu", iter->second, now_tm_ms);
+            SHARDORA_DEBUG("iter->second >= now_tm_ms: %lu, %lu", iter->second, now_tm_ms);
             return;
         }
     }
@@ -764,7 +764,7 @@ void BaseDht::Connect(
         if (security_->Sign(
                 transport::TcpTransport::Instance()->GetHeaderHashForSign(msg),
                 &sign) != security::kSecuritySuccess) {
-            SETH_DEBUG("sign error");
+            SHARDORA_DEBUG("sign error");
             return;
         }
 
@@ -773,27 +773,27 @@ void BaseDht::Connect(
             des_ip,
             des_port,
             msg);
-        SETH_DEBUG("connect to: %s:%d, %lu, %lu, %lu, hash: %lu", des_ip.c_str(),
+        SHARDORA_DEBUG("connect to: %s:%d, %lu, %lu, %lu, hash: %lu", des_ip.c_str(),
             des_port, peer_int, connect_timeout_map_[peer_int], now_tm_ms, msg.hash64());
     }
 }
 
 void BaseDht::ProcessConnectRequest(const transport::MessagePtr& msg_ptr) {
     if (!is_universal_) {
-        SETH_DEBUG("not universal");
+        SHARDORA_DEBUG("not universal");
         return;
     }
 
     auto& header = msg_ptr->header;
     auto& dht_msg = header.dht_proto();
     if (header.des_dht_key() != local_node_->dht_key) {
-        SETH_DEBUG("header.des_dht_key() != local_node_->dht_key : %lu",
+        SHARDORA_DEBUG("header.des_dht_key() != local_node_->dht_key : %lu",
             msg_ptr->header.hash64());
         return;
     }
 
     if (!dht_msg.has_connect_req()) {
-        SETH_DEBUG("!dht_msg.has_connect_req(): %lu", msg_ptr->header.hash64());
+        SHARDORA_DEBUG("!dht_msg.has_connect_req(): %lu", msg_ptr->header.hash64());
         return;
     }
 
@@ -839,7 +839,7 @@ void BaseDht::ProcessConnectRequest(const transport::MessagePtr& msg_ptr) {
         dht_msg.connect_req().pubkey(),
         header.src_sharding_id(),
         true);
-    SETH_DEBUG("process connect success: %lu", msg_ptr->header.hash64());
+    SHARDORA_DEBUG("process connect success: %lu", msg_ptr->header.hash64());
 }
 
 bool BaseDht::NodeValid(NodePtr& node) {
@@ -880,7 +880,7 @@ int BaseDht::CheckJoin(NodePtr& node) {
     }
 
     if (node->public_ip == "0.0.0.0") {
-        SETH_DEBUG("ip invalid: %s, is vlan ip: %d",
+        SHARDORA_DEBUG("ip invalid: %s, is vlan ip: %d",
             node->public_ip.c_str(), common::IsVlanIp(node->public_ip));
         return kDhtIpInvalid;
     }
@@ -984,7 +984,7 @@ void BaseDht::RefreshNeighbors() {
 //             node->public_ip,
 //             node->public_port,
 //             msg);
-//         SETH_DEBUG("refresh neighbors now %s:%d! hash: %lu",
+//         SHARDORA_DEBUG("refresh neighbors now %s:%d! hash: %lu",
 //             node->public_ip.c_str(), node->public_port, msg.hash64());
 //     }
     ProcessTimerRequest();
@@ -1027,7 +1027,7 @@ void BaseDht::ProcessTimerRequest() {
         node->public_ip,
         node->public_port,
         msg);
-    SETH_DEBUG("refresh neighbors now %s:%d! hash: %lu",
+    SHARDORA_DEBUG("refresh neighbors now %s:%d! hash: %lu",
         node->public_ip.c_str(), node->public_port, msg.hash64());
 }
 
@@ -1055,7 +1055,7 @@ void BaseDht::PrintDht() {
             res += tmp_res;
         }
 
-        SETH_DEBUG("dht info sharding_id: %u, %s", local_node()->sharding_id, res.c_str());
+        SHARDORA_DEBUG("dht info sharding_id: %u, %s", local_node()->sharding_id, res.c_str());
     }
    
     dht_tick_.CutOff(10000000lu, std::bind(&BaseDht::PrintDht, this));
@@ -1063,4 +1063,4 @@ void BaseDht::PrintDht() {
 
 }  // namespace dht
 
-}  // namespace seth
+}  // namespace shardora

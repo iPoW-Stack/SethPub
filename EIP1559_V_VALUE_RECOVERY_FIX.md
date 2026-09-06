@@ -32,7 +32,7 @@ std::string pubkey = security::Secp256k1::Instance()->Recover(
     
 // If recovery fails, try flipping v (0 <-> 1)
 if (pubkey.empty() || pubkey.size() != 64) {
-    SETH_WARN("eth_sendRawTransaction: recovery failed with v=%u, trying v=%u", 
+    SHARDORA_WARN("eth_sendRawTransaction: recovery failed with v=%u, trying v=%u", 
               v_byte, 1 - v_byte);
     sign_for_recover[64] = static_cast<char>(1 - v_byte);
     pubkey = security::Secp256k1::Instance()->Recover(
@@ -62,10 +62,10 @@ This is **safe** because:
 After recompiling, the transaction should recover the correct address:
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 test_eip1559.py
 ```
 

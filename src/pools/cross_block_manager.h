@@ -8,7 +8,7 @@
 #include "network/network_utils.h"
 #include "sync/key_value_sync.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -44,7 +44,7 @@ public:
         if (cross_synced_max_heights_[shard_id] < height ||
                 cross_synced_max_heights_[shard_id] == common::kInvalidUint64) {
             cross_synced_max_heights_[shard_id] = height;
-            SETH_DEBUG("success update cross synced max height net: %u, height: %lu", shard_id, height);
+            SHARDORA_DEBUG("success update cross synced max height net: %u, height: %lu", shard_id, height);
         }
     }
 
@@ -54,7 +54,7 @@ private:
         CheckCrossSharding();
         auto etime = common::TimeUtils::TimestampMs();
         if (etime - now_tm_ms >= 10) {
-            SETH_DEBUG("CrossBlockManager handle message use time: %lu", (etime - now_tm_ms));
+            SHARDORA_DEBUG("CrossBlockManager handle message use time: %lu", (etime - now_tm_ms));
         }
 
         cross_tick_.CutOff(
@@ -83,7 +83,7 @@ private:
 
         auto st = db_->Put(wbatch);
         if (!st.ok()) {
-            SETH_FATAL("flush to db failed!");
+            SHARDORA_FATAL("flush to db failed!");
         }
     }
 
@@ -100,7 +100,7 @@ private:
 
         if (cross_synced_max_heights_[sharding_id] != common::kInvalidUint64 &&
                 prev_checked_height > cross_synced_max_heights_[sharding_id]) {
-            SETH_DEBUG("check failed local_sharding_id: %u, sharding_id: %u, prev_checked_height: %lu, %lu",
+            SHARDORA_DEBUG("check failed local_sharding_id: %u, sharding_id: %u, prev_checked_height: %lu, %lu",
                 local_sharding_id,
                 sharding_id,
                 prev_checked_height,
@@ -116,7 +116,7 @@ private:
                     common::kImmutablePoolSize,
                     check_height,
                     &view_block)) {
-                SETH_DEBUG("failed get block net: %u, pool: %u, height: %lu, max height: %lu",
+                SHARDORA_DEBUG("failed get block net: %u, pool: %u, height: %lu, max height: %lu",
                     sharding_id, common::kImmutablePoolSize, check_height,
                     static_cast<uint64_t>(cross_synced_max_heights_[sharding_id]));
                 if (cross_synced_max_heights_[sharding_id] != common::kInvalidUint64) {
@@ -127,7 +127,7 @@ private:
                             continue;
                         }
 
-                        SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
+                        SHARDORA_DEBUG("now add sync height 1, %u_%u_%lu", 
                             sharding_id,
                             common::kImmutablePoolSize,
                             h);
@@ -150,7 +150,7 @@ private:
         }
 
         if (check_height != prev_checked_height) {
-            SETH_DEBUG("refresh cross block height local_sharding_id: %u, sharding_id: %u, height: %lu",
+            SHARDORA_DEBUG("refresh cross block height local_sharding_id: %u, sharding_id: %u, height: %lu",
                 local_sharding_id, sharding_id, check_height);
             prefix_db_->SaveCheckCrossHeight(local_sharding_id, sharding_id, check_height, wbatch);
             cross_checked_max_heights_[sharding_id] = check_height;
@@ -171,5 +171,5 @@ private:
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora
 

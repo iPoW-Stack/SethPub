@@ -16,7 +16,7 @@
 #include "protos/sync.pb.h"
 #include "protos/vss.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace protos {
 
@@ -340,4 +340,4 @@ TEST_F(TestProtoMessages, EmptyDeserialization) {
 
 }  // namespace protos
 
-}  // namespace seth
+}  // namespace shardora

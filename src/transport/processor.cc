@@ -2,7 +2,7 @@
 
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -17,4 +17,4 @@ Processor::~Processor() {}
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora

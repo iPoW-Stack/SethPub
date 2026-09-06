@@ -8,7 +8,7 @@
 #include "common/thread_safe_queue.h"
 #include "common/log.h"
 
-namespace seth {
+namespace shardora {
 namespace network {
 
 // NeighborIpManager: lock-free id → public_ip mapping.
@@ -69,7 +69,7 @@ private:
         Entry e;
         while (queue_.pop(&e)) {
             map_[e.id] = e.public_ip;
-            SETH_DEBUG("[NeighborIpManager] updated id=%s ip=%s",
+            SHARDORA_DEBUG("[NeighborIpManager] updated id=%s ip=%s",
                        e.id.substr(0, 8).c_str(), e.public_ip.c_str());
         }
     }
@@ -83,4 +83,4 @@ private:
 };
 
 }  // namespace network
-}  // namespace seth
+}  // namespace shardora

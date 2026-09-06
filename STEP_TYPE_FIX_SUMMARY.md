@@ -121,7 +121,7 @@ if user3_shard != target_shard or user3_pool != target_pool:
 ### 运行测试
 ```bash
 # 启动区块链
-./build/seth --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
+./build/shardora --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
 
 # 运行 demo
 cd clipy
@@ -160,7 +160,7 @@ receipt = w3.send_transaction({
 ### 合约部署
 ```python
 # SDK 自动使用 kCreateContract
-contract = w3.seth.contract(abi=abi, bytecode=bytecode).deploy({
+contract = w3.shardora.contract(abi=abi, bytecode=bytecode).deploy({
     'from': user_addr,
     'salt': salt,
 }, user_key)
@@ -198,13 +198,13 @@ receipt = contract.functions.myFunction().transact(user_key)
 - `STEP_TYPE_REFERENCE.md` - Step 类型完整参考
 - `CONTRACT_CHAIN_SAME_SHARD_POOL_DEMO.md` - 合约链 demo 文档
 - `CONTRACT_CHAIN_QUERY_LOGIC.md` - 查询逻辑文档
-- `seth_sdk.py` - SDK 实现
+- `shardora_sdk.py` - SDK 实现
 
 ## 总结
 
 这次修复确保了：
 1. ✅ 使用正确的 step 类型创建新用户地址
-2. ✅ 遵循 Seth 区块链的标准操作流程
+2. ✅ 遵循 Shardora 区块链的标准操作流程
 3. ✅ 与 SDK 的自动 step 类型选择保持一致
 4. ✅ 避免使用内部系统级 step 类型
 

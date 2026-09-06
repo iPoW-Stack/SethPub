@@ -3,12 +3,12 @@
 #include "common/log.h"
 #include "common/encode.h"
 
-#define DB_DEBUG(fmt, ...) SETH_DEBUG("[db]" fmt, ## __VA_ARGS__)
-#define DB_INFO(fmt, ...) SETH_DEBUG("[db]" fmt, ## __VA_ARGS__)
-#define DB_WARN(fmt, ...) SETH_WARN("[db]" fmt, ## __VA_ARGS__)
-#define DB_ERROR(fmt, ...) SETH_ERROR("[db]" fmt, ## __VA_ARGS__)
+#define DB_DEBUG(fmt, ...) SHARDORA_DEBUG("[db]" fmt, ## __VA_ARGS__)
+#define DB_INFO(fmt, ...) SHARDORA_DEBUG("[db]" fmt, ## __VA_ARGS__)
+#define DB_WARN(fmt, ...) SHARDORA_WARN("[db]" fmt, ## __VA_ARGS__)
+#define DB_ERROR(fmt, ...) SHARDORA_ERROR("[db]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace db {
 
@@ -20,17 +20,17 @@ static const char kDbFieldLinkLetter = '\x01';
 //     MyWriteBatchHandler() {}
 //     // Override Handle method to process each operation
 //     virtual void Put(const DbSlice& key, const DbSlice& value) override {
-//         SETH_DEBUG("Put operation: Key=%s, Value=%s", 
+//         SHARDORA_DEBUG("Put operation: Key=%s, Value=%s", 
 //             common::Encode::HexEncode(key.ToString()).c_str(), common::Encode::HexEncode(value.ToString()).c_str());
 //     }
 
 //     // virtual void Merge(const DbSlice& key, const DbSlice& value) override {
-//     //     SETH_DEBUG("Merge operation: Key=%s, Value=%s", 
+//     //     SHARDORA_DEBUG("Merge operation: Key=%s, Value=%s", 
 //     //         common::Encode::HexEncode(key.ToString()).c_str(), common::Encode::HexEncode(value.ToString()).c_str());
 //     // }
 
 //     virtual void Delete(const DbSlice& key) override {
-//         SETH_DEBUG("Delete operation: Key=%s", common::Encode::HexEncode(key.ToString()).c_str());
+//         SHARDORA_DEBUG("Delete operation: Key=%s", common::Encode::HexEncode(key.ToString()).c_str());
 //     }
 // };
 // static const auto log_write_batch_handler = new MyWriteBatchHandler();

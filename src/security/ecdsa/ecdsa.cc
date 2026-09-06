@@ -7,7 +7,7 @@
 #include "security/ecdsa/secp256k1.h"
 #include "security/ecdsa/security_string_trans.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -159,4 +159,4 @@ std::string Ecdsa::UnicastAddress(const std::string& src_address) {
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

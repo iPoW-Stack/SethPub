@@ -3,7 +3,7 @@
 System-Level Optimization Application Script
 ============================================
 
-This script applies system-level optimizations to the Seth blockchain codebase:
+This script applies system-level optimizations to the Shardora blockchain codebase:
 1. Reduces unnecessary logging in high-frequency paths
 2. Optimizes thread pool configurations
 3. Sets CPU affinity for critical threads
@@ -30,22 +30,22 @@ class SystemOptimizationApplier:
         # High-frequency logging patterns to optimize
         self.high_freq_patterns = [
             # Debug logs in hot paths
-            (r'SETH_DEBUG\(".*thread.*idx.*%d.*"', 'SETH_DEBUG_FAST'),
-            (r'SETH_DEBUG\(".*message.*handled.*hash.*%lu.*"', 'SETH_DEBUG_THROTTLED(1000'),
-            (r'SETH_DEBUG\(".*queue.*size.*%u.*"', 'SETH_DEBUG_THROTTLED(5000'),
-            (r'SETH_DEBUG\(".*start.*message.*handled.*"', 'SETH_DEBUG_FAST'),
-            (r'SETH_DEBUG\(".*end.*message.*handled.*"', 'SETH_DEBUG_FAST'),
-            (r'SETH_DEBUG\(".*get.*thread.*index.*"', 'SETH_DEBUG_FAST'),
+            (r'SHARDORA_DEBUG\(".*thread.*idx.*%d.*"', 'SHARDORA_DEBUG_FAST'),
+            (r'SHARDORA_DEBUG\(".*message.*handled.*hash.*%lu.*"', 'SHARDORA_DEBUG_THROTTLED(1000'),
+            (r'SHARDORA_DEBUG\(".*queue.*size.*%u.*"', 'SHARDORA_DEBUG_THROTTLED(5000'),
+            (r'SHARDORA_DEBUG\(".*start.*message.*handled.*"', 'SHARDORA_DEBUG_FAST'),
+            (r'SHARDORA_DEBUG\(".*end.*message.*handled.*"', 'SHARDORA_DEBUG_FAST'),
+            (r'SHARDORA_DEBUG\(".*get.*thread.*index.*"', 'SHARDORA_DEBUG_FAST'),
             
             # Network and transport debug logs
-            (r'SETH_DEBUG\(".*tcp.*client.*"', 'SETH_DEBUG_THROTTLED(2000'),
-            (r'SETH_DEBUG\(".*send.*failed.*"', 'SETH_DEBUG_THROTTLED(1000'),
-            (r'SETH_DEBUG\(".*connection.*"', 'SETH_DEBUG_THROTTLED(3000'),
+            (r'SHARDORA_DEBUG\(".*tcp.*client.*"', 'SHARDORA_DEBUG_THROTTLED(2000'),
+            (r'SHARDORA_DEBUG\(".*send.*failed.*"', 'SHARDORA_DEBUG_THROTTLED(1000'),
+            (r'SHARDORA_DEBUG\(".*connection.*"', 'SHARDORA_DEBUG_THROTTLED(3000'),
             
             # Consensus debug logs
-            (r'SETH_DEBUG\(".*consensus.*"', 'SETH_DEBUG_THROTTLED(1000'),
-            (r'SETH_DEBUG\(".*hotstuff.*"', 'SETH_DEBUG_THROTTLED(1000'),
-            (r'SETH_DEBUG\(".*view.*block.*"', 'SETH_DEBUG_THROTTLED(2000'),
+            (r'SHARDORA_DEBUG\(".*consensus.*"', 'SHARDORA_DEBUG_THROTTLED(1000'),
+            (r'SHARDORA_DEBUG\(".*hotstuff.*"', 'SHARDORA_DEBUG_THROTTLED(1000'),
+            (r'SHARDORA_DEBUG\(".*view.*block.*"', 'SHARDORA_DEBUG_THROTTLED(2000'),
         ]
         
         # Files to exclude from optimization (tests, examples, etc.)
@@ -77,8 +77,8 @@ class SystemOptimizationApplier:
         original_content = content
         changes = 0
         
-        # Add include for system optimizer if SETH_DEBUG is used
-        if 'SETH_DEBUG(' in content and '#include "common/system_optimizer.h"' not in content:
+        # Add include for system optimizer if SHARDORA_DEBUG is used
+        if 'SHARDORA_DEBUG(' in content and '#include "common/system_optimizer.h"' not in content:
             # Find the last #include line
             include_lines = []
             other_lines = []
@@ -100,12 +100,12 @@ class SystemOptimizationApplier:
         # Apply high-frequency logging optimizations
         for pattern, replacement in self.high_freq_patterns:
             old_content = content
-            if 'SETH_DEBUG_THROTTLED' in replacement:
+            if 'SHARDORA_DEBUG_THROTTLED' in replacement:
                 # Replace with throttled version
-                content = re.sub(pattern, lambda m: m.group(0).replace('SETH_DEBUG(', replacement + '('), content)
+                content = re.sub(pattern, lambda m: m.group(0).replace('SHARDORA_DEBUG(', replacement + '('), content)
             else:
                 # Replace with fast version
-                content = re.sub(pattern, lambda m: m.group(0).replace('SETH_DEBUG(', replacement + '('), content)
+                content = re.sub(pattern, lambda m: m.group(0).replace('SHARDORA_DEBUG(', replacement + '('), content)
             
             if content != old_content:
                 changes += 1
@@ -113,18 +113,18 @@ class SystemOptimizationApplier:
         # Optimize specific high-frequency debug logs
         high_freq_replacements = [
             # Thread management logs
-            ('SETH_DEBUG("thread handler thread index coming', 'SETH_DEBUG_FAST("thread handler thread index coming'),
-            ('SETH_DEBUG("waiting global init success', 'SETH_DEBUG_FAST("waiting global init success'),
-            ('SETH_DEBUG("start message handled msg hash', 'SETH_DEBUG_FAST("start message handled msg hash'),
-            ('SETH_DEBUG("begin message handled msg hash', 'SETH_DEBUG_FAST("begin message handled msg hash'),
-            ('SETH_DEBUG("end message handled msg hash', 'SETH_DEBUG_FAST("end message handled msg hash'),
+            ('SHARDORA_DEBUG("thread handler thread index coming', 'SHARDORA_DEBUG_FAST("thread handler thread index coming'),
+            ('SHARDORA_DEBUG("waiting global init success', 'SHARDORA_DEBUG_FAST("waiting global init success'),
+            ('SHARDORA_DEBUG("start message handled msg hash', 'SHARDORA_DEBUG_FAST("start message handled msg hash'),
+            ('SHARDORA_DEBUG("begin message handled msg hash', 'SHARDORA_DEBUG_FAST("begin message handled msg hash'),
+            ('SHARDORA_DEBUG("end message handled msg hash', 'SHARDORA_DEBUG_FAST("end message handled msg hash'),
             
             # Network logs
-            ('SETH_DEBUG("message coming hash64', 'SETH_DEBUG_THROTTLED(1000, "message coming hash64'),
-            ('SETH_DEBUG("queue size message push success', 'SETH_DEBUG_THROTTLED(2000, "queue size message push success'),
+            ('SHARDORA_DEBUG("message coming hash64', 'SHARDORA_DEBUG_THROTTLED(1000, "message coming hash64'),
+            ('SHARDORA_DEBUG("queue size message push success', 'SHARDORA_DEBUG_THROTTLED(2000, "queue size message push success'),
             
             # Consensus logs
-            ('SETH_DEBUG("get hotstuff message thread idx', 'SETH_DEBUG_THROTTLED(1000, "get hotstuff message thread idx'),
+            ('SHARDORA_DEBUG("get hotstuff message thread idx', 'SHARDORA_DEBUG_THROTTLED(1000, "get hotstuff message thread idx'),
         ]
         
         for old_log, new_log in high_freq_replacements:
@@ -439,7 +439,7 @@ monitoring:
         print("5. Check system_optimization.yaml for configuration options")
 
 def main():
-    parser = argparse.ArgumentParser(description="Apply system-level optimizations to Seth blockchain")
+    parser = argparse.ArgumentParser(description="Apply system-level optimizations to Shardora blockchain")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be changed without modifying files")
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARN", "ERROR"], help="Set log level")
     parser.add_argument("--root-path", default=".", help="Root path of the project")

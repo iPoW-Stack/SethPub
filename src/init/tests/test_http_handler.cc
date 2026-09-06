@@ -12,7 +12,7 @@
 #include "init/http_handler.h"
 #include "init/uws_adapter.h"
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -153,7 +153,7 @@ TEST_F(HttpHandlerTest, ResponseHeaders) {
     std::map<std::string, std::string> headers = {
         {"Content-Type", "application/json"},
         {"Cache-Control", "no-cache"},
-        {"Server", "Seth-Node"},
+        {"Server", "Shardora-Node"},
         {"Connection", "keep-alive"}
     };
     
@@ -262,4 +262,4 @@ TEST_F(HttpHandlerTest, UwsResponseStoresStringCharPointerAndJsonContent) {
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

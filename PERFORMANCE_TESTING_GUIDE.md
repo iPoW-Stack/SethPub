@@ -7,10 +7,10 @@
 编辑 `temp_cmd.sh`:
 ```bash
 # 禁用网络延迟注入
-export SETH_NETWORK_ENABLED=0
-export SETH_NETWORK_DELAY_MS=0
-export SETH_NETWORK_JITTER_MS=0
-export SETH_NETWORK_LOSS_RATE=0
+export SHARDORA_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_DELAY_MS=0
+export SHARDORA_NETWORK_JITTER_MS=0
+export SHARDORA_NETWORK_LOSS_RATE=0
 ```
 
 ### 2. 优化系统参数
@@ -32,7 +32,7 @@ sysctl -w net.ipv4.tcp_fin_timeout=30
 
 ```bash
 # 重新编译
-cd /root/seth/cbuild_Release
+cd /root/shardora/cbuild_Release
 make -j4
 
 # 部署
@@ -58,7 +58,7 @@ make -j4
 
 ### 禁用网络延迟（推荐）
 ```bash
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 ```
 
 **优点**:
@@ -72,10 +72,10 @@ export SETH_NETWORK_ENABLED=0
 
 ### 启用网络延迟（谨慎）
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=50
-export SETH_NETWORK_JITTER_MS=10
-export SETH_NETWORK_LOSS_RATE=0.01
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=50
+export SHARDORA_NETWORK_JITTER_MS=10
+export SHARDORA_NETWORK_LOSS_RATE=0.01
 ```
 
 **注意**: 在高并发下可能导致包头破坏
@@ -127,10 +127,10 @@ grep "connection refused" logfile.txt | wc -l
 **解决**:
 ```bash
 # 检查环境变量
-echo $SETH_NETWORK_ENABLED
+echo $SHARDORA_NETWORK_ENABLED
 
 # 确保为0
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 ```
 
 ### 问题2: 连接仍然频繁断开
@@ -159,7 +159,7 @@ cat /proc/sys/net/core/wmem_max
 ### 场景1: 基准测试（推荐）
 ```bash
 # 禁用网络延迟
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 
 # 运行压测
 ./temp_cmd.sh
@@ -173,10 +173,10 @@ export SETH_NETWORK_ENABLED=0
 ### 场景2: 网络延迟测试
 ```bash
 # 启用网络延迟
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=50
-export SETH_NETWORK_JITTER_MS=10
-export SETH_NETWORK_LOSS_RATE=0.01
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=50
+export SHARDORA_NETWORK_JITTER_MS=10
+export SHARDORA_NETWORK_LOSS_RATE=0.01
 
 # 运行压测
 ./temp_cmd.sh
@@ -190,10 +190,10 @@ export SETH_NETWORK_LOSS_RATE=0.01
 ### 场景3: 高并发测试
 ```bash
 # 禁用网络延迟
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 
 # 增加并发数
-export SETH_THREAD_COUNT=64
+export SHARDORA_THREAD_COUNT=64
 
 # 运行压测
 ./temp_cmd.sh

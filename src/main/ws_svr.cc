@@ -2,7 +2,7 @@
 
 #include "common/time_utils.h"
 
-using namespace seth;
+using namespace shardora;
 
 int main(int argc, char* argv[]) {
     ws::WebSocketServer ws_server;

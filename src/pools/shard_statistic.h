@@ -16,7 +16,7 @@
 #include "protos/prefix_db.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace elect {
     class ElectManager;
@@ -63,15 +63,15 @@ public:
 
   private:
     void addHeightInfo2Statics(
-        seth::pools::protobuf::ElectStatistic &elect_statistic, 
+        shardora::pools::protobuf::ElectStatistic &elect_statistic, 
         uint64_t max_tm_height);
 
 
     void addPrepareMembers2JoinStastics(
-        seth::common::MembersPtr &prepare_members,
+        shardora::common::MembersPtr &prepare_members,
         std::set<std::string> &added_id_set,
-        seth::pools::protobuf::ElectStatistic &elect_statistic,
-        seth::common::MembersPtr &now_elect_members);
+        shardora::pools::protobuf::ElectStatistic &elect_statistic,
+        shardora::common::MembersPtr &now_elect_members);
 
     void addNewNode2JoinStatics(
         std::map<uint64_t, std::map<std::string, uint64_t>> &join_elect_stoke_map, 
@@ -80,13 +80,13 @@ public:
         std::map<std::string, std::string> &id_pk_map, 
         std::map<std::string, std::shared_ptr<elect::protobuf::BlsPublicKey>> &id_agg_bls_pk_map,
         std::map<std::string, std::shared_ptr<elect::protobuf::BlsPopProof>> &id_agg_bls_pk_proof_map,
-        seth::pools::protobuf::ElectStatistic &elect_statistic);
+        shardora::pools::protobuf::ElectStatistic &elect_statistic);
 
     void setElectStatistics(
         std::map<uint64_t, 
-        std::map<std::string, seth::pools::StatisticMemberInfoItem>>&,
-        seth::common::MembersPtr &now_elect_members, 
-        seth::pools::protobuf::ElectStatistic &elect_statistic,
+        std::map<std::string, shardora::pools::StatisticMemberInfoItem>>&,
+        shardora::common::MembersPtr &now_elect_members, 
+        shardora::pools::protobuf::ElectStatistic &elect_statistic,
         bool is_root);
     void CreateStatisticTransaction(uint64_t timeblock_height);
     // void HandleStatisticBlock(const block::protobuf::Block &block);
@@ -133,4 +133,4 @@ public:
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

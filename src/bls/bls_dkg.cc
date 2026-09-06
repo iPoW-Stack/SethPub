@@ -20,7 +20,7 @@
 #include "protos/get_proto_hash.h"
 #include "protos/prefix_db.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -42,7 +42,7 @@ void BlsDkg::Init(
     bls_mgr_ = bls_mgr;
     security_ = security;
     local_sec_key_ = local_sec_key;
-    SETH_DEBUG("init local sec key: %s, local public key: %s, common public key: %s",
+    SHARDORA_DEBUG("init local sec key: %s, local public key: %s, common public key: %s",
         libBLS::ThresholdUtils::fieldElementToString(local_sec_key).c_str(),
         libBLS::ThresholdUtils::fieldElementToString(local_publick_key_.X.c0).c_str(),
         libBLS::ThresholdUtils::fieldElementToString(common_public_key.X.c0).c_str());
@@ -62,7 +62,7 @@ void BlsDkg::TimerMessage() {
     auto now_tm_us = common::TimeUtils::TimestampUs();
     PopBlsMessage();
     if (!has_broadcast_verify_) {
-        SETH_WARN("now call send verify g2.");
+        SHARDORA_WARN("now call send verify g2.");
         BroadcastVerfify();
         has_broadcast_verify_ = true;
     }
@@ -70,7 +70,7 @@ void BlsDkg::TimerMessage() {
     if (has_broadcast_verify_ && !has_broadcast_swapkey_ && 
             now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5) &&
             now_tm_us >(begin_time_us_ + swap_offset_)) {
-        SETH_WARN("now call send swap sec key.");
+        SHARDORA_WARN("now call send swap sec key.");
         SwapSecKey();
         has_broadcast_swapkey_ = true;
     }
@@ -78,7 +78,7 @@ void BlsDkg::TimerMessage() {
     if (has_broadcast_swapkey_ && !has_finished_ &&
             now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10) &&
             now_tm_us >(begin_time_us_ + finish_offset_)) {
-        SETH_WARN("now call send finish.");
+        SHARDORA_WARN("now call send finish.");
         FinishBroadcast();
         has_finished_ = true;
     }
@@ -132,7 +132,7 @@ void BlsDkg::OnNewElectionBlock(
 
     swap_offset_ += (common::Random::RandomUint32() % (3 * kDkgPeriodUs / 1000000lu)) * 1000000lu;
     finish_offset_ += (common::Random::RandomUint32() % (3 * kDkgPeriodUs /1000000lu)) * 1000000lu;
-    SETH_WARN("bls time point now: %lu, time block tm: %lu, begin_time_sec_: %lu, "
+    SHARDORA_WARN("bls time point now: %lu, time block tm: %lu, begin_time_sec_: %lu, "
         "kDkgPeriodUs: %lu, ver_offset_: %lu, swap_offset_: %lu, "
         "finish_offset_: %lu, elect_hegiht_: %lu",
         common::TimeUtils::TimestampSeconds(),
@@ -152,7 +152,7 @@ void BlsDkg::OnNewElectionBlock(
 
 void BlsDkg::HandleMessage(const transport::MessagePtr msg_ptr) {
     bls_msg_queue_.push(msg_ptr);
-    SETH_DEBUG("now add bls message: %lu", msg_ptr->header.hash64());
+    SHARDORA_DEBUG("now add bls message: %lu", msg_ptr->header.hash64());
 }
 
 void BlsDkg::PopBlsMessage() {
@@ -162,7 +162,7 @@ void BlsDkg::PopBlsMessage() {
             break;
         }
 
-        SETH_DEBUG("now handle bls message: %lu", msg_ptr->header.hash64());
+        SHARDORA_DEBUG("now handle bls message: %lu", msg_ptr->header.hash64());
         HandleBlsMessage(msg_ptr);
     }
 }
@@ -204,7 +204,7 @@ void BlsDkg::HandleBlsMessage(const transport::MessagePtr msg_ptr) try {
     }
 
     if (bls_msg.elect_height() == 0 || bls_msg.elect_height() != elect_hegiht_) {
-        SETH_WARN("bls_msg.elect_height() != elect_height: %lu, %lu, hash64: %lu, "
+        SHARDORA_WARN("bls_msg.elect_height() != elect_height: %lu, %lu, hash64: %lu, "
             "verify brd: %d, swap key: %d, member index: %d",
             bls_msg.elect_height(), elect_hegiht_, msg_ptr->header.hash64(),
             bls_msg.has_verify_brd(), bls_msg.has_swap_req(), bls_msg.index());
@@ -223,11 +223,11 @@ void BlsDkg::HandleBlsMessage(const transport::MessagePtr msg_ptr) try {
 }
 
 bool BlsDkg::IsFinishPeriod() {
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
     return true;
 #endif
     auto now_tm_us = common::TimeUtils::TimestampUs();
-    SETH_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+    SHARDORA_DEBUG("IsFinishPeriod begin_time_us_: %lu, now_tm_us: %lu, "
         "kDkgPeriodUs: %lu, now_tm_us > (begin_time_us_ + kDkgPeriodUs * 5): %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 10): %d",
         begin_time_us_,
         now_tm_us,
@@ -243,12 +243,12 @@ bool BlsDkg::IsFinishPeriod() {
 }
 
 bool BlsDkg::IsSignValid(const transport::MessagePtr msg_ptr, std::string* content_to_hash) {
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
     return true;
-#endif // SETH_UNITTEST
+#endif // SHARDORA_UNITTEST
     protos::GetProtoHash(msg_ptr->header, content_to_hash);
     if (msg_ptr->header.bls_proto().index() >= members_->size()) {
-        SETH_ERROR("invalid member index: %u, %u",
+        SHARDORA_ERROR("invalid member index: %u, %u",
             msg_ptr->header.bls_proto().index(), members_->size());
         return false;
     }
@@ -304,7 +304,7 @@ void BlsDkg::HandleVerifyBroadcast(const transport::MessagePtr msg_ptr) try {
     }
 
     prefix_db_->AddBlsVerifyG2((*members_)[bls_msg.index()]->id, bls_msg.verify_brd());
-    SETH_WARN("save verify g2 success local: %d, %lu, %u, %u, %s, %s",
+    SHARDORA_WARN("save verify g2 success local: %d, %lu, %u, %u, %s, %s",
         local_member_index_, elect_hegiht_, bls_msg.index(), 0,
         common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str(),
         common::Encode::HexEncode(bls_msg.verify_brd().verify_vec(0).x_c0()).c_str());
@@ -330,7 +330,7 @@ void BlsDkg::SendGetVerifyInfo(int32_t index) {
     msg.set_des_dht_key(dht->local_node()->dht_key);
     msg.set_type(common::kBlsMessage);
     dht->RandomSend(msg_ptr);
-    SETH_WARN("send get verify req elect_height: %lu, index: %d", elect_hegiht_, index);
+    SHARDORA_WARN("send get verify req elect_height: %lu, index: %d", elect_hegiht_, index);
 }
 
 void BlsDkg::CheckSwapKeyAllValid() {
@@ -370,7 +370,7 @@ void BlsDkg::SendGetSwapKey(int32_t index) {
     msg.set_des_dht_key(dht->local_node()->dht_key);
     msg.set_type(common::kBlsMessage);
     dht->RandomSend(msg_ptr);
-    SETH_WARN("send get swap key req elect_height: %lu, index: %d", elect_hegiht_, index);
+    SHARDORA_WARN("send get swap key req elect_height: %lu, index: %d", elect_hegiht_, index);
 }
 
 void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
@@ -404,7 +404,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
         valid_swapkey_set_.insert(bls_msg.index());
         ++valid_sec_key_count_;
         has_swaped_keys_[bls_msg.index()] = true;
-        SETH_DEBUG("id: %s, use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
+        SHARDORA_DEBUG("id: %s, use prev swap key elect_hegiht_: %lu, peer elect height: %lu, "
             "min_aggree_member_count_: %u, "
             "success member: %d, index: %d,  for_common_pk_g2s_: %s, real data: %s",
             (*members_)[bls_msg.index()]->id.c_str(),
@@ -417,7 +417,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
     }
 
     if (bls_msg.swap_req().keys_size() <= (int32_t)local_member_index_) {
-        SETH_WARN("swap key size error: %d, %d",
+        SHARDORA_WARN("swap key size error: %d, %d",
             bls_msg.swap_req().keys_size(), local_member_index_);
         return;
     }
@@ -453,7 +453,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
     std::string sec_key(dec_msg.substr(
         0,
         bls_msg.swap_req().keys(local_member_index_).sec_key_len()));
-    SETH_DEBUG("id: %s, enc sec: %s dec_msg: %s, sec_key: %s, len: %d, local: %u, peer: %u, peer pk: %s, encrypt_key: %s",
+    SHARDORA_DEBUG("id: %s, enc sec: %s dec_msg: %s, sec_key: %s, len: %d, local: %u, peer: %u, peer pk: %s, encrypt_key: %s",
         common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str(),
         common::Encode::HexEncode(bls_msg.swap_req().keys(local_member_index_).sec_key()).c_str(),
         common::Encode::HexEncode(dec_msg).c_str(),
@@ -476,7 +476,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
 
     auto tmp_swap_key = libff::alt_bn128_Fr(sec_key.c_str());
     if (!VerifySekkeyValid(bls_msg.index(), tmp_swap_key)) {
-        SETH_ERROR("id: %s, verify error member: %d, index: %d, %s , min_aggree_member_count_: %d",
+        SHARDORA_ERROR("id: %s, verify error member: %d, index: %d, %s , min_aggree_member_count_: %d",
             common::Encode::HexEncode((*members_)[bls_msg.index()]->id).c_str(),
             local_member_index_, bls_msg.index(),
             libBLS::ThresholdUtils::fieldElementToString(tmp_swap_key).c_str(),
@@ -485,7 +485,7 @@ void BlsDkg::HandleSwapSecKey(const transport::MessagePtr msg_ptr) try {
         return;
     }
 
-    SETH_DEBUG("id: %s, use new swap key elect_hegiht_: %lu, peer elect height: %lu, "
+    SHARDORA_DEBUG("id: %s, use new swap key elect_hegiht_: %lu, peer elect height: %lu, "
         "min_aggree_member_count_: %u, "
         "success member: %d, index: %d, %s, for_common_pk_g2s_: %s",
         (*members_)[bls_msg.index()]->id.c_str(),
@@ -515,20 +515,20 @@ bool BlsDkg::VerifySekkeyValid(
 //             min_aggree_member_count_,
 //             &verfy_final_vals)) {
 //         // compute verified g2s with new index
-//         SETH_ERROR("failed get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+//         SHARDORA_ERROR("failed get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
 //             local_member_index_, 
 //             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
 //             min_aggree_member_count_, 
 //             (*members_)[0]->net_id);
 //         if (!CheckRecomputeG2s((*members_)[peer_index]->id, verfy_final_vals)) {
-//             SETH_WARN("failed get verified g2: %u, %s",
+//             SHARDORA_WARN("failed get verified g2: %u, %s",
 //                 local_member_index_,
 //                 common::Encode::HexEncode((*members_)[peer_index]->id).c_str());
 // //             //assert(false);
 //             return false;
 //         }
 //     } else {
-//         SETH_WARN("success get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+//         SHARDORA_WARN("success get verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
 //             local_member_index_, 
 //             common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
 //             min_aggree_member_count_, 
@@ -537,7 +537,7 @@ bool BlsDkg::VerifySekkeyValid(
 
     libff::alt_bn128_G2 new_val = GetVerifyG2FromDb(peer_index);
     if (new_val == libff::alt_bn128_G2::zero()) {
-        SETH_ERROR("failed get verify g2 from db, peer_index: %d, "
+        SHARDORA_ERROR("failed get verify g2 from db, peer_index: %d, "
             "min_aggree_member_count_: %d, net: %d",
             peer_index, min_aggree_member_count_, (*members_)[0]->net_id);
         //assert(false);
@@ -603,7 +603,7 @@ bool BlsDkg::VerifySekkeyValid(
     // // all_verified_val = all_verified_val - old_g2_val + new_g2_val;
     // if (all_verified_val != seckey * libff::alt_bn128_G2::one()) {
     //     for_common_pk_g2s_[peer_index] = libff::alt_bn128_G2::zero();
-    //     SETH_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+    //     SHARDORA_WARN("failed verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
     //         local_member_index_, 
     //         common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
     //         min_aggree_member_count_, 
@@ -611,7 +611,7 @@ bool BlsDkg::VerifySekkeyValid(
     //     return false;
     // }
 
-    SETH_DEBUG("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
+    SHARDORA_DEBUG("success verified g2 local_member_index_: %d, id: %s, min_aggree_member_count_: %d, net: %d",
         local_member_index_, 
         common::Encode::HexEncode((*members_)[peer_index]->id).c_str(), 
         min_aggree_member_count_, 
@@ -624,7 +624,7 @@ bool BlsDkg::CheckRecomputeG2s(
         bls::protobuf::JoinElectBlsInfo& verfy_final_vals) {
     bls::protobuf::JoinElectInfo join_info;
     if (!prefix_db_->GetNodeVerificationVector(id, &join_info)) {
-        SETH_WARN("failed get verifcaton handle kElectJoin tx: %s", common::Encode::HexEncode(id).c_str());
+        SHARDORA_WARN("failed get verifcaton handle kElectJoin tx: %s", common::Encode::HexEncode(id).c_str());
         return false;
     }
 
@@ -657,7 +657,7 @@ bool BlsDkg::CheckRecomputeG2s(
         begin_idx = 0;
     }
 
-    SETH_DEBUG("begin_idx: %d, min_idx: %d, min_aggree_member_count_: %d, id: %s",
+    SHARDORA_DEBUG("begin_idx: %d, min_idx: %d, min_aggree_member_count_: %d, id: %s",
         begin_idx, min_idx, min_aggree_member_count_, common::Encode::HexEncode(id).c_str());
     for (uint32_t i = begin_idx; i < min_aggree_member_count_; ++i) {
         auto& item = join_info.g2_req().verify_vec(i);
@@ -689,7 +689,7 @@ bool BlsDkg::CheckRecomputeG2s(
         libBLS::ThresholdUtils::fieldElementToString(verify_g2s.Z.c1)));
     auto verified_val = verfy_final_vals.SerializeAsString();
     prefix_db_->SaveVerifiedG2s(local_member_index_, id, min_aggree_member_count_, verfy_final_vals);
-    SETH_DEBUG("success save verified g2: %u, peer: %d, t: %d, %s, %s",
+    SHARDORA_DEBUG("success save verified g2: %u, peer: %d, t: %d, %s, %s",
         local_member_index_,
         join_info.member_idx(),
         min_aggree_member_count_,
@@ -702,7 +702,7 @@ libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index) {
     libff::alt_bn128_G2 g2;
     auto res = dkg_cache_->GetBlsVerifyG2((*members_)[peer_mem_index]->id, &g2);
     if (!res) {
-        SETH_WARN("get verify g2 failed local: %d, %lu, %u",
+        SHARDORA_WARN("get verify g2 failed local: %d, %lu, %u",
             local_member_index_, elect_hegiht_, peer_mem_index);
         return libff::alt_bn128_G2::zero();
     }
@@ -712,7 +712,7 @@ libff::alt_bn128_G2 BlsDkg::GetVerifyG2FromDb(uint32_t peer_mem_index) {
 
 void BlsDkg::BroadcastVerfify() try {
     if (members_ == nullptr || local_member_index_ >= member_count_) {
-        SETH_ERROR("member null or member index invalid!");
+        SHARDORA_ERROR("member null or member index invalid!");
         //assert(false);
         return;
     }
@@ -734,7 +734,7 @@ void BlsDkg::BroadcastVerfify() try {
 
     //     // bls::protobuf::LocalPolynomial local_poly;
     //     // if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
-    //     //     SETH_ERROR("failed GetLocalPolynomial: %s",
+    //     //     SHARDORA_ERROR("failed GetLocalPolynomial: %s",
     //     //         common::Encode::HexEncode(security_->GetAddress()).c_str());
     //     //     // //assert(false);
     //     //     return;
@@ -773,7 +773,7 @@ void BlsDkg::BroadcastVerfify() try {
 
 void BlsDkg::SwapSecKey() try {
     if (members_ == nullptr || local_member_index_ >= member_count_) {
-        SETH_ERROR("members invalid!");
+        SHARDORA_ERROR("members invalid!");
         return;
     }
 
@@ -787,7 +787,7 @@ void BlsDkg::SwapSecKey() try {
             swap_item->set_sec_key("");
             swap_item->set_sec_key_len(0);
             if (valid_swaped_keys_[i]) {
-                SETH_WARN("valid_swaped_keys_: %d", i);
+                SHARDORA_WARN("valid_swaped_keys_: %d", i);
                 continue;
             }
 
@@ -808,13 +808,13 @@ void BlsDkg::SwapSecKey() try {
     // }
 
     CreateDkgMessage(msg_ptr);
-    SETH_DEBUG("success send swap seckey request local member index: %d, bls index: %u, local net: %u, hash64: %lu",
+    SHARDORA_DEBUG("success send swap seckey request local member index: %d, bls index: %u, local net: %u, hash64: %lu",
         local_member_index_, 
         msg_ptr->header.bls_proto().index(),
         common::GlobalInfo::Instance()->network_id(), msg_ptr->header.hash64());
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
     sec_swap_msgs_ = msg_ptr;
-    SETH_WARN("success add swap msg");
+    SHARDORA_WARN("success add swap msg");
 #else
     network::Route::Instance()->Send(msg_ptr);
 #endif
@@ -845,14 +845,14 @@ void BlsDkg::CreateSwapKey(uint32_t member_idx, std::string* seckey, int32_t* se
         return;
     }
 
-    SETH_DEBUG("msg: %s, succecss encrypt seckey: %s, local: %u, peer: %u, peer pk: %s",
+    SHARDORA_DEBUG("msg: %s, succecss encrypt seckey: %s, local: %u, peer: %u, peer pk: %s",
         msg.c_str(),
         common::Encode::HexEncode(*seckey).c_str(), local_member_index_, member_idx, 
         common::Encode::HexEncode((*members_)[member_idx]->pubkey).c_str());
     *seckey_len = msg.size();
 }
 void BlsDkg::FinishBroadcast() try {
-    SETH_DEBUG("test 0");
+    SHARDORA_DEBUG("test 0");
     if (members_ == nullptr || local_member_index_ >= member_count_ /*|| valid_sec_key_count_ < min_aggree_member_count_*/) {
         BLS_ERROR("elect_height: %lu, valid count error.valid_sec_key_count_: %d,"
             "min_aggree_member_count_: %d, members_ == nullptr: %d, local_member_index_: %d,"
@@ -867,7 +867,7 @@ void BlsDkg::FinishBroadcast() try {
         bitmap_size += 64;
     }
 
-    SETH_DEBUG("test 1");
+    SHARDORA_DEBUG("test 1");
     common::Bitmap bitmap(bitmap_size);
     common_public_key_ = libff::alt_bn128_G2::zero();
     auto& for_common_pk_g2s = dkg_cache_->verify_g2_cache();
@@ -877,7 +877,7 @@ void BlsDkg::FinishBroadcast() try {
         // if (iter == valid_swapkey_set_.end()) {
         //     valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
         //     common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
-        //     SETH_WARN("elect_height: %d, invalid swapkey index: %d", elect_hegiht_, i);
+        //     SHARDORA_WARN("elect_height: %d, invalid swapkey index: %d", elect_hegiht_, i);
         //     continue;
         // }
 
@@ -886,7 +886,7 @@ void BlsDkg::FinishBroadcast() try {
         if (g2_iter == for_common_pk_g2s.end()) {
             valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
             common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
-            SETH_WARN("elect_height: %d, invalid all_verification_vector index: %d",
+            SHARDORA_WARN("elect_height: %d, invalid all_verification_vector index: %d",
                 elect_hegiht_, i);
             //assert(false);
             continue;
@@ -901,7 +901,7 @@ void BlsDkg::FinishBroadcast() try {
                 &seckey)) {
             valid_seck_keys.push_back(libff::alt_bn128_Fr::zero());
             common_public_key_ = common_public_key_ + libff::alt_bn128_G2::zero();
-            SETH_WARN("elect_height: %d, invalid secret_key_contribution_ index: %d",
+            SHARDORA_WARN("elect_height: %d, invalid secret_key_contribution_ index: %d",
                 elect_hegiht_, i);
             // //assert(false);
             continue;
@@ -913,7 +913,7 @@ void BlsDkg::FinishBroadcast() try {
         bitmap.Set(i);
     }
 
-    SETH_DEBUG("test 2");
+    SHARDORA_DEBUG("test 2");
     uint32_t valid_count = static_cast<uint32_t>(
         (float)member_count_ * kBlsMaxExchangeMembersRatio);
     if (bitmap.valid_count() < valid_count) {
@@ -924,17 +924,17 @@ void BlsDkg::FinishBroadcast() try {
         return;
     }
 
-    SETH_DEBUG("test 3");
+    SHARDORA_DEBUG("test 3");
     libBLS::Dkg dkg(min_aggree_member_count_, member_count_);
     local_sec_key_ = dkg.SecretKeyShareCreate(valid_seck_keys);
     local_publick_key_ = dkg.GetPublicKeyFromSecretKey(local_sec_key_);
-    SETH_DEBUG("test 4");
+    SHARDORA_DEBUG("test 4");
     DumpLocalPrivateKey(valid_seck_keys);
-    SETH_DEBUG("test 5");
+    SHARDORA_DEBUG("test 5");
     BroadcastFinish(bitmap);
-    SETH_DEBUG("test 6");
+    SHARDORA_DEBUG("test 6");
     finished_ = true;
-    SETH_DEBUG("elect_height: %lu, finish bls dkg success. local_member_index_: %d, valid count: %u, "
+    SHARDORA_DEBUG("elect_height: %lu, finish bls dkg success. local_member_index_: %d, valid count: %u, "
             "local_sec_key_: %s, local_publick_key_: %s, common_public_key_: %s",
             elect_hegiht_, local_member_index_,
             bitmap.valid_count(),
@@ -993,7 +993,7 @@ void BlsDkg::DumpLocalPrivateKey(const std::vector<libff::alt_bn128_Fr>& valid_s
 }
 
 void BlsDkg::BroadcastFinish(const common::Bitmap& bitmap) {
-    SETH_DEBUG("test 5 1");
+    SHARDORA_DEBUG("test 5 1");
     auto msg_ptr = std::make_shared<transport::TransportMessage>();
     auto& msg = msg_ptr->header;
     auto& bls_msg = *msg.mutable_bls_proto();
@@ -1028,7 +1028,7 @@ void BlsDkg::BroadcastFinish(const common::Bitmap& bitmap) {
     std::string sign_x;
     std::string sign_y;
     libff::alt_bn128_G1 g1_hash;
-    SETH_DEBUG("test 5 2");
+    SHARDORA_DEBUG("test 5 2");
     CreateDkgMessage(msg_ptr);
     std::string sign_hash = common::Hash::keccak256(pk);
     bls_mgr_->GetLibffHash(sign_hash, &g1_hash);
@@ -1039,15 +1039,15 @@ void BlsDkg::BroadcastFinish(const common::Bitmap& bitmap) {
             g1_hash,
             &sign_x,
             &sign_y) != kBlsSuccess) {
-        SETH_FATAL("sign bls message failed!");
+        SHARDORA_FATAL("sign bls message failed!");
         return;
     }
 
     finish_msg->set_bls_sign_x(sign_x);
-    SETH_DEBUG("test 5 3");
+    SHARDORA_DEBUG("test 5 3");
     finish_msg->set_bls_sign_y(sign_y);
-#ifndef SETH_UNITTEST
-    SETH_DEBUG("success broadcast finish message. t: %d, n: %d, "
+#ifndef SHARDORA_UNITTEST
+    SHARDORA_DEBUG("success broadcast finish message. t: %d, n: %d, "
         "local seckey: %s, msg hash: %s, pk: %s, hash64: %lu",
         min_aggree_member_count_, member_count_,
         libBLS::ThresholdUtils::fieldElementToString(local_sec_key_).c_str(),
@@ -1059,9 +1059,9 @@ void BlsDkg::BroadcastFinish(const common::Bitmap& bitmap) {
     //     bls_mgr_->HandleMessage(msg_ptr);
     // }
 #endif
-    SETH_DEBUG("test 5 4");
+    SHARDORA_DEBUG("test 5 4");
     FlushToCk(common_public_key_);
-    SETH_DEBUG("test 5 5");
+    SHARDORA_DEBUG("test 5 5");
 }
 
 void BlsDkg::FlushToCk(const libff::alt_bn128_G2& common_public_key) {
@@ -1089,7 +1089,7 @@ void BlsDkg::FlushToCk(const libff::alt_bn128_G2& common_public_key) {
         info.local_sk = BlsDkg::serializeLocalSk(local_sec_key_);
         info.common_pk = BlsDkg::serializeCommonPk(common_public_key);
         info.swaped_sec_keys = valid_seck_keys_str_;
-        SETH_DEBUG("success insert bls elect info elect_hegiht_: %lu, "
+        SHARDORA_DEBUG("success insert bls elect info elect_hegiht_: %lu, "
             "local_member_index_: %u, shard_id: %u, local_pri_keys: %s, "
             "local_pub_keys: %s, local_sk: %s, common_pk: %s, swaped_sec_keys: %s", 
             info.elect_height, info.member_idx, info.shard_id, 
@@ -1102,7 +1102,7 @@ void BlsDkg::FlushToCk(const libff::alt_bn128_G2& common_public_key) {
 void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
     bls::protobuf::LocalPolynomial local_poly;
     if (!prefix_db_->GetLocalPolynomial(security_, security_->GetAddress(), &local_poly)) {
-        SETH_ERROR("failed GetLocalPolynomial: %s",
+        SHARDORA_ERROR("failed GetLocalPolynomial: %s",
             common::Encode::HexEncode(security_->GetAddress()).c_str());
         // //assert(false);
         return;
@@ -1142,10 +1142,10 @@ void BlsDkg::CreateContribution(uint32_t valid_n, uint32_t valid_t) {
         common::GlobalInfo::Instance()->network_id(),
         local_member_index_, security_->GetAddress(), local_member_index_, val);
 
-#ifdef SETH_UNITEST
+#ifdef SHARDORA_UNITEST
     g2_vec_.clear();
     g2_vec_.push_back(polynomial[0] * libff::alt_bn128_G2::one());
-#endif // SETH_UNITTEST
+#endif // SHARDORA_UNITTEST
 
     // bls::protobuf::VerifyVecBrdReq bls_verify_req;
     // bls_verify_req.set_change_idx(change_idx);
@@ -1201,5 +1201,5 @@ void BlsDkg::CreateDkgMessage(transport::MessagePtr msg_ptr) {
 
 };  // namespace bls
 
-};  // namespace seth
+};  // namespace shardora
  

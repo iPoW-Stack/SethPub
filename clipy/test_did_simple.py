@@ -90,12 +90,12 @@ class DIDProxyFactorySimpleTest:
         # Test data
         test_users = [
             {
-                'did': 'did:seth:user_001',
+                'did': 'did:shardora:user_001',
                 'public_key': '0x' + hashlib.sha256(b'pubkey1').hexdigest(),
                 'signature': '0x' + hashlib.sha256(b'sig1').hexdigest()
             },
             {
-                'did': 'did:seth:user_002', 
+                'did': 'did:shardora:user_002', 
                 'public_key': '0x' + hashlib.sha256(b'pubkey2').hexdigest(),
                 'signature': '0x' + hashlib.sha256(b'sig2').hexdigest()
             }
@@ -104,7 +104,7 @@ class DIDProxyFactorySimpleTest:
         test_assets = [
             {
                 'asset_id': 'asset_001',
-                'owner_did': 'did:seth:owner_001',
+                'owner_did': 'did:shardora:owner_001',
                 'owner_contract': '0x' + hashlib.sha256(b'owner1').hexdigest()[:40],
                 'title': 'Test Asset 1',
                 'content': 'Asset content 1',

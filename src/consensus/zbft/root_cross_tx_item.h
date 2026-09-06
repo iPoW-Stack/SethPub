@@ -4,7 +4,7 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -25,4 +25,4 @@ private:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

@@ -7,7 +7,7 @@
 #define private public
 #include "common/lru_map.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -287,4 +287,4 @@ TEST_F(TestLRUMap, ForEachOnEmptyContainerDoesNothing) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

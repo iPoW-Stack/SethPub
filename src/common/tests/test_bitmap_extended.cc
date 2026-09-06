@@ -3,7 +3,7 @@
 #define private public
 #include "common/bitmap.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -242,4 +242,4 @@ TEST_F(TestBitmapExtended, InversionPreservesBitsOutsideRange) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

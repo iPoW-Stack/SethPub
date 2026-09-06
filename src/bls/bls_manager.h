@@ -10,7 +10,7 @@
 #include "bls/bls_utils.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -196,4 +196,4 @@ private:
 
 };  // namespace bls
 
-};  // namespace seth
+};  // namespace shardora

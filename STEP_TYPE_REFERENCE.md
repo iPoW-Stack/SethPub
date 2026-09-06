@@ -2,11 +2,11 @@
 
 ## Overview
 
-This document explains the correct usage of transaction step types (`StepType`) in the Seth blockchain system.
+This document explains the correct usage of transaction step types (`StepType`) in the Shardora blockchain system.
 
 ## Step Type Definitions
 
-From `seth_sdk.py`:
+From `shardora_sdk.py`:
 
 ```python
 class StepType(IntEnum):
@@ -60,7 +60,7 @@ tx_hash = w3.client.send_transaction_auto(
 
 **✅ Correct:**
 ```python
-contract = w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=user_addr).deploy({
+contract = w3.shardora.contract(abi=abi, bytecode=bytecode, sender_address=user_addr).deploy({
     'from': user_addr,
     'salt': salt,
     'step': StepType.kCreateContract,  # Optional, this is the default
@@ -179,7 +179,7 @@ tx_hash = w3.client.send_transaction_auto(
 ✅ **Correct:**
 ```python
 # DO THIS
-contract = w3.seth.contract(abi=abi, bytecode=bytecode).deploy({
+contract = w3.shardora.contract(abi=abi, bytecode=bytecode).deploy({
     'from': user_addr,
     'salt': salt,
 }, user_key)
@@ -187,9 +187,9 @@ contract = w3.seth.contract(abi=abi, bytecode=bytecode).deploy({
 
 ## SDK Automatic Step Type Selection
 
-The Seth SDK automatically selects the correct step type based on the operation:
+The Shardora SDK automatically selects the correct step type based on the operation:
 
-### SethWeb3Mock.send_transaction()
+### ShardoraWeb3Mock.send_transaction()
 ```python
 def send_transaction(self, tx_dict: dict, private_key: str) -> dict:
     tx_hash = self.client.send_transaction_auto(
@@ -200,14 +200,14 @@ def send_transaction(self, tx_dict: dict, private_key: str) -> dict:
     return self.client.wait_for_receipt(tx_hash)
 ```
 
-### SethContract.deploy()
+### ShardoraContract.deploy()
 ```python
-def deploy(self, transaction: dict, private_key: str) -> SethContract:
+def deploy(self, transaction: dict, private_key: str) -> ShardoraContract:
     step = transaction.get('step', StepType.kCreateContract)  # Defaults to kCreateContract
     # ... deployment logic
 ```
 
-### SethMethod.transact()
+### ShardoraMethod.transact()
 ```python
 def transact(self, private_key: str, value: int = 0, prefund: int = 10**6) -> dict:
     tx_hash = self.contract.client.send_transaction_auto(
@@ -221,7 +221,7 @@ def transact(self, private_key: str, value: int = 0, prefund: int = 10**6) -> di
     # ... wait for receipt
 ```
 
-### SethContract.prefund()
+### ShardoraContract.prefund()
 ```python
 def prefund(self, amount: int, private_key: str) -> dict:
     tx_hash = self.client.send_transaction_auto(
@@ -232,7 +232,7 @@ def prefund(self, amount: int, private_key: str) -> dict:
     return self.client.wait_for_receipt(tx_hash)
 ```
 
-### SethContract.refund()
+### ShardoraContract.refund()
 ```python
 def refund(self, private_key: str) -> dict:
     tx_hash = self.client.send_transaction_auto(
@@ -273,14 +273,14 @@ def create_and_wait_for_address(w3, funder_key, target_shard, target_pool, initi
 ### Deploying Contracts
 ```python
 # Deploy ContractA
-contract_a = w3.seth.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
+contract_a = w3.shardora.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
     'from': user1_addr,
     'salt': salt_a,
     # step is automatically kCreateContract
 }, user1_key)
 
 # Deploy ContractB with constructor args
-contract_b = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=user2_addr).deploy({
+contract_b = w3.shardora.contract(abi=b_abi, bytecode=b_bin, sender_address=user2_addr).deploy({
     'from': user2_addr,
     'salt': salt_b,
     'args': [contract_a.address],  # Constructor argument
@@ -319,4 +319,4 @@ receipt = contract_c.functions.triggerChainUpdate().transact(user3_key)
 
 - `CONTRACT_CHAIN_SAME_SHARD_POOL_DEMO.md` - Contract chain demo
 - `CONTRACT_CHAIN_QUERY_LOGIC.md` - Query logic documentation
-- `seth_sdk.py` - SDK implementation with step type handling
+- `shardora_sdk.py` - SDK implementation with step type handling

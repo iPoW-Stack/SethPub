@@ -6,11 +6,11 @@
 #include "common/global_info.h"
 
 #define NETWORK_DEBUG(fmt, ...) DEBUG("[network]" fmt, ## __VA_ARGS__)
-#define NETWORK_INFO(fmt, ...) SETH_DEBUG("[network]" fmt, ## __VA_ARGS__)
-#define NETWORK_WARN(fmt, ...) SETH_WARN("[network]" fmt, ## __VA_ARGS__)
-#define NETWORK_ERROR(fmt, ...) SETH_ERROR("[network]" fmt, ## __VA_ARGS__)
+#define NETWORK_INFO(fmt, ...) SHARDORA_DEBUG("[network]" fmt, ## __VA_ARGS__)
+#define NETWORK_WARN(fmt, ...) SHARDORA_WARN("[network]" fmt, ## __VA_ARGS__)
+#define NETWORK_ERROR(fmt, ...) SHARDORA_ERROR("[network]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace network {
 
@@ -109,4 +109,4 @@ inline static bool IsWaitingForElect() {
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

@@ -2,7 +2,7 @@
 
 #include "common/spin_mutex.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -27,4 +27,4 @@ TEST(SpinMutexBranches, AutoSpinLockUnlocksOnScopeExit) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

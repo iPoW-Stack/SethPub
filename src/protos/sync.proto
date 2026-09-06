@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package seth.sync.protobuf;
+package shardora.sync.protobuf;
 
 message SyncItem {
     optional bytes key = 1;

@@ -656,7 +656,7 @@ A 分片的合约，调 B 分片的函数，
 热合约并发场景下，**4 池并行（SCoRE-4P）** 吞吐量是单池的 **3 倍**。
 负载再怎么倾斜，系统稳得住。
 
-整个运行时用 C++ 实现在 Seth（Shardora 的合约引擎）之上，
+整个运行时用 C++ 实现在 Shardora（Shardora 的合约引擎）之上，
 代码已开源。
 
 `#智能合约` `#跨分片` `#SOSP` `#区块链开发` `#系统编程`
@@ -704,7 +704,7 @@ SCoRE-4P (4 parallel pools) achieves ~3× throughput vs single-pool.
 Stable under arbitrary load distribution.
 
 Published: SOSP 2026
-Implementation: C++ on Seth (Shardora's contract engine)
+Implementation: C++ on Shardora (Shardora's contract engine)
 Code: github.com/tenondvpn/shardora
 ```
 

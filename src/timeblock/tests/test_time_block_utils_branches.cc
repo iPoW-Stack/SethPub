@@ -2,7 +2,7 @@
 
 #include "timeblock/time_block_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace timeblock {
 namespace test {
 
@@ -58,4 +58,4 @@ TEST(TimeBlockUtilsBranches, TimeblockConstantsAreAllPositive) {
 
 }  // namespace test
 }  // namespace timeblock
-}  // namespace seth
+}  // namespace shardora

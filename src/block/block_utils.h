@@ -22,12 +22,12 @@
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
 
-#define BLOCK_DEBUG(fmt, ...) SETH_DEBUG("[block]" fmt, ## __VA_ARGS__)
-#define BLOCK_INFO(fmt, ...) SETH_DEBUG("[block]" fmt, ## __VA_ARGS__)
-#define BLOCK_WARN(fmt, ...) SETH_WARN("[block]" fmt, ## __VA_ARGS__)
-#define BLOCK_ERROR(fmt, ...) SETH_ERROR("[block]" fmt, ## __VA_ARGS__)
+#define BLOCK_DEBUG(fmt, ...) SHARDORA_DEBUG("[block]" fmt, ## __VA_ARGS__)
+#define BLOCK_INFO(fmt, ...) SHARDORA_DEBUG("[block]" fmt, ## __VA_ARGS__)
+#define BLOCK_WARN(fmt, ...) SHARDORA_WARN("[block]" fmt, ## __VA_ARGS__)
+#define BLOCK_ERROR(fmt, ...) SHARDORA_ERROR("[block]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace block {
 
@@ -144,4 +144,4 @@ typedef std::function<bool(const std::shared_ptr<view_block::protobuf::ViewBlock
 
 }  // namespace block
 
-}  // namespace seth
+}  // namespace shardora

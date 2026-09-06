@@ -21,9 +21,9 @@
 #include "network/network_utils.h"
 #include "security/security.h"
 #include "transport/transport_utils.h"
-#include "sethvm/seth_host.h"
+#include "shardoravm/shardora_host.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -388,9 +388,9 @@ public:
         uint64_t now_tm = common::TimeUtils::TimestampUs();
         receive_tm_us = now_tm;
         time_valid = now_tm + kBftStartDeltaTime;
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
         time_valid = 0;
-#endif // SETH_UNITTEST
+#endif // SHARDORA_UNITTEST
         remove_timeout = now_tm + kTxPoolTimeoutUs;
         tx_key = GetTxKey(addr_info->addr(), tx_info->nonce());
     }
@@ -398,7 +398,7 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) = 0;
     virtual int TxToBlockTx(
@@ -429,4 +429,4 @@ typedef std::function<int(
 
 };  // namespace pools
 
-};  // namespace seth
+};  // namespace shardora

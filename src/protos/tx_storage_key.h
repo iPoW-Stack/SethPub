@@ -4,7 +4,7 @@
 
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 
 namespace protos {
 
@@ -14,4 +14,4 @@ static const std::string kJoinElectVerifyG2 = "__join_g2";
 
 };  // namespace protos
 
-};  // namespace seth
+};  // namespace shardora

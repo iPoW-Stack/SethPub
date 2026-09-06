@@ -14,7 +14,7 @@
 #include "common/hash.h"
 #include "common/random.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -274,4 +274,4 @@ TEST_F(TestBlsSign, GetVerifyHashConsistency) {
 
 }  // namespace bls
 
-}  // namespace seth
+}  // namespace shardora

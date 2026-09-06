@@ -7,12 +7,12 @@
 #include "common/log.h"
 #include "common/utils.h"
 
-#define CRYPTO_DEBUG(fmt, ...) SETH_DEBUG("[crypto]" fmt, ## __VA_ARGS__)
-#define CRYPTO_INFO(fmt, ...) SETH_DEBUG("[crypto]" fmt, ## __VA_ARGS__)
-#define CRYPTO_WARN(fmt, ...) SETH_WARN("[crypto]" fmt, ## __VA_ARGS__)
-#define CRYPTO_ERROR(fmt, ...) SETH_ERROR("[crypto]" fmt, ## __VA_ARGS__)
+#define CRYPTO_DEBUG(fmt, ...) SHARDORA_DEBUG("[crypto]" fmt, ## __VA_ARGS__)
+#define CRYPTO_INFO(fmt, ...) SHARDORA_DEBUG("[crypto]" fmt, ## __VA_ARGS__)
+#define CRYPTO_WARN(fmt, ...) SHARDORA_WARN("[crypto]" fmt, ## __VA_ARGS__)
+#define CRYPTO_ERROR(fmt, ...) SHARDORA_ERROR("[crypto]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -71,4 +71,4 @@ inline static std::string GetContractAddress(
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

@@ -4,7 +4,7 @@
 #include <protos/view_block.pb.h>
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -18,7 +18,7 @@ HashStr GetQCMsgHash(const view_block::protobuf::QcItem& qc_item) {
         proto_qc->elect_height() << proto_qc->leader_idx();
     std::string msg = ss.str();
     auto msg_hash = common::Hash::keccak256(msg); 
-    SETH_DEBUG("success get qc msg hash net: %u, pool: %u, view: %lu, view_block_hash: %s, "
+    SHARDORA_DEBUG("success get qc msg hash net: %u, pool: %u, view: %lu, view_block_hash: %s, "
         " elect_height: %lu, leader_idx: %u, msg_hash: %s",
         proto_qc->network_id(),
         proto_qc->pool_index(),
@@ -45,5 +45,5 @@ std::shared_ptr<SyncInfo> new_sync_info() {
 
 }
 
-} // namespace seth
+} // namespace shardora
 

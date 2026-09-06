@@ -16,7 +16,7 @@
 #include "protos/block.pb.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -157,4 +157,4 @@ inline bool IsShardSuperSingleBlockTx(uint32_t tx_type) {
 
 }  // namespace consensus
 
-}  //namespace seth
+}  //namespace shardora

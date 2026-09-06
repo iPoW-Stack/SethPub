@@ -25,7 +25,7 @@
 #undef private
 #undef protected
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -443,4 +443,4 @@ TEST_F(ConsensusEnhancementTest, ResourceManagement_Tests) {
 
 } // namespace test
 } // namespace consensus
-} // namespace seth
+} // namespace shardora

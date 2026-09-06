@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#define SETH_UNITTEST
+#define SHARDORA_UNITTEST
 #include "bzlib.h"
 
 #include "common/random.h"
@@ -29,7 +29,7 @@
 #include "protos/bls.pb.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -47,7 +47,7 @@ public:
     static void Init() {
         std::string config_path_ = "./";
         std::string log_conf_path = config_path_ + "/log4cpp.properties";
-        std::string log_path = config_path_ + "/seth.log";
+        std::string log_path = config_path_ + "/shardora.log";
         WriteDefaultLogConf(log_conf_path, log_path);
         log4cpp::PropertyConfigurator::configure(log_conf_path);
         db_ptr = std::make_shared<db::Db>();
@@ -181,7 +181,7 @@ public:
         auto prefix_db = std::make_shared<protos::PrefixDb>(db_ptr);
         prefix_db->AddBlsVerifyG2(sec_ptr->GetAddress(), bls_verify_req);
         prefix_db->SaveLocalPolynomial(sec_ptr, sec_ptr->GetAddress(), local_poly);
-        SETH_DEBUG("SaveLocalPolynomial success: %s",
+        SHARDORA_DEBUG("SaveLocalPolynomial success: %s",
             common::Encode::HexEncode(sec_ptr->GetAddress()).c_str());
     }
 
@@ -643,7 +643,7 @@ public:
 
 }  // namespace bls
 
-}  // namespace seth
+}  // namespace shardora
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -652,7 +652,7 @@ int main(int argc, char** argv) {
     }
 
     uint32_t kN = 0;
-    using namespace seth;
+    using namespace shardora;
     common::StringUtil::ToUint32(argv[1], &kN);
     bls::BlsVerify::Init();
 

@@ -2,12 +2,12 @@
 
 # --- 1. Configuration & Variables ---
 TARGET="Debug"
-INSTALL_DIR="/root/seth_miner"
+INSTALL_DIR="/root/shardora_miner"
 rm -rf $INSTALL_DIR
 cp -rf ./mining_node $INSTALL_DIR
-CONFIG_FILE="$INSTALL_DIR/conf/seth.conf"
-CONFIG_TEMP="$INSTALL_DIR/conf/seth.conf_temp"
-SERVICE_NAME="seth_miner"
+CONFIG_FILE="$INSTALL_DIR/conf/shardora.conf"
+CONFIG_TEMP="$INSTALL_DIR/conf/shardora.conf_temp"
+SERVICE_NAME="shardora_miner"
 
 # Check if argument 1 is provided
 if [ -z "$1" ]; then
@@ -37,9 +37,9 @@ if [ -z "$LOCAL_IP" ] || [ -z "$PUBLIC_IP" ]; then
 fi
 
 # --- 4. Encrypt Private Key ---
-ENCRYPT_CMD="./cbuild_$TARGET/seth"
+ENCRYPT_CMD="./cbuild_$TARGET/shardora"
 mkdir -p $INSTALL_DIR/bin $INSTALL_DIR/log
-cp -rf $ENCRYPT_CMD $INSTALL_DIR/bin/seth
+cp -rf $ENCRYPT_CMD $INSTALL_DIR/bin/shardora
 
 
 OUTPUT=$($ENCRYPT_CMD -K "${RAW_PRIVATE_KEY}")
@@ -57,7 +57,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # --- 5. Install Files & Update Config ---
-cp "$ENCRYPT_CMD" "$INSTALL_DIR/bin/seth"
+cp "$ENCRYPT_CMD" "$INSTALL_DIR/bin/shardora"
 if [ -f "$CONFIG_TEMP" ]; then
     cp -rf "$CONFIG_TEMP" "$CONFIG_FILE"
     sed -i "s@REPLACE_PRIVATE_KEY@$PRIVATE_KEY@g" "$CONFIG_FILE"
@@ -71,14 +71,14 @@ fi
 echo "Creating systemd service..."
 cat <<EOF > /etc/systemd/system/$SERVICE_NAME.service
 [Unit]
-Description=Seth Mining Node
+Description=Shardora Mining Node
 After=network.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$INSTALL_DIR/bin/seth -f 0 -g 0
+ExecStart=$INSTALL_DIR/bin/shardora -f 0 -g 0
 Restart=always
 RestartSec=5
 StandardOutput=append:$INSTALL_DIR/log/stdout.log
@@ -129,7 +129,7 @@ echo -e "${GREEN}access your funds. Please SAVE IT in a secure offline location.
 echo -e "${RED}WARNING:${NC} ${GREEN}DO NOT store the raw Private Key on this server.${NC}"
 echo -e "${GREEN}Delete any temporary files or command history containing the key.${NC}"
 
-echo -e "${BLUE}NOTE:${NC} ${GREEN}The configuration in 'seth.conf' uses a SEALED (encrypted)${NC}"
+echo -e "${BLUE}NOTE:${NC} ${GREEN}The configuration in 'shardora.conf' uses a SEALED (encrypted)${NC}"
 echo -e "${GREEN}version of your key. Even if the config file is leaked, your${NC}"
 echo -e "${GREEN}original private key remains safe and cannot be easily reversed.${NC}"
 

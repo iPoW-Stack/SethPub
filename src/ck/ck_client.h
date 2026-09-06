@@ -16,7 +16,7 @@
 #include "protos/block.pb.h"
 #include "protos/prefix_db.h"
 
-namespace seth {
+namespace shardora {
 
 namespace ck {
 
@@ -159,4 +159,4 @@ private:
 
 };  // namespace ck
 
-};  // namespace seth
+};  // namespace shardora

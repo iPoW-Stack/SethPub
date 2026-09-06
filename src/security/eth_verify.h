@@ -10,7 +10,7 @@
 #include "security/ecdsa/secp256k1.h"
 #include "security/ecdsa/crypto_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace security {
 
 // Verify an ETH-format transaction signature by rebuilding the EIP-155
@@ -156,7 +156,7 @@ inline bool VerifyEthSignature(
     // Recover uncompressed pubkey (64 bytes, no 0x04 prefix)
     std::string recovered = Secp256k1::Instance()->Recover(sig_for_recover, signing_hash, false);
     if (recovered.empty()) {
-        SETH_WARN("VerifyEthSignature: pubkey recovery failed");
+        SHARDORA_WARN("VerifyEthSignature: pubkey recovery failed");
         return false;
     }
 
@@ -168,7 +168,7 @@ inline bool VerifyEthSignature(
     }
 
     if (recovered.size() != expected_raw.size() || recovered != expected_raw) {
-        SETH_WARN("VerifyEthSignature: pubkey mismatch, recovered=%s, expected=%s",
+        SHARDORA_WARN("VerifyEthSignature: pubkey mismatch, recovered=%s, expected=%s",
             common::Encode::HexEncode(recovered).c_str(),
             common::Encode::HexEncode(expected_raw).c_str());
         return false;
@@ -178,4 +178,4 @@ inline bool VerifyEthSignature(
 }
 
 }  // namespace security
-}  // namespace seth
+}  // namespace shardora

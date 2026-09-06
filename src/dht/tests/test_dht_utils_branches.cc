@@ -4,7 +4,7 @@
 
 #include "dht/dht_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace dht {
 namespace test {
 
@@ -118,12 +118,12 @@ TEST(DhtUtilsBranches, NodeConstructorDependsOnShardingIdAndIdForDhtKey) {
 
 }  // namespace test
 }  // namespace dht
-}  // namespace seth
+}  // namespace shardora
 #include <gtest/gtest.h>
 
 #include "dht/dht_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace dht {
 namespace test {
 
@@ -189,4 +189,4 @@ TEST(DhtUtilsBranches, DhtScaleConstantsOrdered) {
 
 }  // namespace test
 }  // namespace dht
-}  // namespace seth
+}  // namespace shardora

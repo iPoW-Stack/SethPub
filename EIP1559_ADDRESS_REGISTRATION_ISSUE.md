@@ -2,7 +2,7 @@
 
 ## Problem
 
-The EIP-1559 transactions are failing with "address invalid" error, but this is NOT a signature recovery problem. The signature is being recovered correctly, but the recovered address doesn't exist in the Seth system.
+The EIP-1559 transactions are failing with "address invalid" error, but this is NOT a signature recovery problem. The signature is being recovered correctly, but the recovered address doesn't exist in the Shardora system.
 
 ## Evidence
 
@@ -12,11 +12,11 @@ C++: sender=03009cf0e1c1d04e7920e89e01ff96efbe555801 ✗
 Error: address invalid: 03009cf0e1c1d04e7920e89e01ff96efbe555801
 ```
 
-The C++ code successfully recovers a public key and derives an address from it, but then fails because that address is not registered in the Seth system.
+The C++ code successfully recovers a public key and derives an address from it, but then fails because that address is not registered in the Shardora system.
 
 ## Root Cause
 
-Seth requires addresses to be registered before they can send transactions. The check happens here (http_handler.cc:2462):
+Shardora requires addresses to be registered before they can send transactions. The check happens here (http_handler.cc:2462):
 
 ```cpp
 msg_ptr->address_info = http_handler->acc_mgr()->GetAccountInfo(sender_addr);
@@ -55,7 +55,7 @@ Modify the code to automatically create an address_info entry for recovered addr
 if (!msg_ptr->address_info) {
     // For EIP-1559 transactions, auto-create address info
     if (is_eip1559) {
-        SETH_INFO("Auto-registering EIP-1559 sender: %s", 
+        SHARDORA_INFO("Auto-registering EIP-1559 sender: %s", 
                   common::Encode::HexEncode(sender_addr).c_str());
         
         // Create a minimal address_info
@@ -96,7 +96,7 @@ Call Python's eth_account library from C++ to do the recovery:
 ## Recommended Approach
 
 **Option 1** is the best solution because:
-1. It makes Seth compatible with standard Ethereum wallets
+1. It makes Shardora compatible with standard Ethereum wallets
 2. It doesn't require fixing the signature recovery mystery
 3. It's how Ethereum works - addresses don't need pre-registration
 
@@ -115,7 +115,7 @@ if (!msg_ptr->address_info) {
     // For EIP-1559/EIP-155 transactions from eth_sendRawTransaction,
     // auto-create address info to allow Ethereum-style transactions
     if (is_eip1559 || !raw_bytes.empty()) {
-        SETH_INFO("Auto-registering sender from raw transaction: %s", 
+        SHARDORA_INFO("Auto-registering sender from raw transaction: %s", 
                   common::Encode::HexEncode(sender_addr).c_str());
         
         auto new_addr_info = std::make_shared<block::protobuf::AddressInfo>();

@@ -1,7 +1,7 @@
 #include "bls/dkg_cache.h"
 #include "common/global_info.h"
 
-namespace seth {
+namespace shardora {
 namespace bls {
 
 DkgCache::DkgCache(std::shared_ptr<protos::PrefixDb>& prefix_db)
@@ -17,21 +17,21 @@ void DkgCache::Init(uint32_t local_index, common::Members& members, uint32_t net
                 (*members[peer_index]).id,
                 peer_index,
                 nullptr)) {
-            SETH_DEBUG("failed init dkg cache hit swap key: local_index: %u, peer_index: %u, id: %s",
+            SHARDORA_DEBUG("failed init dkg cache hit swap key: local_index: %u, peer_index: %u, id: %s",
                 local_index, peer_index,
                 common::Encode::HexEncode((*members[peer_index]).id).c_str());
         } else {
-            SETH_DEBUG("success init dkg cache hit swap key: local_index: %u, peer_index: %u, id: %s",
+            SHARDORA_DEBUG("success init dkg cache hit swap key: local_index: %u, peer_index: %u, id: %s",
                 local_index, peer_index,
                 common::Encode::HexEncode((*members[peer_index]).id).c_str());
         }
 
         if (GetBlsVerifyG2((*members[peer_index]).id, nullptr)) {
-            SETH_DEBUG("success init dkg cache hit bls verify g2: local_index: %u, peer_index: %u, id: %s",
+            SHARDORA_DEBUG("success init dkg cache hit bls verify g2: local_index: %u, peer_index: %u, id: %s",
                 local_index, peer_index,
                 common::Encode::HexEncode((*members[peer_index]).id).c_str());
         } else {
-            SETH_DEBUG("failed init dkg cache hit bls verify g2: local_index: %u, peer_index: %u, id: %s",
+            SHARDORA_DEBUG("failed init dkg cache hit bls verify g2: local_index: %u, peer_index: %u, id: %s",
                 local_index, peer_index,
                 common::Encode::HexEncode((*members[peer_index]).id).c_str());
         }
@@ -71,7 +71,7 @@ bool DkgCache::GetSwapKey(
         return true;
     }
 
-    SETH_DEBUG("init dkg cache miss swap key: local_index: %u, peer_index: %u, id: %s",
+    SHARDORA_DEBUG("init dkg cache miss swap key: local_index: %u, peer_index: %u, id: %s",
         local_index, peer_index,
         common::Encode::HexEncode(id.c_str()));
     std::string tmp_secret_key_str;
@@ -81,7 +81,7 @@ bool DkgCache::GetSwapKey(
             id,
             peer_index,
             &tmp_secret_key_str)) {
-        SETH_DEBUG("init dkg cache miss swap key: local_index: %u, peer_index: %u, id: %s",
+        SHARDORA_DEBUG("init dkg cache miss swap key: local_index: %u, peer_index: %u, id: %s",
             local_index, peer_index,
             common::Encode::HexEncode(id.c_str()));
         return false;
@@ -132,4 +132,4 @@ bool DkgCache::GetBlsVerifyG2(
 }
 
 }  // namespace bls
-}  // namespace seth
+}  // namespace shardora

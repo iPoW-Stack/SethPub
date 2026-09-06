@@ -10,7 +10,7 @@
 #include "network/neighbor_ip_manager.h"
 #include "transport/processor.h"
 
-namespace seth {
+namespace shardora {
 
 namespace network {
 
@@ -58,7 +58,7 @@ int Route::Send(const transport::MessagePtr& msg_ptr) {
     uint32_t des_net_id = dht::DhtKeyManager::DhtKeyGetNetId(message.des_dht_key());
     dht::BaseDhtPtr dht_ptr{ nullptr };
     if (des_net_id == network::kUniversalNetworkId || des_net_id == network::kNodeNetworkId) {
-        SETH_DEBUG("now get universal dht 2");
+        SHARDORA_DEBUG("now get universal dht 2");
         dht_ptr = UniversalManager::Instance()->GetUniversal(des_net_id);
     } else {
         dht_ptr = DhtManager::Instance()->GetDht(des_net_id);
@@ -69,7 +69,7 @@ int Route::Send(const transport::MessagePtr& msg_ptr) {
             auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
             // //assert(message.broadcast().bloomfilter_size() < 64);
 //             broadcast_->Broadcasting(msg_ptr->thread_idx, dht_ptr, msg_ptr);
-            SETH_DEBUG("0 broadcast: %lu, now size: %u", msg_ptr->header.hash64(), broadcast_queue_[thread_idx].size());
+            SHARDORA_DEBUG("0 broadcast: %lu, now size: %u", msg_ptr->header.hash64(), broadcast_queue_[thread_idx].size());
             broadcast_queue_[thread_idx].push(msg_ptr);
             broadcast_con_.notify_one();
         } else {
@@ -94,7 +94,7 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
     }
 
     if (header.des_dht_key().size() != dht::kDhtKeySize) {
-        SETH_DEBUG("invalid dht key message: %lu, size: %u",
+        SHARDORA_DEBUG("invalid dht key message: %lu, size: %u",
             header.hash64(), header.des_dht_key().size());
         return;
     }
@@ -104,7 +104,7 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
         auto tmp_ptr = std::make_shared<transport::TransportMessage>();
         tmp_ptr->header.ParseFromString(header_ptr->header_str);
         auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
-        SETH_DEBUG("====5 broadcast t: %lu, hash: %lu, now size: %u", 
+        SHARDORA_DEBUG("====5 broadcast t: %lu, hash: %lu, now size: %u", 
             thread_idx, header_ptr->header.hash64(), broadcast_queue_[thread_idx].size());
         broadcast_queue_[thread_idx].push(tmp_ptr);
         broadcast_con_.notify_one();
@@ -112,41 +112,41 @@ void Route::HandleMessage(const transport::MessagePtr& header_ptr) {
 
     if (message_processor_[header.type()] == nullptr) {
         RouteByUniversal(header_ptr);
-        SETH_DEBUG("header.type() invalid: %d, hash: %lu", header.type(), header.hash64());
+        SHARDORA_DEBUG("header.type() invalid: %d, hash: %lu", header.type(), header.hash64());
         return;
     }
 
-    SETH_DEBUG("now get universal dht 3");
+    SHARDORA_DEBUG("now get universal dht 3");
     auto uni_dht = network::UniversalManager::Instance()->GetUniversal(
             kUniversalNetworkId);
     if (!uni_dht) {
-        SETH_DEBUG("uni_dht invalid: %d, hash: %lu", header.type(), header.hash64());
+        SHARDORA_DEBUG("uni_dht invalid: %d, hash: %lu", header.type(), header.hash64());
         return;
     }
 
     auto dht_ptr = GetDht(header.des_dht_key());
     if (!dht_ptr) {
         RouteByUniversal(header_ptr);
-        SETH_DEBUG("dht_ptr invalid: %d, hash: %lu", header.type(), header.hash64());
+        SHARDORA_DEBUG("dht_ptr invalid: %d, hash: %lu", header.type(), header.hash64());
         return;
     }
 
     // if (header.type() == common::kPoolsMessage) {
     //     if (!CheckPoolsMessage(header_ptr, dht_ptr)) {
-    //         SETH_DEBUG("CheckPoolsMessage invalid: %d, hash: %lu", header.type(), header.hash64());
+    //         SHARDORA_DEBUG("CheckPoolsMessage invalid: %d, hash: %lu", header.type(), header.hash64());
     //         return;
     //     }
     // }
 
     message_processor_[header.type()](header_ptr);
-    SETH_DEBUG("handle message success: %d, hash: %lu", header.type(), header.hash64());
+    SHARDORA_DEBUG("handle message success: %d, hash: %lu", header.type(), header.hash64());
 }
 
 bool Route::CheckPoolsMessage(const transport::MessagePtr& header_ptr, dht::BaseDhtPtr dht_ptr) {
     auto& header = header_ptr->header;
     if (header.has_broadcast()) {
         //assert(false);
-        SETH_DEBUG("pools message check route coming has broadcast.");
+        SHARDORA_DEBUG("pools message check route coming has broadcast.");
         return false;
     }
 
@@ -155,14 +155,14 @@ bool Route::CheckPoolsMessage(const transport::MessagePtr& header_ptr, dht::Base
     }
 
     if (header_ptr->address_info == nullptr || header_ptr->msg_hash.empty()) {
-        SETH_FATAL("pools message must verify signature and has address info.");
+        SHARDORA_FATAL("pools message must verify signature and has address info.");
         return false;
     }
 
     // TODO: check is this node tx message or route to nearest consensus node
     if (header_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
         RouteByUniversal(header_ptr);
-        // SETH_DEBUG("pools message check route coming network invalid.");
+        // SHARDORA_DEBUG("pools message check route coming network invalid.");
         return false;
     }
 
@@ -170,7 +170,7 @@ bool Route::CheckPoolsMessage(const transport::MessagePtr& header_ptr, dht::Base
     auto members = GetShardMembers(network_id);
     if (members == nullptr) {
         dht_ptr->SendToClosestNode(header_ptr);
-        // SETH_DEBUG("pools message check route coming no members.");
+        // SHARDORA_DEBUG("pools message check route coming no members.");
         return false;
     }
 
@@ -181,11 +181,11 @@ bool Route::CheckPoolsMessage(const transport::MessagePtr& header_ptr, dht::Base
     //         (*members)[store_member_index]->id);
     //     header.set_des_dht_key(dht_key.StrKey());
     //     dht_ptr->SendToClosestNode(header_ptr);
-    //     // SETH_DEBUG("pools message check route coming not this node.");
+    //     // SHARDORA_DEBUG("pools message check route coming not this node.");
     //     return false;
     // }
 
-    // SETH_DEBUG("pools message check route coming success this node.");
+    // SHARDORA_DEBUG("pools message check route coming success this node.");
     return true;
 }
 
@@ -262,7 +262,7 @@ void Route::RegisterMessage(uint32_t type, transport::MessageProcessor proc) {
     transport::Processor::Instance()->RegisterProcessor(
             type,
             std::bind(&Route::HandleMessage, this, std::placeholders::_1));
-    SETH_DEBUG("success register message type: %d", type);
+    SHARDORA_DEBUG("success register message type: %d", type);
 }
 
 void Route::UnRegisterMessage(uint32_t type) {
@@ -283,7 +283,7 @@ Route::~Route() {
 void Route::Broadcast(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
     if (!header.has_broadcast() || !header.has_des_dht_key()) {
-        SETH_WARN("broadcast error: %lu", header.hash64());
+        SHARDORA_WARN("broadcast error: %lu", header.hash64());
         return;
     }
 
@@ -291,7 +291,7 @@ void Route::Broadcast(const transport::MessagePtr& msg_ptr) {
     auto des_dht = GetDht(header.des_dht_key());
     if (!des_dht) {
         RouteByUniversal(msg_ptr);
-        SETH_WARN("broadcast by universal error: %lu", header.hash64());
+        SHARDORA_WARN("broadcast by universal error: %lu", header.hash64());
         return;
     }
 
@@ -311,7 +311,7 @@ void Route::Broadcast(const transport::MessagePtr& msg_ptr) {
     }
 
     // //assert(msg_ptr->header.broadcast().bloomfilter_size() < 64);
-    SETH_DEBUG("broadcast success: %lu", header.hash64());
+    SHARDORA_DEBUG("broadcast success: %lu", header.hash64());
     broadcast_->Broadcasting(des_dht, msg_ptr);
 }
 
@@ -319,7 +319,7 @@ dht::BaseDhtPtr Route::GetDht(const std::string& dht_key) {
     uint32_t net_id = dht::DhtKeyManager::DhtKeyGetNetId(dht_key);
     dht::BaseDhtPtr dht = nullptr;
     if (net_id == kUniversalNetworkId || net_id == kNodeNetworkId) {
-        SETH_DEBUG("now get universal dht 4");
+        SHARDORA_DEBUG("now get universal dht 4");
         dht = UniversalManager::Instance()->GetUniversal(net_id);
     } else {
         dht = DhtManager::Instance()->GetDht(net_id);
@@ -330,13 +330,13 @@ dht::BaseDhtPtr Route::GetDht(const std::string& dht_key) {
 
 void Route::RouteByUniversal(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
-    SETH_DEBUG("now get universal dht: %lu", header.hash64());
+    SHARDORA_DEBUG("now get universal dht: %lu", header.hash64());
     auto universal_dht = UniversalManager::Instance()->GetUniversal(kUniversalNetworkId);
     if (!universal_dht) {
         return;
     }
 
-    SETH_DEBUG("now get universal dht: %lu broadcast: %d", header.hash64(), header.has_broadcast());
+    SHARDORA_DEBUG("now get universal dht: %lu broadcast: %d", header.hash64(), header.has_broadcast());
     if (header.has_broadcast()) {
         // choose limit nodes to broadcast from universal
         universal_dht->SendToDesNetworkNodes(msg_ptr);
@@ -347,4 +347,4 @@ void Route::RouteByUniversal(const transport::MessagePtr& msg_ptr) {
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

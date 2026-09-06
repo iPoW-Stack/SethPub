@@ -17,7 +17,7 @@
 #undef protected
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -648,4 +648,4 @@ TEST_F(CommandFunctionTest, StressTestMultipleOperations) {
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

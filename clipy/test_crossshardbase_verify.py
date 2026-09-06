@@ -8,7 +8,7 @@ NOT at the base address. This script computes the correct shadow address in Pyth
 using the same algorithm as C++ reversible_feistel_address.h.
 """
 import sys
-sys.path.insert(0, "/root/seth/clipy")
+sys.path.insert(0, "/root/shardora/clipy")
 
 import json, time, hashlib, struct, subprocess
 import requests
@@ -21,7 +21,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 HOST    = "192.168.25.129"
 PRIVKEY = "c8ee398141fe31308fce258fa4c0fc21288a74a221982db252cb10a94bf7063b"
-SOLC    = "/root/seth/python/solc"
+SOLC    = "/root/shardora/python/solc"
 VERIFY  = False
 SHARD_PORT = {2: 22001, 3: 23001, 4: 24001, 5: 25001, 6: 26001}
 SYSTEM_EXECUTOR = "53595354454d5f4558454355544f525f56310000"

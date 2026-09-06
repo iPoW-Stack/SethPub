@@ -4,7 +4,7 @@
 
 #include "common/global_info.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -24,4 +24,4 @@ void Tick::Destroy() {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

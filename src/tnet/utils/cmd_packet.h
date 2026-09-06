@@ -4,7 +4,7 @@
 
 #include "tnet/utils/packet.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -55,4 +55,4 @@ public:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

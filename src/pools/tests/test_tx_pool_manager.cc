@@ -10,7 +10,7 @@
 // security_: default FakeSecurityForTxPm in suite; override with ScopedSecurityOverride
 // when a specific address is needed. Optional account rows: ScopedAccountInfoOverride +
 // g_test_account_info_override (wired in test_pools_stubs.cc).
-// hotstuff_mgr_: null in this suite (no leader fan-out). With SETH_UNITTEST + coverage,
+// hotstuff_mgr_: null in this suite (no leader fan-out). With SHARDORA_UNITTEST + coverage,
 // use TxPoolManager::SetIsOtherLeaderHookForTest to mock is_other_leader (see test_tx_pool_mocks.h).
 
 #include <gtest/gtest.h>
@@ -40,7 +40,7 @@
 #include "network/network_utils.h"
 #include "protos/pools.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -136,7 +136,7 @@ public:
 
     static void TearDownTestSuite() {
         g_test_account_info_override = nullptr;
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
         TxPoolManager::ClearIsOtherLeaderHookForTest();
 #endif
         mgr_.reset();
@@ -850,7 +850,7 @@ TEST_F(TestTxPoolManager, HandlePoolsMessage_NormalFrom_BalanceOk_ThenDispatchUn
     EXPECT_EQ(msg->handle_status, transport::kUnkonwn);
 }
 
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
 TEST_F(TestTxPoolManager, IsOtherLeaderHook_SetAndClear) {
     auto noop = [](uint32_t) -> common::BftMemberPtr { return nullptr; };
     TxPoolManager::SetIsOtherLeaderHookForTest(noop);
@@ -860,4 +860,4 @@ TEST_F(TestTxPoolManager, IsOtherLeaderHook_SetAndClear) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

@@ -3,7 +3,7 @@
 #include "common/utils.h"
 #include "sync/sync_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace sync {
 namespace test {
 
@@ -81,4 +81,4 @@ TEST(SyncUtilsBranches, SyncPriorityBoundaryComparisons) {
 
 }  // namespace test
 }  // namespace sync
-}  // namespace seth
+}  // namespace shardora

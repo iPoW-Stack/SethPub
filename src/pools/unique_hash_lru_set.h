@@ -9,7 +9,7 @@
 #include "protos/prefix_db.h"
 #include "protos/address.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -55,4 +55,4 @@ private:
 
 };  // namespace pools
 
-};  // namespace seth
+};  // namespace shardora

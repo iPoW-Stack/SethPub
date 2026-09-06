@@ -22,7 +22,7 @@
 #include "tnet/utils/packet_encoder.h"
 #include "tnet/utils/packet_factory.h"
 
-namespace seth {
+namespace shardora {
 namespace tnet {
 namespace test {
 
@@ -178,7 +178,7 @@ TEST(TnetCoreBranches, EventHandlerAndIoEventProcessBranches) {
     event.Process();
     EXPECT_EQ(nullptr, event.GetHandler());
 
-    event.Sethandler(&handler);
+    event.Shardoraandler(&handler);
     event.SetType(kEventRead | kEventWrite);
     event.Process();
     EXPECT_EQ(1, handler.read_count);
@@ -324,4 +324,4 @@ TEST(TnetCoreBranches, AbstractPacketHelpersCanBeImplementedAndFreed) {
 
 }  // namespace test
 }  // namespace tnet
-}  // namespace seth
+}  // namespace shardora

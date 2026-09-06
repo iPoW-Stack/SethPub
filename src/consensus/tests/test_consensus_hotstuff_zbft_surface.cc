@@ -18,7 +18,7 @@
 #include "protos/prefix_db.h"
 #include "protos/view_block.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -248,4 +248,4 @@ TEST(ConsensusZbftSurface, GetCommitedBlockHashAndFlags) {
 
 }  // namespace test
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

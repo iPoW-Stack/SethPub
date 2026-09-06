@@ -17,7 +17,7 @@
 #include "protos/view_block.pb.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace init {
 
@@ -148,4 +148,4 @@ private:
 };
 
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

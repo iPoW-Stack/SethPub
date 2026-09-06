@@ -2,7 +2,7 @@
 
 #include "db/db_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace db {
 namespace test {
 
@@ -12,4 +12,4 @@ TEST(DbUtilsConstants, LinkLetterValueIsStable) {
 
 }  // namespace test
 }  // namespace db
-}  // namespace seth
+}  // namespace shardora

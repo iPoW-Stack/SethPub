@@ -7,7 +7,7 @@
 #include "big_num/snark.h"
 #include "big_num/bignum_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -33,13 +33,13 @@ int Modexp::call(
         const std::string& origin_address,
         evmc_result* res) {
     if (param.data.empty()) {
-        SETH_DEBUG("param data is empty.");
+        SHARDORA_DEBUG("param data is empty.");
         return kContractError;
     }
 
     int64_t gas_used = GetGasPrice(param.data);
     if (res->gas_left < gas_used) {
-        SETH_DEBUG("es->gas_left < gas_used, %lu, %lu", res->gas_left, gas_used);
+        SHARDORA_DEBUG("es->gas_left < gas_used, %lu, %lu", res->gas_left, gas_used);
         return kContractError;
     }
 
@@ -49,7 +49,7 @@ int Modexp::call(
     //assert(modLength <= std::numeric_limits<size_t>::max() / 8);
     //assert(baseLength <= std::numeric_limits<size_t>::max() / 8);
     if (modLength == 0 && baseLength == 0) {
-        SETH_DEBUG("modLength == 0 && baseLength == 0");
+        SHARDORA_DEBUG("modLength == 0 && baseLength == 0");
         return kContractError;
     }
 
@@ -73,4 +73,4 @@ int Modexp::call(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

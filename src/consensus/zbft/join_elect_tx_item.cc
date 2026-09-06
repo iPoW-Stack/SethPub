@@ -2,14 +2,14 @@
 #include <bls/bls_utils.h>
 #include <protos/tx_storage_key.h>
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
 int JoinElectTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     auto& block = view_block.block_info();
@@ -27,7 +27,7 @@ int JoinElectTxItem::HandleTx(
         return kConsensusError;
     }
 
-    int balance_status = GetTempAccountBalance(seth_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(shardora_host, from, acc_balance_map, &from_balance, &from_nonce);
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
         // will never happen
@@ -42,7 +42,7 @@ int JoinElectTxItem::HandleTx(
         gas_used = consensus::kJoinElectGas;
         if (block_tx.gas_limit() < (gas_used + store_gas)) {
             block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-            SETH_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
+            SHARDORA_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
                 common::Encode::HexEncode(from).c_str(),
                 from_balance, block_tx.gas_limit(), gas_used);
             break;
@@ -50,7 +50,7 @@ int JoinElectTxItem::HandleTx(
 
         if (from_balance < (gas_used + store_gas) * block_tx.gas_price()) {
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
+            SHARDORA_DEBUG("1 id: %s  balance error: %lu, %lu, %lu",
                 common::Encode::HexEncode(from).c_str(),
                 from_balance, block_tx.gas_limit(), gas_used);
             break;
@@ -71,7 +71,7 @@ int JoinElectTxItem::HandleTx(
             if (join_info.shard_id() != common::GlobalInfo::Instance()->network_id() ||
                     join_info.shard_id() != address_info->sharding_id()) {
                 block_tx.set_status(consensus::kConsensusError);
-                SETH_DEBUG("shard error: %lu", join_info.shard_id());
+                SHARDORA_DEBUG("shard error: %lu", join_info.shard_id());
                 break;
             }
         }
@@ -79,19 +79,19 @@ int JoinElectTxItem::HandleTx(
         auto n = common::GlobalInfo::Instance()->each_shard_max_members();
         auto t = common::GetSignerCount(n);
         if (join_info.g2_req().verify_vec_size() != static_cast<int>(t)) {
-            SETH_DEBUG("join des shard error: %d,  %d, "
+            SHARDORA_DEBUG("join des shard error: %d,  %d, "
                 "join_info.g2_req().verify_vec_size() != t %u : %u",
                 join_info.shard_id(), msg_ptr->address_info->sharding_id(),
                 join_info.g2_req().verify_vec_size(), t);
             block_tx.set_status(consensus::kConsensusJoinElectThreashTInvalid);
-                SETH_DEBUG("shard error: %lu", join_info.shard_id());
+                SHARDORA_DEBUG("shard error: %lu", join_info.shard_id());
             break;
         }
 
 
         if (from_balance < block_tx.gas_limit()  * block_tx.gas_price()) {
             block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-            SETH_DEBUG("id: %s balance error: %lu, %lu, %lu",
+            SHARDORA_DEBUG("id: %s balance error: %lu, %lu, %lu",
                 common::Encode::HexEncode(from).c_str(),
                 from_balance, block_tx.gas_limit(), block_tx.gas_price());
             break;
@@ -104,10 +104,10 @@ int JoinElectTxItem::HandleTx(
         if (join_info.has_stake_op()) {
             if (join_info.stake_op() == bls::protobuf::STAKE_OP_STAKE) {
                 // Handle stake operation
-                return HandleStakeOperation(tx_index, view_block, seth_host, acc_balance_map, block_tx, join_info, from, from_balance, gas_used, store_gas);
+                return HandleStakeOperation(tx_index, view_block, shardora_host, acc_balance_map, block_tx, join_info, from, from_balance, gas_used, store_gas);
             } else if (join_info.stake_op() == bls::protobuf::STAKE_OP_REDEEM) {
                 // Handle redeem operation
-                return HandleRedeemOperation(tx_index, view_block, seth_host, acc_balance_map, block_tx, join_info, from, from_balance, gas_used);
+                return HandleRedeemOperation(tx_index, view_block, shardora_host, acc_balance_map, block_tx, join_info, from, from_balance, gas_used);
             }
         }
         
@@ -119,12 +119,12 @@ int JoinElectTxItem::HandleTx(
             static const uint64_t kMinStakeUnit = 8 * 100000000llu;
             if (stake_amount % kMinStakeUnit != 0) {
                 block_tx.set_status(consensus::kConsensusError);
-                SETH_ERROR("Invalid stake amount: %lu, must be multiple of %lu",
+                SHARDORA_ERROR("Invalid stake amount: %lu, must be multiple of %lu",
                     stake_amount, kMinStakeUnit);
                 from_balance -= gas_used * block_tx.gas_price();
             } else if (from_balance < stake_amount + (gas_used + store_gas) * block_tx.gas_price()) {
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("Insufficient balance for stake: have %lu, need %lu + gas",
+                SHARDORA_ERROR("Insufficient balance for stake: have %lu, need %lu + gas",
                     from_balance, stake_amount);
                 from_balance -= gas_used * block_tx.gas_price();
             } else {
@@ -148,7 +148,7 @@ int JoinElectTxItem::HandleTx(
                 // Add stake to pool address
                 uint64_t pool_balance = 0;
                 uint64_t pool_nonce = 0;
-                int pool_status = GetTempAccountBalance(seth_host, pool_address, acc_balance_map, &pool_balance, &pool_nonce);
+                int pool_status = GetTempAccountBalance(shardora_host, pool_address, acc_balance_map, &pool_balance, &pool_nonce);
                 if (pool_status == kConsensusSuccess) {
                     pool_balance += stake_amount;
                     acc_balance_map[pool_address]->set_balance(pool_balance);
@@ -165,7 +165,7 @@ int JoinElectTxItem::HandleTx(
                     total_staked,  // Save total staked amount
                     block_timestamp,  // Use block timestamp (not user-provided)
                     view_block.block_info().height(),
-                    seth_host.db_batch_);  // Use db_batch for delayed write
+                    shardora_host.db_batch_);  // Use db_batch for delayed write
                 
                 // Update join_info with total staked for FTS calculation
                 join_info.set_total_staked(total_staked);
@@ -174,13 +174,13 @@ int JoinElectTxItem::HandleTx(
                 *block_join_info = join_info;
                 
                 if (has_existing_stake) {
-                    SETH_DEBUG("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
+                    SHARDORA_DEBUG("Additional stake: added %lu coins (total now: %lu) to pool %u address %s, "
                         "lock period reset to block timestamp: %lu (previous: %lu)",
                         stake_amount, total_staked, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
                         block_timestamp, existing_timestamp);
                 } else {
-                    SETH_DEBUG("Initial stake: %lu coins to pool %u address %s, block timestamp: %lu",
+                    SHARDORA_DEBUG("Initial stake: %lu coins to pool %u address %s, block timestamp: %lu",
                         stake_amount, pool_index,
                         common::Encode::HexEncode(pool_address).c_str(),
                         block_timestamp);
@@ -198,10 +198,10 @@ int JoinElectTxItem::HandleTx(
                 uint64_t existing_stake = 0;
                 uint64_t existing_timestamp = 0;
                 if (prefix_db_->GetStakeInfo(from, &existing_stake, &existing_timestamp)) {
-                    SETH_DEBUG("Join elect with existing stake: addr=%s, existing_stake=%lu, no additional stake",
+                    SHARDORA_DEBUG("Join elect with existing stake: addr=%s, existing_stake=%lu, no additional stake",
                         common::Encode::HexEncode(from).c_str(), existing_stake);
                 } else {
-                    SETH_DEBUG("Join elect without stake: addr=%s", common::Encode::HexEncode(from).c_str());
+                    SHARDORA_DEBUG("Join elect without stake: addr=%s", common::Encode::HexEncode(from).c_str());
                 }
             } else {
                 if (from_balance >= (gas_used) * block_tx.gas_price()) {
@@ -211,7 +211,7 @@ int JoinElectTxItem::HandleTx(
                 }
 
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("id: %s balance error for gas: %llu, %llu",
+                SHARDORA_ERROR("id: %s balance error for gas: %llu, %llu",
                     common::Encode::HexEncode(from).c_str(),
                     from_balance, (gas_used + store_gas) * block_tx.gas_price());
             }
@@ -227,7 +227,7 @@ int JoinElectTxItem::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     
     // Set stoke for FTS calculation
     // Priority: 1. Stake info (if exists), 2. Historical min stoke
@@ -236,13 +236,13 @@ int JoinElectTxItem::HandleTx(
     if (prefix_db_->GetStakeInfo(from, &stoke, &stake_timestamp)) {
         // Use staked amount as stoke (total_staked)
         join_info.set_stoke(stoke);
-        SETH_DEBUG("Using stake info for stoke: addr=%s, stoke=%lu",
+        SHARDORA_DEBUG("Using stake info for stoke: addr=%s, stoke=%lu",
             common::Encode::HexEncode(from).c_str(), stoke);
     } else {
         // Fallback to historical min stoke
         prefix_db_->GetElectNodeMinStoke(common::GlobalInfo::Instance()->network_id(), from, &stoke);
         join_info.set_stoke(stoke);
-        SETH_DEBUG("Using historical min stoke: addr=%s, stoke=%lu",
+        SHARDORA_DEBUG("Using historical min stoke: addr=%s, stoke=%lu",
             common::Encode::HexEncode(from).c_str(), stoke);
     }
     
@@ -251,12 +251,12 @@ int JoinElectTxItem::HandleTx(
     acc_balance_map[from]->set_nonce(block_tx.nonce());
     acc_balance_map[from]->set_latest_height(view_block.block_info().height());
     acc_balance_map[from]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s", 
+    SHARDORA_DEBUG("success add addr: %s, value: %s", 
         common::Encode::HexEncode(from).c_str(), 
         ProtobufToJson(*(acc_balance_map[from])).c_str());
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    SETH_DEBUG("status: %d, success join elect: %s, pool: %u, height: %lu, des shard: %d",
+    SHARDORA_DEBUG("status: %d, success join elect: %s, pool: %u, height: %lu, des shard: %d",
         block_tx.status(), common::Encode::HexEncode(from).c_str(),
         view_block.qc().pool_index(),
         block.height(),
@@ -267,7 +267,7 @@ int JoinElectTxItem::HandleTx(
 int JoinElectTxItem::HandleStakeOperation(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx,
         bls::protobuf::JoinElectInfo& join_info,
@@ -279,7 +279,7 @@ int JoinElectTxItem::HandleStakeOperation(
     // Stake operations can only be processed in root shard
     if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("Stake operation can only be processed in root shard, current shard: %u",
+        SHARDORA_ERROR("Stake operation can only be processed in root shard, current shard: %u",
             common::GlobalInfo::Instance()->network_id());
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -297,7 +297,7 @@ int JoinElectTxItem::HandleStakeOperation(
     static const uint64_t kMinStakeUnit = 8 * 100000000llu;
     if (stake_amount % kMinStakeUnit != 0) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("Invalid stake amount: %lu, must be multiple of %lu",
+        SHARDORA_ERROR("Invalid stake amount: %lu, must be multiple of %lu",
             stake_amount, kMinStakeUnit);
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -307,7 +307,7 @@ int JoinElectTxItem::HandleStakeOperation(
     
     if (from_balance < stake_amount + (gas_used + store_gas) * block_tx.gas_price()) {
         block_tx.set_status(consensus::kConsensusAccountBalanceError);
-        SETH_ERROR("Insufficient balance for stake: have %lu, need %lu + gas",
+        SHARDORA_ERROR("Insufficient balance for stake: have %lu, need %lu + gas",
             from_balance, stake_amount);
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -334,7 +334,7 @@ int JoinElectTxItem::HandleStakeOperation(
     // Add stake to root pool address
     uint64_t pool_balance = 0;
     uint64_t pool_nonce = 0;
-    int pool_status = GetTempAccountBalance(seth_host, root_pool_address, acc_balance_map, &pool_balance, &pool_nonce);
+    int pool_status = GetTempAccountBalance(shardora_host, root_pool_address, acc_balance_map, &pool_balance, &pool_nonce);
     if (pool_status == kConsensusSuccess) {
         pool_balance += stake_amount;
         acc_balance_map[root_pool_address]->set_balance(pool_balance);
@@ -350,7 +350,7 @@ int JoinElectTxItem::HandleStakeOperation(
         total_staked,  // Save total staked amount
         block_timestamp,  // Use block timestamp (not user-provided)
         view_block.block_info().height(),
-        seth_host.db_batch_);  // Use db_batch for delayed write
+        shardora_host.db_batch_);  // Use db_batch for delayed write
     
     // Update join_info with total staked for FTS calculation
     join_info.set_total_staked(total_staked);
@@ -369,14 +369,14 @@ int JoinElectTxItem::HandleStakeOperation(
     block_tx.set_gas_used(gas_used);
     
     if (has_existing_stake) {
-        SETH_DEBUG("Additional stake in root shard: addr=%s, added=%lu, total=%lu, "
+        SHARDORA_DEBUG("Additional stake in root shard: addr=%s, added=%lu, total=%lu, "
             "block_timestamp=%lu (previous: %lu), pool=%s",
             common::Encode::HexEncode(from).c_str(),
             stake_amount, total_staked,
             block_timestamp, existing_timestamp,
             common::Encode::HexEncode(root_pool_address).c_str());
     } else {
-        SETH_DEBUG("Initial stake in root shard: addr=%s, amount=%lu, block_timestamp=%lu, pool=%s",
+        SHARDORA_DEBUG("Initial stake in root shard: addr=%s, amount=%lu, block_timestamp=%lu, pool=%s",
             common::Encode::HexEncode(from).c_str(),
             stake_amount, block_timestamp,
             common::Encode::HexEncode(root_pool_address).c_str());
@@ -388,7 +388,7 @@ int JoinElectTxItem::HandleStakeOperation(
 int JoinElectTxItem::HandleRedeemOperation(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx,
         bls::protobuf::JoinElectInfo& join_info,
@@ -399,7 +399,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     // Redeem operations can only be processed in root shard
     if (common::GlobalInfo::Instance()->network_id() != network::kRootCongressNetworkId) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("Redeem operation can only be processed in root shard, current shard: %u",
+        SHARDORA_ERROR("Redeem operation can only be processed in root shard, current shard: %u",
             common::GlobalInfo::Instance()->network_id());
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -417,7 +417,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     
     if (!prefix_db_->GetStakeInfo(from, &total_staked, &stake_timestamp)) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("No stake info found for address: %s",
+        SHARDORA_ERROR("No stake info found for address: %s",
             common::Encode::HexEncode(from).c_str());
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -432,7 +432,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     
     if (seconds_passed < kStakeLockSeconds) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("Stake lock period not passed: %lu/%lu seconds (%lu days)",
+        SHARDORA_ERROR("Stake lock period not passed: %lu/%lu seconds (%lu days)",
             seconds_passed, kStakeLockSeconds, seconds_passed / 86400);
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -445,11 +445,11 @@ int JoinElectTxItem::HandleRedeemOperation(
     uint64_t pool_balance = 0;
     uint64_t pool_nonce = 0;
     
-    int pool_status = GetTempAccountBalance(seth_host, root_pool_address, 
+    int pool_status = GetTempAccountBalance(shardora_host, root_pool_address, 
                                              acc_balance_map, &pool_balance, &pool_nonce);
     if (pool_status != kConsensusSuccess) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("Failed to get root pool balance");
+        SHARDORA_ERROR("Failed to get root pool balance");
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
         acc_balance_map[from]->set_nonce(block_tx.nonce());
@@ -458,7 +458,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     
     if (pool_balance < total_staked) {
         block_tx.set_status(consensus::kConsensusError);
-        SETH_ERROR("Insufficient root pool balance: have %lu, need %lu",
+        SHARDORA_ERROR("Insufficient root pool balance: have %lu, need %lu",
             pool_balance, total_staked);
         from_balance -= gas_used * block_tx.gas_price();
         acc_balance_map[from]->set_balance(from_balance);
@@ -484,7 +484,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     
     // Remove stake info
     // Use db_batch to delay write until block commit
-    prefix_db_->RemoveStakeInfo(from, seth_host.db_batch_);
+    prefix_db_->RemoveStakeInfo(from, shardora_host.db_batch_);
     
     // Set stoke to 0 for redeem operation (no PoS weight)
     join_info.set_stoke(0);
@@ -497,7 +497,7 @@ int JoinElectTxItem::HandleRedeemOperation(
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
     
-    SETH_DEBUG("Redeemed stake in root shard: addr=%s, amount=%lu, "
+    SHARDORA_DEBUG("Redeemed stake in root shard: addr=%s, amount=%lu, "
         "seconds_passed=%lu, stake_timestamp=%lu, current_timestamp=%lu, pool=%s, stoke set to 0",
         common::Encode::HexEncode(from).c_str(),
         total_staked, seconds_passed, stake_timestamp, current_timestamp,
@@ -508,4 +508,4 @@ int JoinElectTxItem::HandleRedeemOperation(
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

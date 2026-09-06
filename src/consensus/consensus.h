@@ -4,7 +4,7 @@
 #include "elect/elect_manager.h"
 #include "pools/tx_pool_manager.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -19,4 +19,4 @@ protected:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

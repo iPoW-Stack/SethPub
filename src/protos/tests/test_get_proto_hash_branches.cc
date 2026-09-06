@@ -8,7 +8,7 @@
 #include "protos/vss.pb.h"
 #include "protos/zbft.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace protos {
 namespace test {
 
@@ -1610,4 +1610,4 @@ TEST(GetProtoHashBranches, TxProtoExplicitEmptyOptionalStringsKeepSameHash) {
 
 }  // namespace test
 }  // namespace protos
-}  // namespace seth
+}  // namespace shardora

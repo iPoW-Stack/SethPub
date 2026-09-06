@@ -16,10 +16,10 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/sync.proto',
-  package='seth.sync.protobuf',
+  package='shardora.sync.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x11protos/sync.proto\x12\x12seth.sync.protobuf\"&\n\x08SyncItem\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\"7\n\x08SyncInfo\x12+\n\x05items\x18\x01 \x03(\x0b\x32\x1c.seth.sync.protobuf.SyncItem\"?\n\x0eSyncHeightItem\x12\x10\n\x08pool_idx\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\x04\x12\x0b\n\x03tag\x18\x03 \x01(\r\"I\n\x0b\x46lushDbItem\x12\x15\n\rmax_vec_index\x18\x01 \x01(\x04\x12\x12\n\nmax_height\x18\x02 \x01(\x04\x12\x0f\n\x07heights\x18\x03 \x03(\x04\"\\\n\x0eLatestSyncItem\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12\x1b\n\x13pool_latest_heights\x18\x02 \x03(\x04\x12\x19\n\x11globl_pool_height\x18\x03 \x01(\x04\"\xa7\x01\n\x10SyncValueRequest\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12\x0c\n\x04keys\x18\x02 \x03(\x0c\x12\x33\n\x07heights\x18\x03 \x03(\x0b\x32\".seth.sync.protobuf.SyncHeightItem\x12<\n\x10latest_sync_item\x18\x04 \x01(\x0b\x32\".seth.sync.protobuf.LatestSyncItem\"l\n\x0bSyncResItem\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x12\n\nnetwork_id\x18\x03 \x01(\r\x12\x10\n\x08pool_idx\x18\x04 \x01(\r\x12\x0e\n\x06height\x18\x05 \x01(\x04\x12\x0b\n\x03tag\x18\x06 \x01(\r\"U\n\x11SyncValueResponse\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12,\n\x03res\x18\x02 \x03(\x0b\x32\x1f.seth.sync.protobuf.SyncResItem\"\x8a\x01\n\x0bSyncMessage\x12<\n\x0esync_value_req\x18\x01 \x01(\x0b\x32$.seth.sync.protobuf.SyncValueRequest\x12=\n\x0esync_value_res\x18\x02 \x01(\x0b\x32%.seth.sync.protobuf.SyncValueResponse')
+  serialized_pb=_b('\n\x11protos/sync.proto\x12\x12shardora.sync.protobuf\"&\n\x08SyncItem\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\"7\n\x08SyncInfo\x12+\n\x05items\x18\x01 \x03(\x0b\x32\x1c.shardora.sync.protobuf.SyncItem\"?\n\x0eSyncHeightItem\x12\x10\n\x08pool_idx\x18\x01 \x01(\r\x12\x0e\n\x06height\x18\x02 \x01(\x04\x12\x0b\n\x03tag\x18\x03 \x01(\r\"I\n\x0b\x46lushDbItem\x12\x15\n\rmax_vec_index\x18\x01 \x01(\x04\x12\x12\n\nmax_height\x18\x02 \x01(\x04\x12\x0f\n\x07heights\x18\x03 \x03(\x04\"\\\n\x0eLatestSyncItem\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12\x1b\n\x13pool_latest_heights\x18\x02 \x03(\x04\x12\x19\n\x11globl_pool_height\x18\x03 \x01(\x04\"\xa7\x01\n\x10SyncValueRequest\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12\x0c\n\x04keys\x18\x02 \x03(\x0c\x12\x33\n\x07heights\x18\x03 \x03(\x0b\x32\".shardora.sync.protobuf.SyncHeightItem\x12<\n\x10latest_sync_item\x18\x04 \x01(\x0b\x32\".shardora.sync.protobuf.LatestSyncItem\"l\n\x0bSyncResItem\x12\x0b\n\x03key\x18\x01 \x01(\x0c\x12\r\n\x05value\x18\x02 \x01(\x0c\x12\x12\n\nnetwork_id\x18\x03 \x01(\r\x12\x10\n\x08pool_idx\x18\x04 \x01(\r\x12\x0e\n\x06height\x18\x05 \x01(\x04\x12\x0b\n\x03tag\x18\x06 \x01(\r\"U\n\x11SyncValueResponse\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12,\n\x03res\x18\x02 \x03(\x0b\x32\x1f.shardora.sync.protobuf.SyncResItem\"\x8a\x01\n\x0bSyncMessage\x12<\n\x0esync_value_req\x18\x01 \x01(\x0b\x32$.shardora.sync.protobuf.SyncValueRequest\x12=\n\x0esync_value_res\x18\x02 \x01(\x0b\x32%.shardora.sync.protobuf.SyncValueResponse')
 )
 
 
@@ -27,20 +27,20 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _SYNCITEM = _descriptor.Descriptor(
   name='SyncItem',
-  full_name='seth.sync.protobuf.SyncItem',
+  full_name='shardora.sync.protobuf.SyncItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='seth.sync.protobuf.SyncItem.key', index=0,
+      name='key', full_name='shardora.sync.protobuf.SyncItem.key', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='seth.sync.protobuf.SyncItem.value', index=1,
+      name='value', full_name='shardora.sync.protobuf.SyncItem.value', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -65,13 +65,13 @@ _SYNCITEM = _descriptor.Descriptor(
 
 _SYNCINFO = _descriptor.Descriptor(
   name='SyncInfo',
-  full_name='seth.sync.protobuf.SyncInfo',
+  full_name='shardora.sync.protobuf.SyncInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='items', full_name='seth.sync.protobuf.SyncInfo.items', index=0,
+      name='items', full_name='shardora.sync.protobuf.SyncInfo.items', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -96,27 +96,27 @@ _SYNCINFO = _descriptor.Descriptor(
 
 _SYNCHEIGHTITEM = _descriptor.Descriptor(
   name='SyncHeightItem',
-  full_name='seth.sync.protobuf.SyncHeightItem',
+  full_name='shardora.sync.protobuf.SyncHeightItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pool_idx', full_name='seth.sync.protobuf.SyncHeightItem.pool_idx', index=0,
+      name='pool_idx', full_name='shardora.sync.protobuf.SyncHeightItem.pool_idx', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='height', full_name='seth.sync.protobuf.SyncHeightItem.height', index=1,
+      name='height', full_name='shardora.sync.protobuf.SyncHeightItem.height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tag', full_name='seth.sync.protobuf.SyncHeightItem.tag', index=2,
+      name='tag', full_name='shardora.sync.protobuf.SyncHeightItem.tag', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -141,27 +141,27 @@ _SYNCHEIGHTITEM = _descriptor.Descriptor(
 
 _FLUSHDBITEM = _descriptor.Descriptor(
   name='FlushDbItem',
-  full_name='seth.sync.protobuf.FlushDbItem',
+  full_name='shardora.sync.protobuf.FlushDbItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='max_vec_index', full_name='seth.sync.protobuf.FlushDbItem.max_vec_index', index=0,
+      name='max_vec_index', full_name='shardora.sync.protobuf.FlushDbItem.max_vec_index', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='max_height', full_name='seth.sync.protobuf.FlushDbItem.max_height', index=1,
+      name='max_height', full_name='shardora.sync.protobuf.FlushDbItem.max_height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='heights', full_name='seth.sync.protobuf.FlushDbItem.heights', index=2,
+      name='heights', full_name='shardora.sync.protobuf.FlushDbItem.heights', index=2,
       number=3, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -186,27 +186,27 @@ _FLUSHDBITEM = _descriptor.Descriptor(
 
 _LATESTSYNCITEM = _descriptor.Descriptor(
   name='LatestSyncItem',
-  full_name='seth.sync.protobuf.LatestSyncItem',
+  full_name='shardora.sync.protobuf.LatestSyncItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.sync.protobuf.LatestSyncItem.network_id', index=0,
+      name='network_id', full_name='shardora.sync.protobuf.LatestSyncItem.network_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pool_latest_heights', full_name='seth.sync.protobuf.LatestSyncItem.pool_latest_heights', index=1,
+      name='pool_latest_heights', full_name='shardora.sync.protobuf.LatestSyncItem.pool_latest_heights', index=1,
       number=2, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='globl_pool_height', full_name='seth.sync.protobuf.LatestSyncItem.globl_pool_height', index=2,
+      name='globl_pool_height', full_name='shardora.sync.protobuf.LatestSyncItem.globl_pool_height', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -231,34 +231,34 @@ _LATESTSYNCITEM = _descriptor.Descriptor(
 
 _SYNCVALUEREQUEST = _descriptor.Descriptor(
   name='SyncValueRequest',
-  full_name='seth.sync.protobuf.SyncValueRequest',
+  full_name='shardora.sync.protobuf.SyncValueRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.sync.protobuf.SyncValueRequest.network_id', index=0,
+      name='network_id', full_name='shardora.sync.protobuf.SyncValueRequest.network_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='keys', full_name='seth.sync.protobuf.SyncValueRequest.keys', index=1,
+      name='keys', full_name='shardora.sync.protobuf.SyncValueRequest.keys', index=1,
       number=2, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='heights', full_name='seth.sync.protobuf.SyncValueRequest.heights', index=2,
+      name='heights', full_name='shardora.sync.protobuf.SyncValueRequest.heights', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='latest_sync_item', full_name='seth.sync.protobuf.SyncValueRequest.latest_sync_item', index=3,
+      name='latest_sync_item', full_name='shardora.sync.protobuf.SyncValueRequest.latest_sync_item', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -283,48 +283,48 @@ _SYNCVALUEREQUEST = _descriptor.Descriptor(
 
 _SYNCRESITEM = _descriptor.Descriptor(
   name='SyncResItem',
-  full_name='seth.sync.protobuf.SyncResItem',
+  full_name='shardora.sync.protobuf.SyncResItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='seth.sync.protobuf.SyncResItem.key', index=0,
+      name='key', full_name='shardora.sync.protobuf.SyncResItem.key', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='seth.sync.protobuf.SyncResItem.value', index=1,
+      name='value', full_name='shardora.sync.protobuf.SyncResItem.value', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.sync.protobuf.SyncResItem.network_id', index=2,
+      name='network_id', full_name='shardora.sync.protobuf.SyncResItem.network_id', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pool_idx', full_name='seth.sync.protobuf.SyncResItem.pool_idx', index=3,
+      name='pool_idx', full_name='shardora.sync.protobuf.SyncResItem.pool_idx', index=3,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='height', full_name='seth.sync.protobuf.SyncResItem.height', index=4,
+      name='height', full_name='shardora.sync.protobuf.SyncResItem.height', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tag', full_name='seth.sync.protobuf.SyncResItem.tag', index=5,
+      name='tag', full_name='shardora.sync.protobuf.SyncResItem.tag', index=5,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -349,20 +349,20 @@ _SYNCRESITEM = _descriptor.Descriptor(
 
 _SYNCVALUERESPONSE = _descriptor.Descriptor(
   name='SyncValueResponse',
-  full_name='seth.sync.protobuf.SyncValueResponse',
+  full_name='shardora.sync.protobuf.SyncValueResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.sync.protobuf.SyncValueResponse.network_id', index=0,
+      name='network_id', full_name='shardora.sync.protobuf.SyncValueResponse.network_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='res', full_name='seth.sync.protobuf.SyncValueResponse.res', index=1,
+      name='res', full_name='shardora.sync.protobuf.SyncValueResponse.res', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -387,20 +387,20 @@ _SYNCVALUERESPONSE = _descriptor.Descriptor(
 
 _SYNCMESSAGE = _descriptor.Descriptor(
   name='SyncMessage',
-  full_name='seth.sync.protobuf.SyncMessage',
+  full_name='shardora.sync.protobuf.SyncMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sync_value_req', full_name='seth.sync.protobuf.SyncMessage.sync_value_req', index=0,
+      name='sync_value_req', full_name='shardora.sync.protobuf.SyncMessage.sync_value_req', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sync_value_res', full_name='seth.sync.protobuf.SyncMessage.sync_value_res', index=1,
+      name='sync_value_res', full_name='shardora.sync.protobuf.SyncMessage.sync_value_res', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -442,63 +442,63 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 SyncItem = _reflection.GeneratedProtocolMessageType('SyncItem', (_message.Message,), dict(
   DESCRIPTOR = _SYNCITEM,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncItem)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncItem)
   ))
 _sym_db.RegisterMessage(SyncItem)
 
 SyncInfo = _reflection.GeneratedProtocolMessageType('SyncInfo', (_message.Message,), dict(
   DESCRIPTOR = _SYNCINFO,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncInfo)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncInfo)
   ))
 _sym_db.RegisterMessage(SyncInfo)
 
 SyncHeightItem = _reflection.GeneratedProtocolMessageType('SyncHeightItem', (_message.Message,), dict(
   DESCRIPTOR = _SYNCHEIGHTITEM,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncHeightItem)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncHeightItem)
   ))
 _sym_db.RegisterMessage(SyncHeightItem)
 
 FlushDbItem = _reflection.GeneratedProtocolMessageType('FlushDbItem', (_message.Message,), dict(
   DESCRIPTOR = _FLUSHDBITEM,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.FlushDbItem)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.FlushDbItem)
   ))
 _sym_db.RegisterMessage(FlushDbItem)
 
 LatestSyncItem = _reflection.GeneratedProtocolMessageType('LatestSyncItem', (_message.Message,), dict(
   DESCRIPTOR = _LATESTSYNCITEM,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.LatestSyncItem)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.LatestSyncItem)
   ))
 _sym_db.RegisterMessage(LatestSyncItem)
 
 SyncValueRequest = _reflection.GeneratedProtocolMessageType('SyncValueRequest', (_message.Message,), dict(
   DESCRIPTOR = _SYNCVALUEREQUEST,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncValueRequest)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncValueRequest)
   ))
 _sym_db.RegisterMessage(SyncValueRequest)
 
 SyncResItem = _reflection.GeneratedProtocolMessageType('SyncResItem', (_message.Message,), dict(
   DESCRIPTOR = _SYNCRESITEM,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncResItem)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncResItem)
   ))
 _sym_db.RegisterMessage(SyncResItem)
 
 SyncValueResponse = _reflection.GeneratedProtocolMessageType('SyncValueResponse', (_message.Message,), dict(
   DESCRIPTOR = _SYNCVALUERESPONSE,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncValueResponse)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncValueResponse)
   ))
 _sym_db.RegisterMessage(SyncValueResponse)
 
 SyncMessage = _reflection.GeneratedProtocolMessageType('SyncMessage', (_message.Message,), dict(
   DESCRIPTOR = _SYNCMESSAGE,
   __module__ = 'protos.sync_pb2'
-  # @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncMessage)
+  # @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncMessage)
   ))
 _sym_db.RegisterMessage(SyncMessage)
 

@@ -12,7 +12,7 @@
 #include "pools/tx_utils.h"
 #include "protos/view_block.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -234,4 +234,4 @@ struct WaitingTxsItem {
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

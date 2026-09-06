@@ -15,7 +15,7 @@
 #include <transport/transport_utils.h>
 #include <tools/utils.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -68,7 +68,7 @@ public:
 
         if (genesis_elect_items_[sharding_id] != nullptr &&
                 genesis_elect_items_[sharding_id]->ElectHeight() == elect_height) {
-            SETH_WARN("using genesis fallback pk for shard %u, elect_height %lu — "
+            SHARDORA_WARN("using genesis fallback pk for shard %u, elect_height %lu — "
                 "verify will fail if conf/bls_pk does not match the actual genesis common_pk",
                 sharding_id, elect_height);
             return genesis_elect_items_[sharding_id];
@@ -129,7 +129,7 @@ private:
             std::string* verify_hash) {
         auto elect_item = GetElectItem(sharding_id, elect_height);
         if (!elect_item || elect_item->common_pk() == libff::alt_bn128_G2::zero()) {
-            SETH_ERROR("elect_item not found, elect_height: %lu", elect_height);
+            SHARDORA_ERROR("elect_item not found, elect_height: %lu", elect_height);
             return Status::kElectItemNotFound;
         }
 
@@ -141,7 +141,7 @@ private:
                     g1_hash,
                     elect_item->common_pk(),
                     verify_hash) != bls::kBlsSuccess) {
-            SETH_ERROR("get verify hash a failed!");
+            SHARDORA_ERROR("get verify hash a failed!");
             return Status::kError;
         }
 
@@ -168,7 +168,7 @@ private:
             auto cpk_strs = cpk->toString();
             auto agg_sign_str = libBLS::ThresholdUtils::fieldElementToString(
                 reconstructed_sign.X);
-            SETH_ERROR("failed leader verify leader precommit agg sign! t: %u, n: %u,"
+            SHARDORA_ERROR("failed leader verify leader precommit agg sign! t: %u, n: %u,"
                 "common public key: %s, %s, %s, %s, elect height: %lu, sign x: %s",
                 elect_item->t(), elect_item->n(), cpk_strs->at(0).c_str(), cpk_strs->at(1).c_str(),
                 cpk_strs->at(2).c_str(), cpk_strs->at(3).c_str(),
@@ -207,7 +207,7 @@ private:
             BLSPublicKey pkey(std::make_shared<std::vector<std::string>>(pkey_str));
             genesis_elect_items_[shard_id] = std::make_shared<ElectItem>(
                 shard_id, item["prev_height"], item["n"], *pkey.getPublicKey());
-            SETH_DEBUG("success load genesis item: %s", item.dump().c_str());
+            SHARDORA_DEBUG("success load genesis item: %s", item.dump().c_str());
         }
     }
 
@@ -226,6 +226,6 @@ private:
 
 } // namespace consensus
 
-} // namespace seth
+} // namespace shardora
 
 

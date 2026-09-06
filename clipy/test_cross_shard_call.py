@@ -13,7 +13,7 @@ Usage:
 from __future__ import annotations
 import argparse, secrets, time
 from eth_utils import to_checksum_address
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link
 
 CONTRACT_B_SOL = """
 pragma solidity ^0.8.0;
@@ -76,7 +76,7 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
 
     for addr, label in [(addr_a, "UserA"), (addr_b, "UserB")]:
         print(f"  Funding {label} ({addr[:16]}...)...")
-        r = w3.seth.send_transaction({'to': addr, 'value': 500_000_000}, deployer_key)
+        r = w3.shardora.send_transaction({'to': addr, 'value': 500_000_000}, deployer_key)
         assert r and r.get('status') == 0, f"Fund {label} failed"
         _wait_account(client, addr)
         print(f"    OK {label} on-chain")
@@ -84,7 +84,7 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
     # Phase 2: Deploy ContractB by UserB
     print("\n--- Phase 2: Deploy ContractB (StorageB) ---")
     b_bin, b_abi = compile_and_link(CONTRACT_B_SOL, "StorageB")
-    contract_b = w3.seth.contract(abi=b_abi, bytecode=b_bin)
+    contract_b = w3.shardora.contract(abi=b_abi, bytecode=b_bin)
     contract_b.deploy({'from': addr_b, 'salt': secrets.token_hex(16) + 'sb'}, key_b)
     print(f"    ContractB @ {contract_b.address}")
     contract_b.prefund(50_000_000, key_b)
@@ -94,7 +94,7 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
     # Phase 3: Deploy ContractA by UserA
     print("\n--- Phase 3: Deploy ContractA (EncoderA) ---")
     a_bin, a_abi = compile_and_link(CONTRACT_A_SOL, "EncoderA")
-    contract_a = w3.seth.contract(abi=a_abi, bytecode=a_bin)
+    contract_a = w3.shardora.contract(abi=a_abi, bytecode=a_bin)
     contract_a.deploy({'from': addr_a, 'salt': secrets.token_hex(16) + 'ea'}, key_a)
     print(f"    ContractA @ {contract_a.address}")
     contract_a.prefund(50_000_000, key_a)
@@ -103,7 +103,7 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
 
     # UserA also needs prefund on ContractB
     print(f"    UserA setting prefund on ContractB...")
-    cb_for_a = w3.seth.contract(address=contract_b.address, abi=b_abi, sender_address=addr_a)
+    cb_for_a = w3.shardora.contract(address=contract_b.address, abi=b_abi, sender_address=addr_a)
     cb_for_a.prefund(50_000_000, key_a)
     _wait_prefund(cb_for_a, addr_a, 50_000_000)
     print(f"    UserA prefunded on ContractB")
@@ -111,7 +111,7 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
     # Phase 4: Call ContractA.encodeCrossCall(42)
     print("\n--- Phase 4: Call ContractA.encodeCrossCall(42) ---")
     test_value = 42
-    ca_for_a = w3.seth.contract(address=contract_a.address, abi=a_abi, sender_address=addr_a)
+    ca_for_a = w3.shardora.contract(address=contract_a.address, abi=a_abi, sender_address=addr_a)
     receipt_a = ca_for_a.functions.encodeCrossCall(test_value).transact(key_a)
     print(f"    status={receipt_a.get('status')}")
     assert receipt_a.get('status') == 0, f"encodeCrossCall failed: {receipt_a}"
@@ -164,7 +164,7 @@ def test_cross_shard_call(w3, deployer_addr, deployer_key):
     print("\n--- Phase 7: Cleanup ---")
     ca_for_a.refund(key_a)
     cb_for_a.refund(key_a)
-    w3.seth.contract(address=contract_b.address, abi=b_abi, sender_address=addr_b).refund(key_b)
+    w3.shardora.contract(address=contract_b.address, abi=b_abi, sender_address=addr_b).refund(key_b)
     print("    All refunded")
 
     print("\n" + "=" * 70)
@@ -190,7 +190,7 @@ def main():
     parser.add_argument("--port", type=int, default=23001)
     parser.add_argument("--key", default="71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     args = parser.parse_args()
-    w3 = SethWeb3Mock(args.host, args.port)
+    w3 = ShardoraWeb3Mock(args.host, args.port)
     deployer_addr = w3.client.get_address(args.key)
     print(f"Node: https://{args.host}:{args.port}")
     print(f"Deployer: {deployer_addr}")

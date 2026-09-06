@@ -1,6 +1,6 @@
 #include "websocket/websocket_client.h"
 
-using namespace seth;
+using namespace shardora;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {

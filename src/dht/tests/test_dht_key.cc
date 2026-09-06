@@ -9,7 +9,7 @@
 #include "dht/dht_key.h"
 #include "dht/dht_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace dht {
 
@@ -133,4 +133,4 @@ TEST_F(TestDhtKey, GetNetIdVariousValues) {
 
 }  // namespace dht
 
-}  // namespace seth
+}  // namespace shardora

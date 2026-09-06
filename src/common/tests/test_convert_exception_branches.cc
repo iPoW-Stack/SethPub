@@ -4,7 +4,7 @@
 
 #include "common/string_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -23,4 +23,4 @@ TEST(ConvertExceptionBranches, ExplicitMessageRoundTripsThroughWhat) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

@@ -5,21 +5,21 @@ DIDProxyFactory Contract Test Suite
 Comprehensive testing for the DIDProxyFactory smart contract
 that implements EIP-1167 minimal proxy pattern for DID and Asset management.
 
-Author: Seth Blockchain Team
+Author: Shardora Blockchain Team
 Date: May 2026
 """
 
 import json
 import time
 import hashlib
-from seth_sdk import SethSDK
-from seth3 import Seth3
+from shardora_sdk import ShardoraSDK
+from shardora3 import Shardora3
 
 class DIDProxyFactoryTest:
     def __init__(self):
         """Initialize the test environment"""
-        self.seth_sdk = SethSDK()
-        self.seth3 = Seth3()
+        self.shardora_sdk = ShardoraSDK()
+        self.shardora3 = Shardora3()
         
         # Test configuration
         self.test_config = {
@@ -46,7 +46,7 @@ class DIDProxyFactoryTest:
         
         # Deploy mock user implementation contract
         user_impl_code = self._get_user_implementation_bytecode()
-        self.user_implementation = self.seth3.deploy_contract(
+        self.user_implementation = self.shardora3.deploy_contract(
             bytecode=user_impl_code,
             gas_limit=self.test_config['gas_limit']
         )
@@ -54,7 +54,7 @@ class DIDProxyFactoryTest:
         
         # Deploy mock asset implementation contract
         asset_impl_code = self._get_asset_implementation_bytecode()
-        self.asset_implementation = self.seth3.deploy_contract(
+        self.asset_implementation = self.shardora3.deploy_contract(
             bytecode=asset_impl_code,
             gas_limit=self.test_config['gas_limit']
         )
@@ -67,7 +67,7 @@ class DIDProxyFactoryTest:
             self.asset_implementation
         )
         
-        self.proxy_factory = self.seth3.deploy_contract(
+        self.proxy_factory = self.shardora3.deploy_contract(
             bytecode=factory_code + constructor_params,
             gas_limit=self.test_config['gas_limit']
         )
@@ -95,14 +95,14 @@ class DIDProxyFactoryTest:
                     user_data['signature']
                 )
                 
-                tx_hash = self.seth3.send_transaction(
+                tx_hash = self.shardora3.send_transaction(
                     to=self.proxy_factory,
                     data=tx_data,
                     gas_limit=self.test_config['gas_limit']
                 )
                 
                 # Wait for transaction confirmation
-                receipt = self.seth3.wait_for_transaction(tx_hash)
+                receipt = self.shardora3.wait_for_transaction(tx_hash)
                 
                 if receipt['status'] == 1:
                     # Parse events to get proxy address
@@ -150,14 +150,14 @@ class DIDProxyFactoryTest:
                     asset_data['signature']
                 )
                 
-                tx_hash = self.seth3.send_transaction(
+                tx_hash = self.shardora3.send_transaction(
                     to=self.proxy_factory,
                     data=tx_data,
                     gas_limit=self.test_config['gas_limit']
                 )
                 
                 # Wait for transaction confirmation
-                receipt = self.seth3.wait_for_transaction(tx_hash)
+                receipt = self.shardora3.wait_for_transaction(tx_hash)
                 
                 if receipt['status'] == 1:
                     # Parse events to get proxy address
@@ -190,7 +190,7 @@ class DIDProxyFactoryTest:
         try:
             # Test getUserProxyCount
             user_count_data = self._encode_get_user_proxy_count()
-            user_count_result = self.seth3.call_contract(
+            user_count_result = self.shardora3.call_contract(
                 to=self.proxy_factory,
                 data=user_count_data
             )
@@ -202,7 +202,7 @@ class DIDProxyFactoryTest:
             
             # Test getAssetProxyCount
             asset_count_data = self._encode_get_asset_proxy_count()
-            asset_count_result = self.seth3.call_contract(
+            asset_count_result = self.shardora3.call_contract(
                 to=self.proxy_factory,
                 data=asset_count_data
             )
@@ -241,13 +241,13 @@ class DIDProxyFactoryTest:
                 test_user['signature']
             )
             
-            tx_hash = self.seth3.send_transaction(
+            tx_hash = self.shardora3.send_transaction(
                 to=self.proxy_factory,
                 data=tx_data,
                 gas_limit=self.test_config['gas_limit']
             )
             
-            receipt = self.seth3.wait_for_transaction(tx_hash)
+            receipt = self.shardora3.wait_for_transaction(tx_hash)
             
             if receipt['status'] == 1:
                 # Check if UserProxyCreated event was emitted
@@ -306,13 +306,13 @@ class DIDProxyFactoryTest:
                     test_user['signature']
                 )
                 
-                tx_hash = self.seth3.send_transaction(
+                tx_hash = self.shardora3.send_transaction(
                     to=self.proxy_factory,
                     data=tx_data,
                     gas_limit=self.test_config['gas_limit']
                 )
                 
-                receipt = self.seth3.wait_for_transaction(tx_hash)
+                receipt = self.shardora3.wait_for_transaction(tx_hash)
                 
                 if receipt['status'] == 1:
                     proxy_address = self._parse_user_proxy_created_event(receipt)
@@ -363,13 +363,13 @@ class DIDProxyFactoryTest:
                     test_user['signature']
                 )
                 
-                tx_hash = self.seth3.send_transaction(
+                tx_hash = self.shardora3.send_transaction(
                     to=self.proxy_factory,
                     data=tx_data,
                     gas_limit=self.test_config['gas_limit']
                 )
                 
-                receipt = self.seth3.wait_for_transaction(tx_hash)
+                receipt = self.shardora3.wait_for_transaction(tx_hash)
                 
                 if receipt['status'] == 1:
                     gas_used = int(receipt['gas_used'], 16)
@@ -450,7 +450,7 @@ class DIDProxyFactoryTest:
         # Generate test users
         for i in range(5):
             user_data = {
-                'did': f'did:seth:user_{i}_{int(time.time())}',
+                'did': f'did:shardora:user_{i}_{int(time.time())}',
                 'public_key': f'0x{hashlib.sha256(f"user_pubkey_{i}".encode()).hexdigest()}',
                 'signature': f'0x{hashlib.sha256(f"user_signature_{i}".encode()).hexdigest()}'
             }
@@ -460,7 +460,7 @@ class DIDProxyFactoryTest:
         for i in range(3):
             asset_data = {
                 'asset_id': f'asset_{i}_{int(time.time())}',
-                'owner_did': f'did:seth:owner_{i}',
+                'owner_did': f'did:shardora:owner_{i}',
                 'owner_contract': f'0x{hashlib.sha256(f"owner_contract_{i}".encode()).hexdigest()[:40]}',
                 'title': f'Test Asset {i}',
                 'content': f'This is test asset content for asset {i}',

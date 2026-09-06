@@ -2,7 +2,7 @@
 
 #include "security/ecdsa/crypto_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -39,4 +39,4 @@ protected:
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

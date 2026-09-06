@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package seth.bls.protobuf;
+package shardora.bls.protobuf;
 import "protos/elect.proto";
 
 message VerifyVecItem {

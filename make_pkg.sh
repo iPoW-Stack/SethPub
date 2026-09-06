@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
-SETH=/root/seth/cbuild_Release/seth
-NODES_DIR=/root/nodes/seth
+SHARDORA=/root/shardora/cbuild_Release/shardora
+NODES_DIR=/root/nodes/shardora
 END_SHARD=4
 PUBLIC_IP=127.0.0.1
 
@@ -9,22 +9,22 @@ echo "=== Building pkg ==="
 rm -rf $NODES_DIR/pkg
 mkdir -p $NODES_DIR/pkg
 
-cp $SETH $NODES_DIR/pkg/seth
-chmod +x $NODES_DIR/pkg/seth
+cp $SHARDORA $NODES_DIR/pkg/shardora
+chmod +x $NODES_DIR/pkg/shardora
 cp $NODES_DIR/conf/GeoLite2-City.mmdb $NODES_DIR/pkg/ 2>/dev/null || true
 cp $NODES_DIR/conf/log4cpp.properties $NODES_DIR/pkg/ 2>/dev/null || true
 
 # encrypt shards -> pkg/shards*, copy init_accounts
 for s in 2 3 4; do
-  $SETH -A $NODES_DIR/shards$s -D $NODES_DIR/pkg/shards$s
+  $SHARDORA -A $NODES_DIR/shards$s -D $NODES_DIR/pkg/shards$s
   cp $NODES_DIR/shards$s $NODES_DIR/pkg/init_accounts$s
   cp -r $NODES_DIR/shard_db_$s $NODES_DIR/pkg/shard_db_$s
 done
 
 # copy temp conf template and scripts
-cp -rf /root/seth/nodes_local/temp $NODES_DIR/pkg/temp
-cp /root/seth/temp_cmd.sh $NODES_DIR/pkg/temp_cmd.sh
-cp /root/seth/start_cmd.sh $NODES_DIR/pkg/start_cmd.sh
+cp -rf /root/shardora/nodes_local/temp $NODES_DIR/pkg/temp
+cp /root/shardora/temp_cmd.sh $NODES_DIR/pkg/temp_cmd.sh
+cp /root/shardora/start_cmd.sh $NODES_DIR/pkg/start_cmd.sh
 
 echo "=== Building bootstrap ==="
 bootstrap=""
@@ -49,7 +49,7 @@ done
 echo "bootstrap built (length=${#bootstrap})"
 
 # substitute into conf template
-python3 - "$NODES_DIR/pkg/temp/conf/seth.conf" "$bootstrap" << 'PY'
+python3 - "$NODES_DIR/pkg/temp/conf/shardora.conf" "$bootstrap" << 'PY'
 import sys
 path, bs = sys.argv[1], sys.argv[2]
 with open(path) as f: content = f.read()
@@ -60,8 +60,8 @@ print("conf substituted ok")
 PY
 
 # verify no leftover placeholders
-if grep -qE 'BOOTSTRAP|FOR_CK_CLIENT' $NODES_DIR/pkg/temp/conf/seth.conf; then
-  echo "ERROR: placeholder remains in seth.conf" >&2; exit 1
+if grep -qE 'BOOTSTRAP|FOR_CK_CLIENT' $NODES_DIR/pkg/temp/conf/shardora.conf; then
+  echo "ERROR: placeholder remains in shardora.conf" >&2; exit 1
 fi
 
 echo "=== pkg ready ==="

@@ -23,7 +23,7 @@
 #include "common/utils.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -222,4 +222,4 @@ TEST_F(TestCrossBlockManager, CheckCross_PrevInvalid_SyncedInvalid_SkipsSyncLoop
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

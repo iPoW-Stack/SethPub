@@ -54,7 +54,7 @@ MY_KEY = "your_private_key_here"
 
 或使用环境变量:
 ```bash
-export SETH_PRIVATE_KEY="your_private_key_here"
+export SHARDORA_PRIVATE_KEY="your_private_key_here"
 python test_contract_chain_demo.py
 ```
 
@@ -220,7 +220,7 @@ assert calc_pool_index(addr) == expected_pool
 
 - [用户指定 Shard 功能](USER_SPECIFIED_SHARD_FEATURE.md)
 - [AMM 解决方案](AMM_SOLUTION_DEMO.md)
-- [Seth 审稿人回复](SETH_REVIEWER_RESPONSE.md)
+- [Shardora 审稿人回复](SHARDORA_REVIEWER_RESPONSE.md)
 
 ## 📝 更新日志
 

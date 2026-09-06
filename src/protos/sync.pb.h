@@ -45,7 +45,7 @@ struct TableStruct {
 };
 void AddDescriptors();
 }  // namespace protobuf_protos_2fsync_2eproto
-namespace seth {
+namespace shardora {
 namespace sync {
 namespace protobuf {
 class FlushDbItem;
@@ -77,27 +77,27 @@ class SyncValueResponseDefaultTypeInternal;
 extern SyncValueResponseDefaultTypeInternal _SyncValueResponse_default_instance_;
 }  // namespace protobuf
 }  // namespace sync
-}  // namespace seth
+}  // namespace shardora
 namespace google {
 namespace protobuf {
-template<> ::seth::sync::protobuf::FlushDbItem* Arena::CreateMaybeMessage<::seth::sync::protobuf::FlushDbItem>(Arena*);
-template<> ::seth::sync::protobuf::LatestSyncItem* Arena::CreateMaybeMessage<::seth::sync::protobuf::LatestSyncItem>(Arena*);
-template<> ::seth::sync::protobuf::SyncHeightItem* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncHeightItem>(Arena*);
-template<> ::seth::sync::protobuf::SyncInfo* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncInfo>(Arena*);
-template<> ::seth::sync::protobuf::SyncItem* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncItem>(Arena*);
-template<> ::seth::sync::protobuf::SyncMessage* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncMessage>(Arena*);
-template<> ::seth::sync::protobuf::SyncResItem* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncResItem>(Arena*);
-template<> ::seth::sync::protobuf::SyncValueRequest* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncValueRequest>(Arena*);
-template<> ::seth::sync::protobuf::SyncValueResponse* Arena::CreateMaybeMessage<::seth::sync::protobuf::SyncValueResponse>(Arena*);
+template<> ::shardora::sync::protobuf::FlushDbItem* Arena::CreateMaybeMessage<::shardora::sync::protobuf::FlushDbItem>(Arena*);
+template<> ::shardora::sync::protobuf::LatestSyncItem* Arena::CreateMaybeMessage<::shardora::sync::protobuf::LatestSyncItem>(Arena*);
+template<> ::shardora::sync::protobuf::SyncHeightItem* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncHeightItem>(Arena*);
+template<> ::shardora::sync::protobuf::SyncInfo* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncInfo>(Arena*);
+template<> ::shardora::sync::protobuf::SyncItem* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncItem>(Arena*);
+template<> ::shardora::sync::protobuf::SyncMessage* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncMessage>(Arena*);
+template<> ::shardora::sync::protobuf::SyncResItem* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncResItem>(Arena*);
+template<> ::shardora::sync::protobuf::SyncValueRequest* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncValueRequest>(Arena*);
+template<> ::shardora::sync::protobuf::SyncValueResponse* Arena::CreateMaybeMessage<::shardora::sync::protobuf::SyncValueResponse>(Arena*);
 }  // namespace protobuf
 }  // namespace google
-namespace seth {
+namespace shardora {
 namespace sync {
 namespace protobuf {
 
 // ===================================================================
 
-class SyncItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncItem) */ {
+class SyncItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncItem) */ {
  public:
   SyncItem();
   virtual ~SyncItem();
@@ -221,7 +221,7 @@ class SyncItem : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_value();
   void set_allocated_value(::std::string* value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncItem)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncItem)
  private:
   void set_has_key();
   void clear_has_key();
@@ -237,7 +237,7 @@ class SyncItem : public ::google::protobuf::Message /* @@protoc_insertion_point(
 };
 // -------------------------------------------------------------------
 
-class SyncInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncInfo) */ {
+class SyncInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncInfo) */ {
  public:
   SyncInfo();
   virtual ~SyncInfo();
@@ -331,30 +331,30 @@ class SyncInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.sync.protobuf.SyncItem items = 1;
+  // repeated .shardora.sync.protobuf.SyncItem items = 1;
   int items_size() const;
   void clear_items();
   static const int kItemsFieldNumber = 1;
-  ::seth::sync::protobuf::SyncItem* mutable_items(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncItem >*
+  ::shardora::sync::protobuf::SyncItem* mutable_items(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncItem >*
       mutable_items();
-  const ::seth::sync::protobuf::SyncItem& items(int index) const;
-  ::seth::sync::protobuf::SyncItem* add_items();
-  const ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncItem >&
+  const ::shardora::sync::protobuf::SyncItem& items(int index) const;
+  ::shardora::sync::protobuf::SyncItem* add_items();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncItem >&
       items() const;
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncInfo)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncInfo)
  private:
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncItem > items_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncItem > items_;
   friend struct ::protobuf_protos_2fsync_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
 
-class SyncHeightItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncHeightItem) */ {
+class SyncHeightItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncHeightItem) */ {
  public:
   SyncHeightItem();
   virtual ~SyncHeightItem();
@@ -469,7 +469,7 @@ class SyncHeightItem : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::uint32 tag() const;
   void set_tag(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncHeightItem)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncHeightItem)
  private:
   void set_has_pool_idx();
   void clear_has_pool_idx();
@@ -488,7 +488,7 @@ class SyncHeightItem : public ::google::protobuf::Message /* @@protoc_insertion_
 };
 // -------------------------------------------------------------------
 
-class FlushDbItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.FlushDbItem) */ {
+class FlushDbItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.FlushDbItem) */ {
  public:
   FlushDbItem();
   virtual ~FlushDbItem();
@@ -608,7 +608,7 @@ class FlushDbItem : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::uint64 max_height() const;
   void set_max_height(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.FlushDbItem)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.FlushDbItem)
  private:
   void set_has_max_vec_index();
   void clear_has_max_vec_index();
@@ -625,7 +625,7 @@ class FlushDbItem : public ::google::protobuf::Message /* @@protoc_insertion_poi
 };
 // -------------------------------------------------------------------
 
-class LatestSyncItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.LatestSyncItem) */ {
+class LatestSyncItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.LatestSyncItem) */ {
  public:
   LatestSyncItem();
   virtual ~LatestSyncItem();
@@ -745,7 +745,7 @@ class LatestSyncItem : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::uint32 network_id() const;
   void set_network_id(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.LatestSyncItem)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.LatestSyncItem)
  private:
   void set_has_network_id();
   void clear_has_network_id();
@@ -762,7 +762,7 @@ class LatestSyncItem : public ::google::protobuf::Message /* @@protoc_insertion_
 };
 // -------------------------------------------------------------------
 
-class SyncValueRequest : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncValueRequest) */ {
+class SyncValueRequest : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncValueRequest) */ {
  public:
   SyncValueRequest();
   virtual ~SyncValueRequest();
@@ -878,29 +878,29 @@ class SyncValueRequest : public ::google::protobuf::Message /* @@protoc_insertio
   const ::google::protobuf::RepeatedPtrField< ::std::string>& keys() const;
   ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_keys();
 
-  // repeated .seth.sync.protobuf.SyncHeightItem heights = 3;
+  // repeated .shardora.sync.protobuf.SyncHeightItem heights = 3;
   int heights_size() const;
   void clear_heights();
   static const int kHeightsFieldNumber = 3;
-  ::seth::sync::protobuf::SyncHeightItem* mutable_heights(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncHeightItem >*
+  ::shardora::sync::protobuf::SyncHeightItem* mutable_heights(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncHeightItem >*
       mutable_heights();
-  const ::seth::sync::protobuf::SyncHeightItem& heights(int index) const;
-  ::seth::sync::protobuf::SyncHeightItem* add_heights();
-  const ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncHeightItem >&
+  const ::shardora::sync::protobuf::SyncHeightItem& heights(int index) const;
+  ::shardora::sync::protobuf::SyncHeightItem* add_heights();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncHeightItem >&
       heights() const;
 
-  // optional .seth.sync.protobuf.LatestSyncItem latest_sync_item = 4;
+  // optional .shardora.sync.protobuf.LatestSyncItem latest_sync_item = 4;
   bool has_latest_sync_item() const;
   void clear_latest_sync_item();
   static const int kLatestSyncItemFieldNumber = 4;
   private:
-  const ::seth::sync::protobuf::LatestSyncItem& _internal_latest_sync_item() const;
+  const ::shardora::sync::protobuf::LatestSyncItem& _internal_latest_sync_item() const;
   public:
-  const ::seth::sync::protobuf::LatestSyncItem& latest_sync_item() const;
-  ::seth::sync::protobuf::LatestSyncItem* release_latest_sync_item();
-  ::seth::sync::protobuf::LatestSyncItem* mutable_latest_sync_item();
-  void set_allocated_latest_sync_item(::seth::sync::protobuf::LatestSyncItem* latest_sync_item);
+  const ::shardora::sync::protobuf::LatestSyncItem& latest_sync_item() const;
+  ::shardora::sync::protobuf::LatestSyncItem* release_latest_sync_item();
+  ::shardora::sync::protobuf::LatestSyncItem* mutable_latest_sync_item();
+  void set_allocated_latest_sync_item(::shardora::sync::protobuf::LatestSyncItem* latest_sync_item);
 
   // optional uint32 network_id = 1;
   bool has_network_id() const;
@@ -909,7 +909,7 @@ class SyncValueRequest : public ::google::protobuf::Message /* @@protoc_insertio
   ::google::protobuf::uint32 network_id() const;
   void set_network_id(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncValueRequest)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncValueRequest)
  private:
   void set_has_network_id();
   void clear_has_network_id();
@@ -920,14 +920,14 @@ class SyncValueRequest : public ::google::protobuf::Message /* @@protoc_insertio
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   ::google::protobuf::RepeatedPtrField< ::std::string> keys_;
-  ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncHeightItem > heights_;
-  ::seth::sync::protobuf::LatestSyncItem* latest_sync_item_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncHeightItem > heights_;
+  ::shardora::sync::protobuf::LatestSyncItem* latest_sync_item_;
   ::google::protobuf::uint32 network_id_;
   friend struct ::protobuf_protos_2fsync_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
 
-class SyncResItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncResItem) */ {
+class SyncResItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncResItem) */ {
  public:
   SyncResItem();
   virtual ~SyncResItem();
@@ -1079,7 +1079,7 @@ class SyncResItem : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::uint32 tag() const;
   void set_tag(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncResItem)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncResItem)
  private:
   void set_has_key();
   void clear_has_key();
@@ -1107,7 +1107,7 @@ class SyncResItem : public ::google::protobuf::Message /* @@protoc_insertion_poi
 };
 // -------------------------------------------------------------------
 
-class SyncValueResponse : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncValueResponse) */ {
+class SyncValueResponse : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncValueResponse) */ {
  public:
   SyncValueResponse();
   virtual ~SyncValueResponse();
@@ -1201,16 +1201,16 @@ class SyncValueResponse : public ::google::protobuf::Message /* @@protoc_inserti
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.sync.protobuf.SyncResItem res = 2;
+  // repeated .shardora.sync.protobuf.SyncResItem res = 2;
   int res_size() const;
   void clear_res();
   static const int kResFieldNumber = 2;
-  ::seth::sync::protobuf::SyncResItem* mutable_res(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncResItem >*
+  ::shardora::sync::protobuf::SyncResItem* mutable_res(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncResItem >*
       mutable_res();
-  const ::seth::sync::protobuf::SyncResItem& res(int index) const;
-  ::seth::sync::protobuf::SyncResItem* add_res();
-  const ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncResItem >&
+  const ::shardora::sync::protobuf::SyncResItem& res(int index) const;
+  ::shardora::sync::protobuf::SyncResItem* add_res();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncResItem >&
       res() const;
 
   // optional uint32 network_id = 1;
@@ -1220,7 +1220,7 @@ class SyncValueResponse : public ::google::protobuf::Message /* @@protoc_inserti
   ::google::protobuf::uint32 network_id() const;
   void set_network_id(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncValueResponse)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncValueResponse)
  private:
   void set_has_network_id();
   void clear_has_network_id();
@@ -1228,13 +1228,13 @@ class SyncValueResponse : public ::google::protobuf::Message /* @@protoc_inserti
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncResItem > res_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncResItem > res_;
   ::google::protobuf::uint32 network_id_;
   friend struct ::protobuf_protos_2fsync_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
 
-class SyncMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.sync.protobuf.SyncMessage) */ {
+class SyncMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.sync.protobuf.SyncMessage) */ {
  public:
   SyncMessage();
   virtual ~SyncMessage();
@@ -1328,31 +1328,31 @@ class SyncMessage : public ::google::protobuf::Message /* @@protoc_insertion_poi
 
   // accessors -------------------------------------------------------
 
-  // optional .seth.sync.protobuf.SyncValueRequest sync_value_req = 1;
+  // optional .shardora.sync.protobuf.SyncValueRequest sync_value_req = 1;
   bool has_sync_value_req() const;
   void clear_sync_value_req();
   static const int kSyncValueReqFieldNumber = 1;
   private:
-  const ::seth::sync::protobuf::SyncValueRequest& _internal_sync_value_req() const;
+  const ::shardora::sync::protobuf::SyncValueRequest& _internal_sync_value_req() const;
   public:
-  const ::seth::sync::protobuf::SyncValueRequest& sync_value_req() const;
-  ::seth::sync::protobuf::SyncValueRequest* release_sync_value_req();
-  ::seth::sync::protobuf::SyncValueRequest* mutable_sync_value_req();
-  void set_allocated_sync_value_req(::seth::sync::protobuf::SyncValueRequest* sync_value_req);
+  const ::shardora::sync::protobuf::SyncValueRequest& sync_value_req() const;
+  ::shardora::sync::protobuf::SyncValueRequest* release_sync_value_req();
+  ::shardora::sync::protobuf::SyncValueRequest* mutable_sync_value_req();
+  void set_allocated_sync_value_req(::shardora::sync::protobuf::SyncValueRequest* sync_value_req);
 
-  // optional .seth.sync.protobuf.SyncValueResponse sync_value_res = 2;
+  // optional .shardora.sync.protobuf.SyncValueResponse sync_value_res = 2;
   bool has_sync_value_res() const;
   void clear_sync_value_res();
   static const int kSyncValueResFieldNumber = 2;
   private:
-  const ::seth::sync::protobuf::SyncValueResponse& _internal_sync_value_res() const;
+  const ::shardora::sync::protobuf::SyncValueResponse& _internal_sync_value_res() const;
   public:
-  const ::seth::sync::protobuf::SyncValueResponse& sync_value_res() const;
-  ::seth::sync::protobuf::SyncValueResponse* release_sync_value_res();
-  ::seth::sync::protobuf::SyncValueResponse* mutable_sync_value_res();
-  void set_allocated_sync_value_res(::seth::sync::protobuf::SyncValueResponse* sync_value_res);
+  const ::shardora::sync::protobuf::SyncValueResponse& sync_value_res() const;
+  ::shardora::sync::protobuf::SyncValueResponse* release_sync_value_res();
+  ::shardora::sync::protobuf::SyncValueResponse* mutable_sync_value_res();
+  void set_allocated_sync_value_res(::shardora::sync::protobuf::SyncValueResponse* sync_value_res);
 
-  // @@protoc_insertion_point(class_scope:seth.sync.protobuf.SyncMessage)
+  // @@protoc_insertion_point(class_scope:shardora.sync.protobuf.SyncMessage)
  private:
   void set_has_sync_value_req();
   void clear_has_sync_value_req();
@@ -1362,8 +1362,8 @@ class SyncMessage : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::seth::sync::protobuf::SyncValueRequest* sync_value_req_;
-  ::seth::sync::protobuf::SyncValueResponse* sync_value_res_;
+  ::shardora::sync::protobuf::SyncValueRequest* sync_value_req_;
+  ::shardora::sync::protobuf::SyncValueResponse* sync_value_res_;
   friend struct ::protobuf_protos_2fsync_2eproto::TableStruct;
 };
 // ===================================================================
@@ -1392,41 +1392,41 @@ inline void SyncItem::clear_key() {
   clear_has_key();
 }
 inline const ::std::string& SyncItem::key() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncItem.key)
   return key_.GetNoArena();
 }
 inline void SyncItem::set_key(const ::std::string& value) {
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncItem.key)
 }
 #if LANG_CXX11
 inline void SyncItem::set_key(::std::string&& value) {
   set_has_key();
   key_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.sync.protobuf.SyncItem.key)
 }
 #endif
 inline void SyncItem::set_key(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_set_char:shardora.sync.protobuf.SyncItem.key)
 }
 inline void SyncItem::set_key(const void* value, size_t size) {
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_set_pointer:shardora.sync.protobuf.SyncItem.key)
 }
 inline ::std::string* SyncItem::mutable_key() {
   set_has_key();
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncItem.key)
   return key_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* SyncItem::release_key() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncItem.key)
   if (!has_key()) {
     return NULL;
   }
@@ -1440,7 +1440,7 @@ inline void SyncItem::set_allocated_key(::std::string* key) {
     clear_has_key();
   }
   key_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), key);
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncItem.key)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncItem.key)
 }
 
 // optional bytes value = 2;
@@ -1458,41 +1458,41 @@ inline void SyncItem::clear_value() {
   clear_has_value();
 }
 inline const ::std::string& SyncItem::value() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncItem.value)
   return value_.GetNoArena();
 }
 inline void SyncItem::set_value(const ::std::string& value) {
   set_has_value();
   value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncItem.value)
 }
 #if LANG_CXX11
 inline void SyncItem::set_value(::std::string&& value) {
   set_has_value();
   value_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.sync.protobuf.SyncItem.value)
 }
 #endif
 inline void SyncItem::set_value(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_value();
   value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_set_char:shardora.sync.protobuf.SyncItem.value)
 }
 inline void SyncItem::set_value(const void* value, size_t size) {
   set_has_value();
   value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_set_pointer:shardora.sync.protobuf.SyncItem.value)
 }
 inline ::std::string* SyncItem::mutable_value() {
   set_has_value();
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncItem.value)
   return value_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* SyncItem::release_value() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncItem.value)
   if (!has_value()) {
     return NULL;
   }
@@ -1506,40 +1506,40 @@ inline void SyncItem::set_allocated_value(::std::string* value) {
     clear_has_value();
   }
   value_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncItem.value)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncItem.value)
 }
 
 // -------------------------------------------------------------------
 
 // SyncInfo
 
-// repeated .seth.sync.protobuf.SyncItem items = 1;
+// repeated .shardora.sync.protobuf.SyncItem items = 1;
 inline int SyncInfo::items_size() const {
   return items_.size();
 }
 inline void SyncInfo::clear_items() {
   items_.Clear();
 }
-inline ::seth::sync::protobuf::SyncItem* SyncInfo::mutable_items(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncInfo.items)
+inline ::shardora::sync::protobuf::SyncItem* SyncInfo::mutable_items(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncInfo.items)
   return items_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncItem >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncItem >*
 SyncInfo::mutable_items() {
-  // @@protoc_insertion_point(field_mutable_list:seth.sync.protobuf.SyncInfo.items)
+  // @@protoc_insertion_point(field_mutable_list:shardora.sync.protobuf.SyncInfo.items)
   return &items_;
 }
-inline const ::seth::sync::protobuf::SyncItem& SyncInfo::items(int index) const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncInfo.items)
+inline const ::shardora::sync::protobuf::SyncItem& SyncInfo::items(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncInfo.items)
   return items_.Get(index);
 }
-inline ::seth::sync::protobuf::SyncItem* SyncInfo::add_items() {
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.SyncInfo.items)
+inline ::shardora::sync::protobuf::SyncItem* SyncInfo::add_items() {
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.SyncInfo.items)
   return items_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncItem >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncItem >&
 SyncInfo::items() const {
-  // @@protoc_insertion_point(field_list:seth.sync.protobuf.SyncInfo.items)
+  // @@protoc_insertion_point(field_list:shardora.sync.protobuf.SyncInfo.items)
   return items_;
 }
 
@@ -1562,13 +1562,13 @@ inline void SyncHeightItem::clear_pool_idx() {
   clear_has_pool_idx();
 }
 inline ::google::protobuf::uint32 SyncHeightItem::pool_idx() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncHeightItem.pool_idx)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncHeightItem.pool_idx)
   return pool_idx_;
 }
 inline void SyncHeightItem::set_pool_idx(::google::protobuf::uint32 value) {
   set_has_pool_idx();
   pool_idx_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncHeightItem.pool_idx)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncHeightItem.pool_idx)
 }
 
 // optional uint64 height = 2;
@@ -1586,13 +1586,13 @@ inline void SyncHeightItem::clear_height() {
   clear_has_height();
 }
 inline ::google::protobuf::uint64 SyncHeightItem::height() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncHeightItem.height)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncHeightItem.height)
   return height_;
 }
 inline void SyncHeightItem::set_height(::google::protobuf::uint64 value) {
   set_has_height();
   height_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncHeightItem.height)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncHeightItem.height)
 }
 
 // optional uint32 tag = 3;
@@ -1610,13 +1610,13 @@ inline void SyncHeightItem::clear_tag() {
   clear_has_tag();
 }
 inline ::google::protobuf::uint32 SyncHeightItem::tag() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncHeightItem.tag)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncHeightItem.tag)
   return tag_;
 }
 inline void SyncHeightItem::set_tag(::google::protobuf::uint32 value) {
   set_has_tag();
   tag_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncHeightItem.tag)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncHeightItem.tag)
 }
 
 // -------------------------------------------------------------------
@@ -1638,13 +1638,13 @@ inline void FlushDbItem::clear_max_vec_index() {
   clear_has_max_vec_index();
 }
 inline ::google::protobuf::uint64 FlushDbItem::max_vec_index() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.FlushDbItem.max_vec_index)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.FlushDbItem.max_vec_index)
   return max_vec_index_;
 }
 inline void FlushDbItem::set_max_vec_index(::google::protobuf::uint64 value) {
   set_has_max_vec_index();
   max_vec_index_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.FlushDbItem.max_vec_index)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.FlushDbItem.max_vec_index)
 }
 
 // optional uint64 max_height = 2;
@@ -1662,13 +1662,13 @@ inline void FlushDbItem::clear_max_height() {
   clear_has_max_height();
 }
 inline ::google::protobuf::uint64 FlushDbItem::max_height() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.FlushDbItem.max_height)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.FlushDbItem.max_height)
   return max_height_;
 }
 inline void FlushDbItem::set_max_height(::google::protobuf::uint64 value) {
   set_has_max_height();
   max_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.FlushDbItem.max_height)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.FlushDbItem.max_height)
 }
 
 // repeated uint64 heights = 3;
@@ -1679,25 +1679,25 @@ inline void FlushDbItem::clear_heights() {
   heights_.Clear();
 }
 inline ::google::protobuf::uint64 FlushDbItem::heights(int index) const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.FlushDbItem.heights)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.FlushDbItem.heights)
   return heights_.Get(index);
 }
 inline void FlushDbItem::set_heights(int index, ::google::protobuf::uint64 value) {
   heights_.Set(index, value);
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.FlushDbItem.heights)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.FlushDbItem.heights)
 }
 inline void FlushDbItem::add_heights(::google::protobuf::uint64 value) {
   heights_.Add(value);
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.FlushDbItem.heights)
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.FlushDbItem.heights)
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint64 >&
 FlushDbItem::heights() const {
-  // @@protoc_insertion_point(field_list:seth.sync.protobuf.FlushDbItem.heights)
+  // @@protoc_insertion_point(field_list:shardora.sync.protobuf.FlushDbItem.heights)
   return heights_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint64 >*
 FlushDbItem::mutable_heights() {
-  // @@protoc_insertion_point(field_mutable_list:seth.sync.protobuf.FlushDbItem.heights)
+  // @@protoc_insertion_point(field_mutable_list:shardora.sync.protobuf.FlushDbItem.heights)
   return &heights_;
 }
 
@@ -1720,13 +1720,13 @@ inline void LatestSyncItem::clear_network_id() {
   clear_has_network_id();
 }
 inline ::google::protobuf::uint32 LatestSyncItem::network_id() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.LatestSyncItem.network_id)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.LatestSyncItem.network_id)
   return network_id_;
 }
 inline void LatestSyncItem::set_network_id(::google::protobuf::uint32 value) {
   set_has_network_id();
   network_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.LatestSyncItem.network_id)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.LatestSyncItem.network_id)
 }
 
 // repeated uint64 pool_latest_heights = 2;
@@ -1737,25 +1737,25 @@ inline void LatestSyncItem::clear_pool_latest_heights() {
   pool_latest_heights_.Clear();
 }
 inline ::google::protobuf::uint64 LatestSyncItem::pool_latest_heights(int index) const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.LatestSyncItem.pool_latest_heights)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.LatestSyncItem.pool_latest_heights)
   return pool_latest_heights_.Get(index);
 }
 inline void LatestSyncItem::set_pool_latest_heights(int index, ::google::protobuf::uint64 value) {
   pool_latest_heights_.Set(index, value);
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.LatestSyncItem.pool_latest_heights)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.LatestSyncItem.pool_latest_heights)
 }
 inline void LatestSyncItem::add_pool_latest_heights(::google::protobuf::uint64 value) {
   pool_latest_heights_.Add(value);
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.LatestSyncItem.pool_latest_heights)
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.LatestSyncItem.pool_latest_heights)
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint64 >&
 LatestSyncItem::pool_latest_heights() const {
-  // @@protoc_insertion_point(field_list:seth.sync.protobuf.LatestSyncItem.pool_latest_heights)
+  // @@protoc_insertion_point(field_list:shardora.sync.protobuf.LatestSyncItem.pool_latest_heights)
   return pool_latest_heights_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint64 >*
 LatestSyncItem::mutable_pool_latest_heights() {
-  // @@protoc_insertion_point(field_mutable_list:seth.sync.protobuf.LatestSyncItem.pool_latest_heights)
+  // @@protoc_insertion_point(field_mutable_list:shardora.sync.protobuf.LatestSyncItem.pool_latest_heights)
   return &pool_latest_heights_;
 }
 
@@ -1774,13 +1774,13 @@ inline void LatestSyncItem::clear_globl_pool_height() {
   clear_has_globl_pool_height();
 }
 inline ::google::protobuf::uint64 LatestSyncItem::globl_pool_height() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.LatestSyncItem.globl_pool_height)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.LatestSyncItem.globl_pool_height)
   return globl_pool_height_;
 }
 inline void LatestSyncItem::set_globl_pool_height(::google::protobuf::uint64 value) {
   set_has_globl_pool_height();
   globl_pool_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.LatestSyncItem.globl_pool_height)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.LatestSyncItem.globl_pool_height)
 }
 
 // -------------------------------------------------------------------
@@ -1802,13 +1802,13 @@ inline void SyncValueRequest::clear_network_id() {
   clear_has_network_id();
 }
 inline ::google::protobuf::uint32 SyncValueRequest::network_id() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncValueRequest.network_id)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncValueRequest.network_id)
   return network_id_;
 }
 inline void SyncValueRequest::set_network_id(::google::protobuf::uint32 value) {
   set_has_network_id();
   network_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncValueRequest.network_id)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncValueRequest.network_id)
 }
 
 // repeated bytes keys = 2;
@@ -1819,98 +1819,98 @@ inline void SyncValueRequest::clear_keys() {
   keys_.Clear();
 }
 inline const ::std::string& SyncValueRequest::keys(int index) const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncValueRequest.keys)
   return keys_.Get(index);
 }
 inline ::std::string* SyncValueRequest::mutable_keys(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncValueRequest.keys)
   return keys_.Mutable(index);
 }
 inline void SyncValueRequest::set_keys(int index, const ::std::string& value) {
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncValueRequest.keys)
   keys_.Mutable(index)->assign(value);
 }
 #if LANG_CXX11
 inline void SyncValueRequest::set_keys(int index, ::std::string&& value) {
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncValueRequest.keys)
   keys_.Mutable(index)->assign(std::move(value));
 }
 #endif
 inline void SyncValueRequest::set_keys(int index, const char* value) {
   GOOGLE_DCHECK(value != NULL);
   keys_.Mutable(index)->assign(value);
-  // @@protoc_insertion_point(field_set_char:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_set_char:shardora.sync.protobuf.SyncValueRequest.keys)
 }
 inline void SyncValueRequest::set_keys(int index, const void* value, size_t size) {
   keys_.Mutable(index)->assign(
     reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_set_pointer:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_set_pointer:shardora.sync.protobuf.SyncValueRequest.keys)
 }
 inline ::std::string* SyncValueRequest::add_keys() {
-  // @@protoc_insertion_point(field_add_mutable:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_add_mutable:shardora.sync.protobuf.SyncValueRequest.keys)
   return keys_.Add();
 }
 inline void SyncValueRequest::add_keys(const ::std::string& value) {
   keys_.Add()->assign(value);
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.SyncValueRequest.keys)
 }
 #if LANG_CXX11
 inline void SyncValueRequest::add_keys(::std::string&& value) {
   keys_.Add(std::move(value));
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.SyncValueRequest.keys)
 }
 #endif
 inline void SyncValueRequest::add_keys(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   keys_.Add()->assign(value);
-  // @@protoc_insertion_point(field_add_char:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_add_char:shardora.sync.protobuf.SyncValueRequest.keys)
 }
 inline void SyncValueRequest::add_keys(const void* value, size_t size) {
   keys_.Add()->assign(reinterpret_cast<const char*>(value), size);
-  // @@protoc_insertion_point(field_add_pointer:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_add_pointer:shardora.sync.protobuf.SyncValueRequest.keys)
 }
 inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
 SyncValueRequest::keys() const {
-  // @@protoc_insertion_point(field_list:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_list:shardora.sync.protobuf.SyncValueRequest.keys)
   return keys_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::std::string>*
 SyncValueRequest::mutable_keys() {
-  // @@protoc_insertion_point(field_mutable_list:seth.sync.protobuf.SyncValueRequest.keys)
+  // @@protoc_insertion_point(field_mutable_list:shardora.sync.protobuf.SyncValueRequest.keys)
   return &keys_;
 }
 
-// repeated .seth.sync.protobuf.SyncHeightItem heights = 3;
+// repeated .shardora.sync.protobuf.SyncHeightItem heights = 3;
 inline int SyncValueRequest::heights_size() const {
   return heights_.size();
 }
 inline void SyncValueRequest::clear_heights() {
   heights_.Clear();
 }
-inline ::seth::sync::protobuf::SyncHeightItem* SyncValueRequest::mutable_heights(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncValueRequest.heights)
+inline ::shardora::sync::protobuf::SyncHeightItem* SyncValueRequest::mutable_heights(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncValueRequest.heights)
   return heights_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncHeightItem >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncHeightItem >*
 SyncValueRequest::mutable_heights() {
-  // @@protoc_insertion_point(field_mutable_list:seth.sync.protobuf.SyncValueRequest.heights)
+  // @@protoc_insertion_point(field_mutable_list:shardora.sync.protobuf.SyncValueRequest.heights)
   return &heights_;
 }
-inline const ::seth::sync::protobuf::SyncHeightItem& SyncValueRequest::heights(int index) const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncValueRequest.heights)
+inline const ::shardora::sync::protobuf::SyncHeightItem& SyncValueRequest::heights(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncValueRequest.heights)
   return heights_.Get(index);
 }
-inline ::seth::sync::protobuf::SyncHeightItem* SyncValueRequest::add_heights() {
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.SyncValueRequest.heights)
+inline ::shardora::sync::protobuf::SyncHeightItem* SyncValueRequest::add_heights() {
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.SyncValueRequest.heights)
   return heights_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncHeightItem >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncHeightItem >&
 SyncValueRequest::heights() const {
-  // @@protoc_insertion_point(field_list:seth.sync.protobuf.SyncValueRequest.heights)
+  // @@protoc_insertion_point(field_list:shardora.sync.protobuf.SyncValueRequest.heights)
   return heights_;
 }
 
-// optional .seth.sync.protobuf.LatestSyncItem latest_sync_item = 4;
+// optional .shardora.sync.protobuf.LatestSyncItem latest_sync_item = 4;
 inline bool SyncValueRequest::has_latest_sync_item() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -1924,32 +1924,32 @@ inline void SyncValueRequest::clear_latest_sync_item() {
   if (latest_sync_item_ != NULL) latest_sync_item_->Clear();
   clear_has_latest_sync_item();
 }
-inline const ::seth::sync::protobuf::LatestSyncItem& SyncValueRequest::_internal_latest_sync_item() const {
+inline const ::shardora::sync::protobuf::LatestSyncItem& SyncValueRequest::_internal_latest_sync_item() const {
   return *latest_sync_item_;
 }
-inline const ::seth::sync::protobuf::LatestSyncItem& SyncValueRequest::latest_sync_item() const {
-  const ::seth::sync::protobuf::LatestSyncItem* p = latest_sync_item_;
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncValueRequest.latest_sync_item)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::sync::protobuf::LatestSyncItem*>(
-      &::seth::sync::protobuf::_LatestSyncItem_default_instance_);
+inline const ::shardora::sync::protobuf::LatestSyncItem& SyncValueRequest::latest_sync_item() const {
+  const ::shardora::sync::protobuf::LatestSyncItem* p = latest_sync_item_;
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncValueRequest.latest_sync_item)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::sync::protobuf::LatestSyncItem*>(
+      &::shardora::sync::protobuf::_LatestSyncItem_default_instance_);
 }
-inline ::seth::sync::protobuf::LatestSyncItem* SyncValueRequest::release_latest_sync_item() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncValueRequest.latest_sync_item)
+inline ::shardora::sync::protobuf::LatestSyncItem* SyncValueRequest::release_latest_sync_item() {
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncValueRequest.latest_sync_item)
   clear_has_latest_sync_item();
-  ::seth::sync::protobuf::LatestSyncItem* temp = latest_sync_item_;
+  ::shardora::sync::protobuf::LatestSyncItem* temp = latest_sync_item_;
   latest_sync_item_ = NULL;
   return temp;
 }
-inline ::seth::sync::protobuf::LatestSyncItem* SyncValueRequest::mutable_latest_sync_item() {
+inline ::shardora::sync::protobuf::LatestSyncItem* SyncValueRequest::mutable_latest_sync_item() {
   set_has_latest_sync_item();
   if (latest_sync_item_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::sync::protobuf::LatestSyncItem>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::sync::protobuf::LatestSyncItem>(GetArenaNoVirtual());
     latest_sync_item_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncValueRequest.latest_sync_item)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncValueRequest.latest_sync_item)
   return latest_sync_item_;
 }
-inline void SyncValueRequest::set_allocated_latest_sync_item(::seth::sync::protobuf::LatestSyncItem* latest_sync_item) {
+inline void SyncValueRequest::set_allocated_latest_sync_item(::shardora::sync::protobuf::LatestSyncItem* latest_sync_item) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete latest_sync_item_;
@@ -1965,7 +1965,7 @@ inline void SyncValueRequest::set_allocated_latest_sync_item(::seth::sync::proto
     clear_has_latest_sync_item();
   }
   latest_sync_item_ = latest_sync_item;
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncValueRequest.latest_sync_item)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncValueRequest.latest_sync_item)
 }
 
 // -------------------------------------------------------------------
@@ -1987,41 +1987,41 @@ inline void SyncResItem::clear_key() {
   clear_has_key();
 }
 inline const ::std::string& SyncResItem::key() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncResItem.key)
   return key_.GetNoArena();
 }
 inline void SyncResItem::set_key(const ::std::string& value) {
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncResItem.key)
 }
 #if LANG_CXX11
 inline void SyncResItem::set_key(::std::string&& value) {
   set_has_key();
   key_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.sync.protobuf.SyncResItem.key)
 }
 #endif
 inline void SyncResItem::set_key(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_set_char:shardora.sync.protobuf.SyncResItem.key)
 }
 inline void SyncResItem::set_key(const void* value, size_t size) {
   set_has_key();
   key_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_set_pointer:shardora.sync.protobuf.SyncResItem.key)
 }
 inline ::std::string* SyncResItem::mutable_key() {
   set_has_key();
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncResItem.key)
   return key_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* SyncResItem::release_key() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncResItem.key)
   if (!has_key()) {
     return NULL;
   }
@@ -2035,7 +2035,7 @@ inline void SyncResItem::set_allocated_key(::std::string* key) {
     clear_has_key();
   }
   key_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), key);
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncResItem.key)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncResItem.key)
 }
 
 // optional bytes value = 2;
@@ -2053,41 +2053,41 @@ inline void SyncResItem::clear_value() {
   clear_has_value();
 }
 inline const ::std::string& SyncResItem::value() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncResItem.value)
   return value_.GetNoArena();
 }
 inline void SyncResItem::set_value(const ::std::string& value) {
   set_has_value();
   value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncResItem.value)
 }
 #if LANG_CXX11
 inline void SyncResItem::set_value(::std::string&& value) {
   set_has_value();
   value_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.sync.protobuf.SyncResItem.value)
 }
 #endif
 inline void SyncResItem::set_value(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_value();
   value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_set_char:shardora.sync.protobuf.SyncResItem.value)
 }
 inline void SyncResItem::set_value(const void* value, size_t size) {
   set_has_value();
   value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_set_pointer:shardora.sync.protobuf.SyncResItem.value)
 }
 inline ::std::string* SyncResItem::mutable_value() {
   set_has_value();
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncResItem.value)
   return value_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* SyncResItem::release_value() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncResItem.value)
   if (!has_value()) {
     return NULL;
   }
@@ -2101,7 +2101,7 @@ inline void SyncResItem::set_allocated_value(::std::string* value) {
     clear_has_value();
   }
   value_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncResItem.value)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncResItem.value)
 }
 
 // optional uint32 network_id = 3;
@@ -2119,13 +2119,13 @@ inline void SyncResItem::clear_network_id() {
   clear_has_network_id();
 }
 inline ::google::protobuf::uint32 SyncResItem::network_id() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncResItem.network_id)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncResItem.network_id)
   return network_id_;
 }
 inline void SyncResItem::set_network_id(::google::protobuf::uint32 value) {
   set_has_network_id();
   network_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncResItem.network_id)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncResItem.network_id)
 }
 
 // optional uint32 pool_idx = 4;
@@ -2143,13 +2143,13 @@ inline void SyncResItem::clear_pool_idx() {
   clear_has_pool_idx();
 }
 inline ::google::protobuf::uint32 SyncResItem::pool_idx() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncResItem.pool_idx)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncResItem.pool_idx)
   return pool_idx_;
 }
 inline void SyncResItem::set_pool_idx(::google::protobuf::uint32 value) {
   set_has_pool_idx();
   pool_idx_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncResItem.pool_idx)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncResItem.pool_idx)
 }
 
 // optional uint64 height = 5;
@@ -2167,13 +2167,13 @@ inline void SyncResItem::clear_height() {
   clear_has_height();
 }
 inline ::google::protobuf::uint64 SyncResItem::height() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncResItem.height)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncResItem.height)
   return height_;
 }
 inline void SyncResItem::set_height(::google::protobuf::uint64 value) {
   set_has_height();
   height_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncResItem.height)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncResItem.height)
 }
 
 // optional uint32 tag = 6;
@@ -2191,13 +2191,13 @@ inline void SyncResItem::clear_tag() {
   clear_has_tag();
 }
 inline ::google::protobuf::uint32 SyncResItem::tag() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncResItem.tag)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncResItem.tag)
   return tag_;
 }
 inline void SyncResItem::set_tag(::google::protobuf::uint32 value) {
   set_has_tag();
   tag_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncResItem.tag)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncResItem.tag)
 }
 
 // -------------------------------------------------------------------
@@ -2219,42 +2219,42 @@ inline void SyncValueResponse::clear_network_id() {
   clear_has_network_id();
 }
 inline ::google::protobuf::uint32 SyncValueResponse::network_id() const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncValueResponse.network_id)
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncValueResponse.network_id)
   return network_id_;
 }
 inline void SyncValueResponse::set_network_id(::google::protobuf::uint32 value) {
   set_has_network_id();
   network_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.sync.protobuf.SyncValueResponse.network_id)
+  // @@protoc_insertion_point(field_set:shardora.sync.protobuf.SyncValueResponse.network_id)
 }
 
-// repeated .seth.sync.protobuf.SyncResItem res = 2;
+// repeated .shardora.sync.protobuf.SyncResItem res = 2;
 inline int SyncValueResponse::res_size() const {
   return res_.size();
 }
 inline void SyncValueResponse::clear_res() {
   res_.Clear();
 }
-inline ::seth::sync::protobuf::SyncResItem* SyncValueResponse::mutable_res(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncValueResponse.res)
+inline ::shardora::sync::protobuf::SyncResItem* SyncValueResponse::mutable_res(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncValueResponse.res)
   return res_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncResItem >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncResItem >*
 SyncValueResponse::mutable_res() {
-  // @@protoc_insertion_point(field_mutable_list:seth.sync.protobuf.SyncValueResponse.res)
+  // @@protoc_insertion_point(field_mutable_list:shardora.sync.protobuf.SyncValueResponse.res)
   return &res_;
 }
-inline const ::seth::sync::protobuf::SyncResItem& SyncValueResponse::res(int index) const {
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncValueResponse.res)
+inline const ::shardora::sync::protobuf::SyncResItem& SyncValueResponse::res(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncValueResponse.res)
   return res_.Get(index);
 }
-inline ::seth::sync::protobuf::SyncResItem* SyncValueResponse::add_res() {
-  // @@protoc_insertion_point(field_add:seth.sync.protobuf.SyncValueResponse.res)
+inline ::shardora::sync::protobuf::SyncResItem* SyncValueResponse::add_res() {
+  // @@protoc_insertion_point(field_add:shardora.sync.protobuf.SyncValueResponse.res)
   return res_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::sync::protobuf::SyncResItem >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::sync::protobuf::SyncResItem >&
 SyncValueResponse::res() const {
-  // @@protoc_insertion_point(field_list:seth.sync.protobuf.SyncValueResponse.res)
+  // @@protoc_insertion_point(field_list:shardora.sync.protobuf.SyncValueResponse.res)
   return res_;
 }
 
@@ -2262,7 +2262,7 @@ SyncValueResponse::res() const {
 
 // SyncMessage
 
-// optional .seth.sync.protobuf.SyncValueRequest sync_value_req = 1;
+// optional .shardora.sync.protobuf.SyncValueRequest sync_value_req = 1;
 inline bool SyncMessage::has_sync_value_req() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -2276,32 +2276,32 @@ inline void SyncMessage::clear_sync_value_req() {
   if (sync_value_req_ != NULL) sync_value_req_->Clear();
   clear_has_sync_value_req();
 }
-inline const ::seth::sync::protobuf::SyncValueRequest& SyncMessage::_internal_sync_value_req() const {
+inline const ::shardora::sync::protobuf::SyncValueRequest& SyncMessage::_internal_sync_value_req() const {
   return *sync_value_req_;
 }
-inline const ::seth::sync::protobuf::SyncValueRequest& SyncMessage::sync_value_req() const {
-  const ::seth::sync::protobuf::SyncValueRequest* p = sync_value_req_;
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncMessage.sync_value_req)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::sync::protobuf::SyncValueRequest*>(
-      &::seth::sync::protobuf::_SyncValueRequest_default_instance_);
+inline const ::shardora::sync::protobuf::SyncValueRequest& SyncMessage::sync_value_req() const {
+  const ::shardora::sync::protobuf::SyncValueRequest* p = sync_value_req_;
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncMessage.sync_value_req)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::sync::protobuf::SyncValueRequest*>(
+      &::shardora::sync::protobuf::_SyncValueRequest_default_instance_);
 }
-inline ::seth::sync::protobuf::SyncValueRequest* SyncMessage::release_sync_value_req() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncMessage.sync_value_req)
+inline ::shardora::sync::protobuf::SyncValueRequest* SyncMessage::release_sync_value_req() {
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncMessage.sync_value_req)
   clear_has_sync_value_req();
-  ::seth::sync::protobuf::SyncValueRequest* temp = sync_value_req_;
+  ::shardora::sync::protobuf::SyncValueRequest* temp = sync_value_req_;
   sync_value_req_ = NULL;
   return temp;
 }
-inline ::seth::sync::protobuf::SyncValueRequest* SyncMessage::mutable_sync_value_req() {
+inline ::shardora::sync::protobuf::SyncValueRequest* SyncMessage::mutable_sync_value_req() {
   set_has_sync_value_req();
   if (sync_value_req_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::sync::protobuf::SyncValueRequest>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::sync::protobuf::SyncValueRequest>(GetArenaNoVirtual());
     sync_value_req_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncMessage.sync_value_req)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncMessage.sync_value_req)
   return sync_value_req_;
 }
-inline void SyncMessage::set_allocated_sync_value_req(::seth::sync::protobuf::SyncValueRequest* sync_value_req) {
+inline void SyncMessage::set_allocated_sync_value_req(::shardora::sync::protobuf::SyncValueRequest* sync_value_req) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete sync_value_req_;
@@ -2317,10 +2317,10 @@ inline void SyncMessage::set_allocated_sync_value_req(::seth::sync::protobuf::Sy
     clear_has_sync_value_req();
   }
   sync_value_req_ = sync_value_req;
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncMessage.sync_value_req)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncMessage.sync_value_req)
 }
 
-// optional .seth.sync.protobuf.SyncValueResponse sync_value_res = 2;
+// optional .shardora.sync.protobuf.SyncValueResponse sync_value_res = 2;
 inline bool SyncMessage::has_sync_value_res() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -2334,32 +2334,32 @@ inline void SyncMessage::clear_sync_value_res() {
   if (sync_value_res_ != NULL) sync_value_res_->Clear();
   clear_has_sync_value_res();
 }
-inline const ::seth::sync::protobuf::SyncValueResponse& SyncMessage::_internal_sync_value_res() const {
+inline const ::shardora::sync::protobuf::SyncValueResponse& SyncMessage::_internal_sync_value_res() const {
   return *sync_value_res_;
 }
-inline const ::seth::sync::protobuf::SyncValueResponse& SyncMessage::sync_value_res() const {
-  const ::seth::sync::protobuf::SyncValueResponse* p = sync_value_res_;
-  // @@protoc_insertion_point(field_get:seth.sync.protobuf.SyncMessage.sync_value_res)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::sync::protobuf::SyncValueResponse*>(
-      &::seth::sync::protobuf::_SyncValueResponse_default_instance_);
+inline const ::shardora::sync::protobuf::SyncValueResponse& SyncMessage::sync_value_res() const {
+  const ::shardora::sync::protobuf::SyncValueResponse* p = sync_value_res_;
+  // @@protoc_insertion_point(field_get:shardora.sync.protobuf.SyncMessage.sync_value_res)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::sync::protobuf::SyncValueResponse*>(
+      &::shardora::sync::protobuf::_SyncValueResponse_default_instance_);
 }
-inline ::seth::sync::protobuf::SyncValueResponse* SyncMessage::release_sync_value_res() {
-  // @@protoc_insertion_point(field_release:seth.sync.protobuf.SyncMessage.sync_value_res)
+inline ::shardora::sync::protobuf::SyncValueResponse* SyncMessage::release_sync_value_res() {
+  // @@protoc_insertion_point(field_release:shardora.sync.protobuf.SyncMessage.sync_value_res)
   clear_has_sync_value_res();
-  ::seth::sync::protobuf::SyncValueResponse* temp = sync_value_res_;
+  ::shardora::sync::protobuf::SyncValueResponse* temp = sync_value_res_;
   sync_value_res_ = NULL;
   return temp;
 }
-inline ::seth::sync::protobuf::SyncValueResponse* SyncMessage::mutable_sync_value_res() {
+inline ::shardora::sync::protobuf::SyncValueResponse* SyncMessage::mutable_sync_value_res() {
   set_has_sync_value_res();
   if (sync_value_res_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::sync::protobuf::SyncValueResponse>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::sync::protobuf::SyncValueResponse>(GetArenaNoVirtual());
     sync_value_res_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.sync.protobuf.SyncMessage.sync_value_res)
+  // @@protoc_insertion_point(field_mutable:shardora.sync.protobuf.SyncMessage.sync_value_res)
   return sync_value_res_;
 }
-inline void SyncMessage::set_allocated_sync_value_res(::seth::sync::protobuf::SyncValueResponse* sync_value_res) {
+inline void SyncMessage::set_allocated_sync_value_res(::shardora::sync::protobuf::SyncValueResponse* sync_value_res) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete sync_value_res_;
@@ -2375,7 +2375,7 @@ inline void SyncMessage::set_allocated_sync_value_res(::seth::sync::protobuf::Sy
     clear_has_sync_value_res();
   }
   sync_value_res_ = sync_value_res;
-  // @@protoc_insertion_point(field_set_allocated:seth.sync.protobuf.SyncMessage.sync_value_res)
+  // @@protoc_insertion_point(field_set_allocated:shardora.sync.protobuf.SyncMessage.sync_value_res)
 }
 
 #ifdef __GNUC__
@@ -2402,7 +2402,7 @@ inline void SyncMessage::set_allocated_sync_value_res(::seth::sync::protobuf::Sy
 
 }  // namespace protobuf
 }  // namespace sync
-}  // namespace seth
+}  // namespace shardora
 
 // @@protoc_insertion_point(global_scope)
 

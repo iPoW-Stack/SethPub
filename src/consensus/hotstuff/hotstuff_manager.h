@@ -44,7 +44,7 @@
 #include "timeblock/time_block_manager.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
     class VssManager;
@@ -55,7 +55,7 @@ namespace contract {
 };
 
 namespace consensus {
-using namespace seth::hotstuff;
+using namespace shardora::hotstuff;
 
 class WaitingTxsPools;
 class HotstuffManager : public Consensus {
@@ -331,4 +331,4 @@ public:
 
 }  // namespace consensus
 
-}  // namespace seth
+}  // namespace shardora

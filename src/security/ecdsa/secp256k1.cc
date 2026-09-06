@@ -13,7 +13,7 @@
 #include "security/ecdsa/public_key.h"
 #include "security/ecdsa/security_string_trans.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -147,7 +147,7 @@ bool Secp256k1::Secp256k1Sign(
         std::array<byte,32>& tmp_arr = *reinterpret_cast<std::array<byte, 32>*>(ss.s);
         auto tmp_val = c_secp256k1n - u256(tmp_arr);
         U256ToByteArray(tmp_val, ss.s);
-        SETH_DEBUG("DDDDDDDDDDDDDDD");
+        SHARDORA_DEBUG("DDDDDDDDDDDDDDD");
         //assert(false);
     }
 
@@ -313,4 +313,4 @@ std::string Secp256k1::ToAddressWithPublicKey(
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

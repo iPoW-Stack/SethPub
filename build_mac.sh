@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build Seth on macOS.
+# Build Shardora on macOS.
 #
 # Usage:
-#   ./build_mac.sh                  # build seth, Release
-#   ./build_mac.sh seth Debug       # build seth in Debug
+#   ./build_mac.sh                  # build shardora, Release
+#   ./build_mac.sh shardora Debug       # build shardora in Debug
 #   ./build_mac.sh txcli Release    # build another CMake target
 #   ./build_mac.sh test Debug       # build and run tests through CTest
 #   SKIP_THIRD=1 ./build_mac.sh     # skip third-party dependency build step
@@ -16,7 +16,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
 fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CMD="${1:-seth}"
+CMD="${1:-shardora}"
 BUILD_TYPE="${2:-Release}"
 EXTRA_MODE="${3:-}"
 JOBS="${JOBS:-$(sysctl -n hw.logicalcpu 2>/dev/null || echo 4)}"
@@ -99,7 +99,7 @@ COMMON_CMAKE_ARGS=(
     -DREPLACE_WHITEBOX_PK="$PK_ARRAY"
     -DREPLACE_WHITEBOX_SK="$SK_ARRAY"
     -DENABLE_ASAN=OFF
-    -DSETH_ENABLE_LTO=OFF
+    -DSHARDORA_ENABLE_LTO=OFF
     -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF
 )
 

@@ -10,7 +10,7 @@
 #include "common/thread_safe_queue.h"
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -69,4 +69,4 @@ private:
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

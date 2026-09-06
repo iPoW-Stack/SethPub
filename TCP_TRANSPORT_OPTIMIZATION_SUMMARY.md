@@ -38,7 +38,7 @@ if (uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp) ||
     // 连接无效，释放并重新创建
 } else {
     // 连接有效，重用
-    SETH_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p", ...);
+    SHARDORA_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p", ...);
 }
 ```
 

@@ -2,18 +2,18 @@
 
 #include "tnet/socket/server_socket.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
 bool ListenSocket::Listen(int backlog) const {
     if (fd_ < 0) {
-        SETH_ERROR("listen on bad fd [%d]", fd_);
+        SHARDORA_ERROR("listen on bad fd [%d]", fd_);
         return false;
     }
 
     if (listen(fd_, backlog) < 0) {
-        SETH_ERROR("listen on fd [%d] failed, errno [%d]", fd_, errno);
+        SHARDORA_ERROR("listen on fd [%d] failed, errno [%d]", fd_, errno);
         return false;
     }
     return true;
@@ -21,7 +21,7 @@ bool ListenSocket::Listen(int backlog) const {
 
 std::shared_ptr<Socket> ListenSocket::Accept() const {
     if (fd_ < 0) {
-        SETH_ERROR("accept on bad fd [%d]", fd_);
+        SHARDORA_ERROR("accept on bad fd [%d]", fd_);
         return nullptr;
     }
 
@@ -30,7 +30,7 @@ std::shared_ptr<Socket> ListenSocket::Accept() const {
     int fd = accept(fd_, (sockaddr*)&addr, &addrlen);
     if (fd < 0) {
         if (errno != EAGAIN) {
-            SETH_ERROR("accept failed [%s]", strerror(errno));
+            SHARDORA_ERROR("accept failed [%s]", strerror(errno));
         }
 
         return nullptr;
@@ -43,7 +43,7 @@ std::shared_ptr<Socket> ListenSocket::Accept() const {
             local_addr_,
             local_port_);
     if (server_socket == nullptr) {
-        SETH_ERROR("create tcp server socket failed");
+        SHARDORA_ERROR("create tcp server socket failed");
         close(fd);
         return nullptr;
     }
@@ -53,4 +53,4 @@ std::shared_ptr<Socket> ListenSocket::Accept() const {
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

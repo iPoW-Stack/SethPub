@@ -11,13 +11,13 @@ from eth_utils import to_checksum_address
 CONTRACTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(CONTRACTS_DIR))
 
-from deploy_seth import (  # noqa: E402
-    SethClient,
+from deploy_shardora import (  # noqa: E402
+    ShardoraClient,
     compile_contract_file,
     deploy_contract,
     encode_call,
 )
-from request_withdraw_to_solana_from_seth import (  # noqa: E402
+from request_withdraw_to_solana_from_shardora import (  # noqa: E402
     query_contract_raw,
     _extract_hex_output,
     _decode_uint256_word,
@@ -33,8 +33,8 @@ def q_u256(host: str, port: int, from_hex: str, addr_hex: str, sig: str) -> int 
 
 
 def main() -> int:
-    host = os.environ.get("SETH_HOST", "35.197.170.240")
-    port = int(os.environ.get("SETH_PORT", "23001"))
+    host = os.environ.get("SHARDORA_HOST", "35.197.170.240")
+    port = int(os.environ.get("SHARDORA_PORT", "23001"))
     deployer_pk = (os.environ.get("DEPLOYER_PRIVATE_KEY") or os.environ.get("RELAYER_PRIVATE_KEY") or "").strip()
     if not deployer_pk:
         print("ERROR: set DEPLOYER_PRIVATE_KEY or RELAYER_PRIVATE_KEY", file=sys.stderr)
@@ -42,7 +42,7 @@ def main() -> int:
     if not deployer_pk.startswith("0x"):
         deployer_pk = "0x" + deployer_pk
 
-    client = SethClient(host, port)
+    client = ShardoraClient(host, port)
     deployer_addr = client.get_address(deployer_pk)
     print("deployer:", "0x" + deployer_addr, "balance:", client.get_balance(deployer_addr))
 

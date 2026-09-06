@@ -21,7 +21,7 @@
 #include "init/tx_ws_server.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -536,4 +536,4 @@ TEST_F(WebSocketServerTest, TxWsCompleteAndPushCachesAndBroadcastsToCurrentSubsc
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

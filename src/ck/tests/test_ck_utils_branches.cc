@@ -6,7 +6,7 @@
 
 #include "ck/ck_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace ck {
 namespace test {
 
@@ -48,4 +48,4 @@ TEST(CkUtilsBranches, TableNamesAreNonEmptyAndUnique) {
 
 }  // namespace test
 }  // namespace ck
-}  // namespace seth
+}  // namespace shardora

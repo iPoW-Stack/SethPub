@@ -30,7 +30,7 @@ All [PERF_] related logging statements have been successfully removed from the c
 
 ## What Was Fixed
 
-The previous removal script deleted only the SETH_WARN() calls but left the parameter lines intact, creating syntax errors like:
+The previous removal script deleted only the SHARDORA_WARN() calls but left the parameter lines intact, creating syntax errors like:
 ```cpp
 auto verify_end_ms = common::TimeUtils::TimestampMs();
     pool_idx_, (verify_end_ms - verify_begin_ms),
@@ -46,7 +46,7 @@ auto verify_end_ms = common::TimeUtils::TimestampMs();
 
 ✅ All syntax errors resolved - no compilation errors in modified files
 ✅ No remaining orphaned parameter lines detected
-✅ All legitimate SETH_DEBUG/SETH_WARN/SETH_ERROR calls preserved
+✅ All legitimate SHARDORA_DEBUG/SHARDORA_WARN/SHARDORA_ERROR calls preserved
 ✅ Code is now ready for compilation
 
 ## Summary

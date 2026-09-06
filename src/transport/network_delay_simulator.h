@@ -7,7 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace seth {
+namespace shardora {
 namespace transport {
 
 /**
@@ -15,25 +15,25 @@ namespace transport {
  * 
  * 用于模拟网络延迟、抖动和丢包，避免 TCP 层报文破坏
  * 通过环境变量配置:
- *   SETH_NETWORK_ENABLED=1        # 启用网络模拟 (0=禁用)
- *   SETH_NETWORK_DELAY_MS=25      # 单向延迟 (ms)
- *   SETH_NETWORK_JITTER_MS=10     # 抖动 (ms)
- *   SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 (0-1)
+ *   SHARDORA_NETWORK_ENABLED=1        # 启用网络模拟 (0=禁用)
+ *   SHARDORA_NETWORK_DELAY_MS=25      # 单向延迟 (ms)
+ *   SHARDORA_NETWORK_JITTER_MS=10     # 抖动 (ms)
+ *   SHARDORA_NETWORK_LOSS_RATE=0.0001 # 丢包率 (0-1)
  */
 class NetworkDelaySimulator {
 public:
     NetworkDelaySimulator() {
         // 从环境变量读取配置
-        const char* enabled_str = std::getenv("SETH_NETWORK_ENABLED");
+        const char* enabled_str = std::getenv("SHARDORA_NETWORK_ENABLED");
         enabled_ = enabled_str ? std::atoi(enabled_str) : 0;
         
-        const char* delay_str = std::getenv("SETH_NETWORK_DELAY_MS");
+        const char* delay_str = std::getenv("SHARDORA_NETWORK_DELAY_MS");
         delay_ms_ = delay_str ? std::atoi(delay_str) : 0;
         
-        const char* jitter_str = std::getenv("SETH_NETWORK_JITTER_MS");
+        const char* jitter_str = std::getenv("SHARDORA_NETWORK_JITTER_MS");
         jitter_ms_ = jitter_str ? std::atoi(jitter_str) : 0;
         
-        const char* loss_str = std::getenv("SETH_NETWORK_LOSS_RATE");
+        const char* loss_str = std::getenv("SHARDORA_NETWORK_LOSS_RATE");
         loss_rate_ = loss_str ? std::atof(loss_str) : 0.0;
         
         // 初始化随机数生成器
@@ -112,4 +112,4 @@ private:
 };
 
 }  // namespace transport
-}  // namespace seth
+}  // namespace shardora

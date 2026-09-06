@@ -17,7 +17,7 @@
 #include "common/random.h"
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -338,4 +338,4 @@ TEST_F(TestDkgBasic, CommonPublicKeyFromDifferentSubsets) {
 
 }  // namespace bls
 
-}  // namespace seth
+}  // namespace shardora

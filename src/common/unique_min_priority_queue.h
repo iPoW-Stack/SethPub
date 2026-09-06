@@ -4,7 +4,7 @@
 #include <unordered_set>
 #include <cstdint>
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -54,4 +54,4 @@ private:
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

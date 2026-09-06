@@ -4,7 +4,7 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
     class VssManager;
@@ -27,7 +27,7 @@ public:
     virtual int TxToBlockTx(
             const pools::protobuf::TxMessage& tx_info,
             block::protobuf::BlockTx* block_tx) {
-        SETH_DEBUG("root to tx consensus coming: %s, nonce: %lu, val: %s", 
+        SHARDORA_DEBUG("root to tx consensus coming: %s, nonce: %lu, val: %s", 
             common::Encode::HexEncode(tx_info.to()).c_str(), 
             tx_info.nonce(),
             common::Encode::HexEncode(tx_info.value()).c_str());
@@ -41,7 +41,7 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx);
 
@@ -55,4 +55,4 @@ private:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

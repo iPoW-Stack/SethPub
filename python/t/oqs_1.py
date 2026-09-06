@@ -6,31 +6,31 @@ import requests
 import binascii
 from gmssl import sm2, sm3, func
 
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
 # --- 5. Main Execution ---
 PROBE_POOL_SOL = """
 pragma solidity ^0.8.20;
 
 contract ProbePool {
-    uint256 public reserveSETH;
+    uint256 public reserveSHARDORA;
     uint256 public reserveUSDC;
 
-    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSETH, uint256 resUSDC);
+    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSHARDORA, uint256 resUSDC);
 
     constructor(uint256 s, uint256 u) payable {
-        reserveSETH = s;
+        reserveSHARDORA = s;
         reserveUSDC = u;
     }
 
-    function sellSETH(uint256 m) external payable returns (uint256 out) {
-        out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+    function sellSHARDORA(uint256 m) external payable returns (uint256 out) {
+        out = (msg.value * reserveUSDC) / (reserveSHARDORA + msg.value);
         require(out >= m, 'ProbePool: slippage');
 
-        reserveSETH += msg.value;
+        reserveSHARDORA += msg.value;
         reserveUSDC -= out;
 
-        emit PoolSwap(msg.sender, msg.value, out, reserveSETH, reserveUSDC);
+        emit PoolSwap(msg.sender, msg.value, out, reserveSHARDORA, reserveUSDC);
         return out;
     }
 }
@@ -60,9 +60,9 @@ contract ProbeTreasury {
         emit TreasuryForwarded(pool, msg.value, m);
 
         (bool ok, bytes memory ret) = pool.call{value: msg.value}(
-            abi.encodeWithSignature('sellSETH(uint256)', m)
+            abi.encodeWithSignature('sellSHARDORA(uint256)', m)
         );
-        require(ok, 'ProbeTreasury: call sellSETH failed');
+        require(ok, 'ProbeTreasury: call sellSHARDORA failed');
 
         out = abi.decode(ret, (uint256));
         totalSwaps += 1;
@@ -109,7 +109,7 @@ def test_transfer(w3, MY, KEY, dest):
     balance_before = w3.client.get_balance(dest) # 1. Record balance before transfer
     print(f"Balance before: {balance_before}")
     
-    receipt = w3.seth.send_transaction({'to': dest, 'value': transfer_amount}, KEY) # 2. Execute transfer transaction
+    receipt = w3.shardora.send_transaction({'to': dest, 'value': transfer_amount}, KEY) # 2. Execute transfer transaction
     
     if receipt.get('status') == 0: # 3. Verify transaction status
         print(f"Transfer Sent Successfully. Hash: {receipt.get('tx_hash', 'N/A')}")
@@ -136,7 +136,7 @@ def test_transfer(w3, MY, KEY, dest):
 
 if __name__ == "__main__":
     IP, PORT = "127.0.0.1", 23001
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     test_transfer(
         w3, MY, 

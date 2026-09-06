@@ -2,7 +2,7 @@
 
 #include "tnet/socket/tcp_socket.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -24,4 +24,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

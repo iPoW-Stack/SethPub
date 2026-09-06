@@ -5,7 +5,7 @@
 
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -137,4 +137,4 @@ std::vector<std::pair<int32_t, double>> Lof::GetOutliers(int32_t k) {
 
 };  // namespace common
 
-};  // namespace seth
+};  // namespace shardora

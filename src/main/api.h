@@ -1,5 +1,5 @@
 /**
- * Seth C++ SDK & Server Implementation
+ * Shardora C++ SDK & Server Implementation
  * Replaces Python Django logic with high-performance C++.
  */
 
@@ -33,7 +33,7 @@
 #include "common/hash.h"
 #include "security/ecdsa/ecdsa.h"
 
-namespace seth {
+namespace shardora {
 
 using json = nlohmann::json;
 
@@ -185,9 +185,9 @@ public:
 };
 
 // ==========================================
-// 4. Seth Client
+// 4. Shardora Client
 // ==========================================
-class SethClient {
+class ShardoraClient {
 public:
     int64_t fetchNonce(const std::string& address) {
         auto& cli = getOrCreateClient();
@@ -233,13 +233,13 @@ public:
         return -1; 
     }
 
-    SethClient(
+    ShardoraClient(
             const std::string& node_host = "127.0.0.1", 
             int node_port = 23001)
             : node_host_(node_host), node_port_(node_port) {
         ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
     }
-    ~SethClient() { secp256k1_context_destroy(ctx); }
+    ~ShardoraClient() { secp256k1_context_destroy(ctx); }
 
     // Persistent SSL client for connection reuse (avoids repeated TLS handshakes)
     httplib::SSLClient& getOrCreateClient() {
@@ -299,7 +299,7 @@ public:
         message.append(std::string((char*)&tmp_step, sizeof(tmp_step)));
         if (!contract_bytes.empty()) message.append(common::Encode::HexDecode(contract_bytes));
         if (!input.empty()) message.append(common::Encode::HexDecode(input));
-        // Only append prefund when non-zero, matching seth_sdk.py behaviour.
+        // Only append prefund when non-zero, matching shardora_sdk.py behaviour.
         if (prefund > 0) message.append(std::string((char*)&prefund, sizeof(prefund)));
 
         std::string h_str = common::Hash::keccak256(message);
@@ -320,7 +320,7 @@ public:
             if (nonce == -1) nonce = fetchNonce(common::Encode::HexEncode(ecdsa.GetAddress()));
             if (nonce == -1) return false;
             nonce++;
-            // Must match seth_sdk.py: gas_limit=5000000, gas_price=1
+            // Must match shardora_sdk.py: gas_limit=5000000, gas_price=1
             uint64_t gas_limit = 5000000lu;
             uint64_t gas_price = 1llu;
             Sign sig = signMessage(ecdsa, nonce, to, amount, gas_limit, gas_price, step, contract_bytes, input, prefund, key, val);
@@ -407,11 +407,11 @@ public:
 };
 
 // ==========================================
-// 6. Seth SDK (Facade)
+// 6. Shardora SDK (Facade)
 // ==========================================
-class SethSDK {
+class ShardoraSDK {
 private:
-    SethClient client;
+    ShardoraClient client;
 
     std::string padTo32Bytes(std::string hex, bool isNumeric = true) {
         if (hex.length() >= 2 && hex.substr(0, 2) == "0x") hex = hex.substr(2);
@@ -454,7 +454,7 @@ private:
     }
 
 public:
-    SethSDK(const std::string& node_host = "127.0.0.1", int node_port = 23001) : client(node_host, node_port) {}
+    ShardoraSDK(const std::string& node_host = "127.0.0.1", int node_port = 23001) : client(node_host, node_port) {}
     int64_t fetchNonce(const std::string& address) {
         return client.fetchNonce(address); 
     }
@@ -737,13 +737,13 @@ public:
 
 // int main() {
 //     // 1. Initialize SDK instance
-//     seth::SethSDK sdk;
+//     shardora::ShardoraSDK sdk;
     
 //     // Initialize random seed (for simulating address generation)
 //     srand(time(0));
 
 //     std::cout << "=============================================" << std::endl;
-//     std::cout << "      Seth C++ SDK Client Demo           " << std::endl;
+//     std::cout << "      Shardora C++ SDK Client Demo           " << std::endl;
 //     std::cout << "=============================================" << std::endl;
 
 //     // -------------------------------------------------
@@ -776,7 +776,7 @@ public:
 //     // Step 1: Compile Solidity
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 1] Compiling Solidity..." << std::endl;
-//     seth::json compile_res = sdk.compileSolidity(source_code);
+//     shardora::json compile_res = sdk.compileSolidity(source_code);
 
 //     if (compile_res["status"] != 0) {
 //         std::cerr << "Compile Failed: " << compile_res["msg"] << std::endl;
@@ -792,14 +792,14 @@ public:
 
 //     // -------------------------------------------------
 //     // Step 2: Deploy Contract
-//     // Constructor parameters: (uint256: 12345, string: "SethAdmin")
+//     // Constructor parameters: (uint256: 12345, string: "ShardoraAdmin")
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 2] Deploying Contract..." << std::endl;
     
 //     std::vector<std::string> constructor_types = {"uint256", "string"};
-//     std::vector<std::string> constructor_args = {"12345", "SethAdmin"};
+//     std::vector<std::string> constructor_args = {"12345", "ShardoraAdmin"};
     
-//     seth::json deploy_res = sdk.deploySolidity(
+//     shardora::json deploy_res = sdk.deploySolidity(
 //         private_key, 
 //         bytecode, 
 //         0,      // amount (transfer amount)
@@ -822,7 +822,7 @@ public:
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 3] Setting Gas Prefund..." << std::endl;
     
-//     seth::json prefund_res = sdk.setGasPrefund(
+//     shardora::json prefund_res = sdk.setGasPrefund(
 //         private_key, 
 //         contract_address, 
 //         10000 // Supplement Gas
@@ -839,7 +839,7 @@ public:
 //     std::vector<std::string> call_types = {"uint256"};
 //     std::vector<std::string> call_args = {"88888"};
 
-//     seth::json call_res = sdk.callFunctionSolidity(
+//     shardora::json call_res = sdk.callFunctionSolidity(
 //         private_key, 
 //         contract_address, 
 //         0,       // amount
@@ -857,7 +857,7 @@ public:
 //     std::cout << "\n[Step 5A] Querying 'ownerName' (Manual Decode)..." << std::endl;
     
 //     // ownerName is a public variable, getter is automatically generated
-//     seth::json query_res_manual = sdk.queryFunctionSolidity(
+//     shardora::json query_res_manual = sdk.queryFunctionSolidity(
 //         private_key,
 //         contract_address,
 //         "ownerName",
@@ -877,7 +877,7 @@ public:
 //     // -------------------------------------------------
 //     std::cout << "\n[Step 6B] Querying 'get()' (Auto ABI Decode)..." << std::endl;
 
-//     seth::json query_res_auto = sdk.queryContractWithABI(
+//     shardora::json query_res_auto = sdk.queryContractWithABI(
 //         private_key,
 //         contract_address,
 //         abi_json_str, // Pass the ABI string generated in Step 1
@@ -888,7 +888,7 @@ public:
 
 //     if (query_res_auto["status"] == 0) {
 //         std::cout << "-> Decoded Result: " << query_res_auto["decoded_response"].dump(4) << std::endl;
-//         // Expected output: [88888, "SethAdmin"]
+//         // Expected output: [88888, "ShardoraAdmin"]
 //     } else {
 //         std::cerr << "-> Query Failed: " << query_res_auto["msg"] << std::endl;
 //     }

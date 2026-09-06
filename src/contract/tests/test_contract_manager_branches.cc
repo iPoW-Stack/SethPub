@@ -10,7 +10,7 @@
 #include "security/ecdsa/ecdsa.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -86,4 +86,4 @@ TEST(ContractUtilsBranches, PrecompileAddressesAreTwentyBytesAndDistinct) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora

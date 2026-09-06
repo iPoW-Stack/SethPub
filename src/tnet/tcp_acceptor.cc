@@ -4,7 +4,7 @@
 #include "tnet/socket/listen_socket.h"
 #include "tnet/tnet_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -14,13 +14,13 @@ void NewConnectionHandler(
         TcpConnection& conn,
         ConnectionHandler& handler) {
     if (handler && !handler(conn)) {
-        SETH_ERROR("new connection handler failed, destroy connection");
+        SHARDORA_ERROR("new connection handler failed, destroy connection");
         conn.Destroy(true);
     } else {
         EventLoop& event_loop = conn.GetEventLoop();
         int fd = conn.GetSocket()->GetFd();
         if (!event_loop.EnableIoEvent(fd, kEventRead | kEventWrite, conn)) {
-            SETH_ERROR("enable read event on new socket[%d] failed", fd);
+            SHARDORA_ERROR("enable read event on new socket[%d] failed", fd);
             conn.Destroy(true);
         }
     }
@@ -56,26 +56,26 @@ TcpAcceptor::~TcpAcceptor() {
 bool TcpAcceptor::Start() {
     common::AutoSpinLock gaurd(mutex_);
     if (socket_ == NULL) {
-        SETH_ERROR("socket must be set");
+        SHARDORA_ERROR("socket must be set");
         return false;
     }
 
     if (!stop_) {
-        SETH_ERROR("already start");
+        SHARDORA_ERROR("already start");
         return false;
     }
 
     if (!ImplResourceInit()) {
-        SETH_ERROR("impl resouce init failed");
+        SHARDORA_ERROR("impl resouce init failed");
         return false;
     }
 
     bool rc = event_loop_.EnableIoEvent(socket_->GetFd(), kEventRead, *this);
     if (rc) {
         stop_ = false;
-        SETH_DEBUG("enable accept event success");
+        SHARDORA_DEBUG("enable accept event success");
     } else {
-        SETH_ERROR("enable accept event failed");
+        SHARDORA_ERROR("enable accept event failed");
     }
 
     check_conn_tick_.CutOff(
@@ -87,12 +87,12 @@ bool TcpAcceptor::Start() {
 bool TcpAcceptor::Stop() {
     common::AutoSpinLock gaurd(mutex_);
     if (socket_ == NULL) {
-        SETH_ERROR("socket must be set");
+        SHARDORA_ERROR("socket must be set");
         return false;
     }
 
     if (stop_) {
-        SETH_ERROR("already stop");
+        SHARDORA_ERROR("already stop");
         return false;
     }
 
@@ -100,9 +100,9 @@ bool TcpAcceptor::Stop() {
     bool rc = event_loop_.DisableIoEvent(socket_->GetFd(), kEventRead, *this);
     if (rc) {
         stop_ = true;
-        SETH_ERROR("disable accept event success");
+        SHARDORA_ERROR("disable accept event success");
     } else {
-        SETH_ERROR("disable accept event failed");
+        SHARDORA_ERROR("disable accept event failed");
     }
 
     return rc;
@@ -126,7 +126,7 @@ void TcpAcceptor::Destroy() {
 bool TcpAcceptor::SetListenSocket(Socket& socket) {
     common::AutoSpinLock gaurd(mutex_);
     if (socket_ != NULL) {
-        SETH_ERROR("listen socket already set");
+        SHARDORA_ERROR("listen socket already set");
         return false;
     }
 
@@ -159,7 +159,7 @@ void TcpAcceptor::ReleaseByIOThread() {
 bool TcpAcceptor::OnRead() {
     ListenSocket* listenSocket = dynamic_cast<ListenSocket*>(socket_);
     if (listenSocket == NULL) {
-        SETH_ERROR("cast to TcpListenSocket failed");
+        SHARDORA_ERROR("cast to TcpListenSocket failed");
         return false;
     }
 
@@ -173,33 +173,33 @@ bool TcpAcceptor::OnRead() {
         std::string from_ip = InAddrToString(svr_socket->peer_addr());
         uint16_t from_port = svr_socket->peer_port();
         if (!socket->SetNonBlocking(true)) {
-            SETH_ERROR("set nonblocking failed, close socket");
+            SHARDORA_ERROR("set nonblocking failed, close socket");
             // Bug fix #12: socket is a shared_ptr, don't call Free() manually.
             // Let the shared_ptr destructor handle cleanup.
             continue;
         }
 
         if (!socket->SetCloseExec(true)) {
-            SETH_ERROR("set close exec failed");
+            SHARDORA_ERROR("set close exec failed");
         }
 
         if (recv_buff_size_ != 0 && !socket->SetSoRcvBuf(recv_buff_size_)) {
-            SETH_ERROR("set recv buffer size failed");
+            SHARDORA_ERROR("set recv buffer size failed");
         }
 
         if (send_buff_size_ != 0 && !socket->SetSoSndBuf(send_buff_size_)) {
-            SETH_ERROR("set send buffer size failed");
+            SHARDORA_ERROR("set send buffer size failed");
         }
 
         // Enable TCP_NODELAY on accepted connections for low-latency consensus.
         if (!socket->SetTcpNoDelay(true)) {
-            SETH_ERROR("set tcp nodelay failed on accepted socket");
+            SHARDORA_ERROR("set tcp nodelay failed on accepted socket");
         }
 
         EventLoop& event_loop = GetNextEventLoop();
         auto conn = CreateTcpServerConnection(event_loop, socket);
         if (conn == nullptr) {
-            SETH_ERROR("create connection failed, close socket[%d]",
+            SHARDORA_ERROR("create connection failed, close socket[%d]",
                 socket->GetFd());
             // Bug fix #13: Same as above - shared_ptr handles cleanup.
             continue;
@@ -217,7 +217,7 @@ bool TcpAcceptor::OnRead() {
             std::ref(*conn),
             std::ref(conn_handler_)));
         event_loop.Wakeup();
-        SETH_DEBUG("accept success %s:%d", from_ip.c_str(), from_port);
+        SHARDORA_DEBUG("accept success %s:%d", from_ip.c_str(), from_port);
         conn_map_[from_ip + std::to_string(from_port)] = conn;
         if (in_check_queue_) {
             in_check_queue_->push(conn);
@@ -233,7 +233,7 @@ bool TcpAcceptor::OnRead() {
             auto iter = conn_map_.find(key);
             if (iter != conn_map_.end()) {
                 conn_map_.erase(iter);
-                SETH_DEBUG("remove accept connection: %s", key.c_str());
+                SHARDORA_DEBUG("remove accept connection: %s", key.c_str());
             }
         }
     }
@@ -263,9 +263,9 @@ void TcpAcceptor::CheckConnectionValid() {
         auto conn = waiting_check_queue_.front();
         waiting_check_queue_.pop_front();
         conn->ShouldReconnect();
-        SETH_DEBUG("ShouldReconnect called now checked stopted conn waiting_check_queue_ size: %u", (unsigned)waiting_check_queue_.size());
+        SHARDORA_DEBUG("ShouldReconnect called now checked stopted conn waiting_check_queue_ size: %u", (unsigned)waiting_check_queue_.size());
         if (conn->CheckStoped()) {
-            SETH_DEBUG("checked stopted conn.");
+            SHARDORA_DEBUG("checked stopted conn.");
             if (out_check_queue_) {
                 out_check_queue_->push(conn);
             }
@@ -305,4 +305,4 @@ std::shared_ptr<TcpConnection> TcpAcceptor::CreateTcpServerConnection(
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

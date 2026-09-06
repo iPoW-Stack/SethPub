@@ -13,7 +13,7 @@
 #include "transport/tcp_transport.h"
 #include "transport/multi_thread.h"
 
-namespace seth {
+namespace shardora {
 
 namespace nat {
     class Detection;
@@ -142,4 +142,4 @@ typedef std::shared_ptr<BaseDht> BaseDhtPtr;
 
 }  // namespace dht
 
-}  // namespace seth
+}  // namespace shardora

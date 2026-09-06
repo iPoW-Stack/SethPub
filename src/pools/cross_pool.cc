@@ -8,7 +8,7 @@
 #include "network/network_utils.h"
 #include "pools/tx_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
     
@@ -54,18 +54,18 @@ uint32_t CrossPool::SyncMissingBlocks(uint64_t now_tm_ms) {
     }
 
     if (kv_sync_ == nullptr) {
-        SETH_DEBUG("kv_sync_ == nullptr");
+        SHARDORA_DEBUG("kv_sync_ == nullptr");
         return 0;
     }
 
     if (height_tree_ptr_ == nullptr) {
-        SETH_DEBUG("height_tree_ptr_ == nullptr");
+        SHARDORA_DEBUG("height_tree_ptr_ == nullptr");
         return 0;
     }
 
     if (latest_height_ == common::kInvalidUint64) {
         // sync latest height from neighbors
-        SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
+        SHARDORA_DEBUG("now add sync height 1, %u_%u_%lu", 
             des_sharding_id_,
             pool_index_,
             0);
@@ -87,14 +87,14 @@ uint32_t CrossPool::SyncMissingBlocks(uint64_t now_tm_ms) {
                     synced_height_ = invalid_heights[i];
                 }
                 
-                SETH_DEBUG("exists des shard: %u, pool: %u, sync missing blocks latest height: %lu,"
+                SHARDORA_DEBUG("exists des shard: %u, pool: %u, sync missing blocks latest height: %lu,"
                     "invaid heights size: %u, height: %lu",
                     des_sharding_id_, pool_index_, latest_height_,
                     invalid_heights.size(), invalid_heights[i]);
                 continue;
             }
 
-            SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
+            SHARDORA_DEBUG("now add sync height 1, %u_%u_%lu", 
                 des_sharding_id_,
                 pool_index_,
                 invalid_heights[i]);
@@ -111,4 +111,4 @@ uint32_t CrossPool::SyncMissingBlocks(uint64_t now_tm_ms) {
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

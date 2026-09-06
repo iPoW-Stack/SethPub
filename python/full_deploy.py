@@ -1,7 +1,7 @@
 """
 全量部署脚本 - 链重置后一键执行所有操作:
   1. 部署 V3 Factory
-  2. 部署 WSETH9
+  2. 部署 WSHARDORA9
   3. 部署 sUSDC
   4. sUSDC.addMinter(sender)
   5. sUSDC.mint(sender, 1_000_000 sUSDC)
@@ -20,15 +20,15 @@ from ecdsa import SigningKey, SECP256k1
 from ecdsa.util import sigencode_string_canonize
 import eth_abi
 from eth_utils import to_checksum_address
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
-HOST        = os.getenv("SETH_HOST",    "35.197.170.240")
-PORT        = int(os.getenv("SETH_PORT", "23001"))
+HOST        = os.getenv("SHARDORA_HOST",    "35.197.170.240")
+PORT        = int(os.getenv("SHARDORA_PORT", "23001"))
 PRIVATE_KEY = "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b"
 
 FEE               = 3000
 MINT_AMOUNT       = 1_000_000 * 10**6   # 1,000,000 sUSDC (6 decimals)
-INITIAL_PRICE_RAW = (10**18) / (2000 * 10**6)  # 1 WSETH9 = 2000 sUSDC
+INITIAL_PRICE_RAW = (10**18) / (2000 * 10**6)  # 1 WSHARDORA9 = 2000 sUSDC
 
 BASE_URL = f"http://{HOST}:{PORT}"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -176,12 +176,12 @@ def compile_all():
     factory_key = next(k for k in compiled if "UniswapV3Factory" in k and "Pool" not in k)
     pool_key    = next(k for k in compiled if "UniswapV3Pool" in k and "Deployer" not in k)
 
-    # WSETH9
+    # WSHARDORA9
     with open(os.path.join(SCRIPT_DIR, "weth9_v8.sol"), encoding="utf-8") as f:
-        wseth9_src = f.read()
-    wseth9_compiled = compile_source(wseth9_src, output_values=["abi","bin"],
+        wshardora9_src = f.read()
+    wshardora9_compiled = compile_source(wshardora9_src, output_values=["abi","bin"],
                                      solc_version="0.8.20", optimize=True, optimize_runs=200)
-    wseth9_contract = list(wseth9_compiled.values())[0]
+    wshardora9_contract = list(wshardora9_compiled.values())[0]
 
     # sUSDC
     with open(os.path.join(SCRIPT_DIR, "sUSDC.sol"), encoding="utf-8") as f:
@@ -192,12 +192,12 @@ def compile_all():
 
     print(f"  Factory : {len(compiled[factory_key]['bin'])//2} bytes")
     print(f"  Pool    : {len(compiled[pool_key]['bin'])//2} bytes")
-    print(f"  WSETH9  : {len(wseth9_contract['bin'])//2} bytes")
+    print(f"  WSHARDORA9  : {len(wshardora9_contract['bin'])//2} bytes")
     print(f"  sUSDC   : {len(susdc_contract['bin'])//2} bytes")
 
     return (compiled[factory_key]["bin"].strip().replace("0x",""),
             compiled[pool_key]["bin"].strip().replace("0x",""),
-            wseth9_contract["bin"].strip().replace("0x",""),
+            wshardora9_contract["bin"].strip().replace("0x",""),
             susdc_contract["bin"].strip().replace("0x",""))
 
 # ---------- main ----------
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     print(f"Balance : {get_balance(sender)}")
     print()
 
-    factory_bin, pool_bin, wseth9_bin, susdc_bin = compile_all()
+    factory_bin, pool_bin, wshardora9_bin, susdc_bin = compile_all()
     print()
 
     # 1. Deploy Factory
@@ -219,9 +219,9 @@ if __name__ == "__main__":
     factory_addr, ok = deploy_contract("Factory", "11", factory_bin)
     if not ok: exit(1)
 
-    # 2. Deploy WSETH9
-    print("\n[2] Deploy WSETH9...")
-    wseth9_addr, ok = deploy_contract("WSETH9", "12", wseth9_bin)
+    # 2. Deploy WSHARDORA9
+    print("\n[2] Deploy WSHARDORA9...")
+    wshardora9_addr, ok = deploy_contract("WSHARDORA9", "12", wshardora9_bin)
     if not ok: exit(1)
 
     # 3. Deploy sUSDC
@@ -240,10 +240,10 @@ if __name__ == "__main__":
                   ["address", "uint256"], [to_checksum_address("0x" + sender), MINT_AMOUNT])
 
     # token sort
-    token0 = susdc_addr if int(susdc_addr,16) < int(wseth9_addr,16) else wseth9_addr
-    token1 = wseth9_addr if token0 == susdc_addr else susdc_addr
-    print(f"\n  token0: {token0}  ({'sUSDC' if token0==susdc_addr else 'WSETH9'})")
-    print(f"  token1: {token1}  ({'WSETH9' if token1==wseth9_addr else 'sUSDC'})")
+    token0 = susdc_addr if int(susdc_addr,16) < int(wshardora9_addr,16) else wshardora9_addr
+    token1 = wshardora9_addr if token0 == susdc_addr else susdc_addr
+    print(f"\n  token0: {token0}  ({'sUSDC' if token0==susdc_addr else 'WSHARDORA9'})")
+    print(f"  token1: {token1}  ({'WSHARDORA9' if token1==wshardora9_addr else 'sUSDC'})")
 
     # 6. createPool
     print("\n[6] Factory.createPool(token0, token1, fee)...")
@@ -261,9 +261,9 @@ if __name__ == "__main__":
     print(f"  Pool addr: {pool_addr}")
 
 
-    w3 = SethWeb3Mock(HOST, PORT)
+    w3 = ShardoraWeb3Mock(HOST, PORT)
     MY = w3.client.get_address(PRIVATE_KEY)
-    contract = w3.seth.contract(address=pool_addr, sender_address=MY)
+    contract = w3.shardora.contract(address=pool_addr, sender_address=MY)
     initial = contract.get_prefund(MY)
     print(f"Initial Prefund: {initial}")
     deposit_amount = 5000000
@@ -332,7 +332,7 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 60)
     print(f"Factory : {factory_addr}")
-    print(f"WSETH9  : {wseth9_addr}")
+    print(f"WSHARDORA9  : {wshardora9_addr}")
     print(f"sUSDC   : {susdc_addr}")
     print(f"Pool    : {pool_addr}")
     print(f"token0  : {token0}")

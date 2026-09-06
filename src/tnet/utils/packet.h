@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -38,4 +38,4 @@ protected:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

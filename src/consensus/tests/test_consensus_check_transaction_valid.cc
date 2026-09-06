@@ -17,7 +17,7 @@
 #include "security/ecdsa/ecdsa.h"
 #include "sync/key_value_sync.h"
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -172,4 +172,4 @@ TEST_F(CheckTransactionValidFixture, NonUserTxWithoutStorageReturnsZero) {
 
 }  // namespace test
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

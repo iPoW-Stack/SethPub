@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package seth.block.protobuf;
+package shardora.block.protobuf;
 import "protos/address.proto";
 import "protos/bls.proto";
 import "protos/elect.proto";

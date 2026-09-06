@@ -6,7 +6,7 @@
 #include "pools/tx_pool_manager.h"
 #include <common/log.h>
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -57,4 +57,4 @@ private:
 
 }  // namespace consensus
 
-}  // namespace seth
+}  // namespace shardora

@@ -24,7 +24,7 @@
 #include "security/security.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -155,4 +155,4 @@ private:
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora

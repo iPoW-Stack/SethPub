@@ -6,7 +6,7 @@
 
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -409,4 +409,4 @@ void HeightTreeLevel::FlushToDb(db::DbWriteBatch& db_batch) {
 
 };  // namespace pools
 
-};  // namespace seth
+};  // namespace shardora

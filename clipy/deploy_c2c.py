@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 C2CSellOrder 合约部署与完整流程测试
-目标网络：单机 5 分片 seth (shard3 API)
-运行方式：在 seth-builder 容器内执行，挂载 /data/seth/clipy 为工作目录
+目标网络：单机 5 分片 shardora (shard3 API)
+运行方式：在 shardora-builder 容器内执行，挂载 /data/shardora/clipy 为工作目录
 """
 import os, sys, time, secrets, json
-sys.path.insert(0, "/data/seth/clipy")
+sys.path.insert(0, "/data/shardora/clipy")
 
-from seth_sdk import SethClient, SethWeb3Mock, StepType, compile_and_link, calc_create2_address
+from shardora_sdk import ShardoraClient, ShardoraWeb3Mock, StepType, compile_and_link, calc_create2_address
 import solcx as _solcx
 
 import xxhash
@@ -18,8 +18,8 @@ from eth_abi import encode as abi_encode
 import solcx
 solcx.install_solc("0.8.34")
 
-HOST          = os.environ.get("SETH_HOST", "139.159.119.119")
-PORT          = int(os.environ.get("SETH_PORT", "23001"))
+HOST          = os.environ.get("SHARDORA_HOST", "139.159.119.119")
+PORT          = int(os.environ.get("SHARDORA_PORT", "23001"))
 FUNDER_KEY    = os.environ.get("FUNDER_KEY",
     "c8ee398141fe31308fce258fa4c0fc21288a74a221982db252cb10a94bf7063b")
 TARGET_SHARD  = 3
@@ -366,11 +366,11 @@ contract C2CSellOrder {
 # ── 主流程 ─────────────────────────────────────────────────
 print("=" * 60)
 print("  C2CSellOrder 合约部署与测试")
-print(f"  Seth: {HOST}:{PORT}  shard={TARGET_SHARD}")
+print(f"  Shardora: {HOST}:{PORT}  shard={TARGET_SHARD}")
 print("=" * 60)
 
-client = SethClient(HOST, PORT)
-w3     = SethWeb3Mock(HOST, PORT)
+client = ShardoraClient(HOST, PORT)
+w3     = ShardoraWeb3Mock(HOST, PORT)
 
 funder_addr = client.get_address(FUNDER_KEY)
 print(f"\nFunder: {funder_addr}  (shard{calc_shard_id(funder_addr)})")
@@ -463,7 +463,7 @@ CALL_GAS = 20_000_000
 ACCT_PREFUND = 200_000_000
 
 # ── 激活账户 + 充足 prefund ────────────────────────────────────
-# Seth 中新账户（只收过转账、未发出过任何交易）直接作为发送方会报
+# Shardora 中新账户（只收过转账、未发出过任何交易）直接作为发送方会报
 # kTxInvalidAddress(10005)，必须先调用一次 contract.prefund() 来
 # 在链上"激活"该账户。同时充足的 prefund 用于后续所有合约调用 gas。
 print("\n[0] 激活测试账户（prefund，建立链上 nonce）...")

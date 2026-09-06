@@ -5,7 +5,7 @@
 #include "transport/msg_decoder.h"
 #include "tnet/utils/msg_packet.h"
 
-namespace seth {
+namespace shardora {
 namespace transport {
 namespace test {
 
@@ -227,4 +227,4 @@ TEST(MsgDecoderBranches, DecodePayloadOneByteAtATime) {
 
 }  // namespace test
 }  // namespace transport
-}  // namespace seth
+}  // namespace shardora

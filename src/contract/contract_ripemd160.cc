@@ -6,7 +6,7 @@
 #include "common/encode.h"
 #include "common/log.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -23,7 +23,7 @@ int Ripemd160::call(
     // Gas cost: 600 base + 120 per 32-byte word (rounds up)
     int64_t gas_used = ComputeGasUsed(600, 120, static_cast<uint32_t>(param.data.size()));
     if (res->gas_left < gas_used) {
-        SETH_DEBUG("ripemd160: out of gas, required=%ld, available=%ld",
+        SHARDORA_DEBUG("ripemd160: out of gas, required=%ld, available=%ld",
             gas_used, res->gas_left);
         return kContractError;
     }
@@ -51,7 +51,7 @@ int Ripemd160::call(
 
     res->gas_left -= gas_used;
 
-    SETH_DEBUG("ripemd160: input_len=%zu, digest=%s",
+    SHARDORA_DEBUG("ripemd160: input_len=%zu, digest=%s",
         param.data.size(),
         common::Encode::HexEncode(std::string((char*)digest, RIPEMD160_DIGEST_LENGTH)).c_str());
 
@@ -60,4 +60,4 @@ int Ripemd160::call(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

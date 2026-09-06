@@ -4,7 +4,7 @@
 
 #include "elect/elect_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace elect {
 namespace test {
 
@@ -72,4 +72,4 @@ TEST(ElectConstantsBranches, AvailableJoinExceedsTolerateWindow) {
 
 }  // namespace test
 }  // namespace elect
-}  // namespace seth
+}  // namespace shardora

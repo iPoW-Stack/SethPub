@@ -7,7 +7,7 @@
 #include <openssl/ec.h>
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -43,4 +43,4 @@ private:
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

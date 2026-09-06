@@ -37,9 +37,9 @@ Auto-registering sender from raw transaction: 0b8e65b9b71897d6827689b89e2aa4c3ed
 
 **Root Cause Analysis:**
 
-The transaction is accepted but not being included in a block. This is expected behavior in Seth blockchain because:
+The transaction is accepted but not being included in a block. This is expected behavior in Shardora blockchain because:
 
-1. **Seth uses a consensus mechanism** (HotStuff/ZBFT) that requires:
+1. **Shardora uses a consensus mechanism** (HotStuff/ZBFT) that requires:
    - Multiple nodes for consensus (or special single-node mode)
    - Block production triggered by consensus rounds
    - Leader election and voting
@@ -61,7 +61,7 @@ The transaction is accepted but not being included in a block. This is expected 
 Run the receipt checker:
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 check_tx_receipt.py
 ```
 
@@ -80,7 +80,7 @@ Look for consensus/block production settings:
 
 Look for block production messages:
 ```bash
-# In the Seth node terminal, look for:
+# In the Shardora node terminal, look for:
 - "new block" or "block produced"
 - "consensus" or "view change"
 - "leader" or "replica"
@@ -93,7 +93,7 @@ Look for block production messages:
 If blocks are produced automatically (e.g., every 3-5 seconds), just wait longer:
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 test_eip1559.py
 # Let it run for 60+ seconds
 ```
@@ -104,7 +104,7 @@ If there's a way to manually trigger block production:
 
 ```bash
 # Check if there's a command like:
-./seth --produce-block
+./shardora --produce-block
 # or
 curl -X POST https://127.0.0.1:23001/produce_block
 ```
@@ -114,7 +114,7 @@ curl -X POST https://127.0.0.1:23001/produce_block
 If single-node doesn't produce blocks, set up multiple nodes:
 
 ```bash
-# Start multiple Seth nodes for consensus
+# Start multiple Shardora nodes for consensus
 ./start_multi_node.sh
 ```
 
@@ -152,13 +152,13 @@ To confirm EIP-1559 is fully working:
 
 1. **Check if node is running in genesis mode:**
    ```bash
-   ps aux | grep seth
+   ps aux | grep shardora
    # Look for flags: -g (genesis), -s (single), -f (first)
    ```
 
 2. **Check if there are other nodes:**
    ```bash
-   # Seth may require multiple nodes for consensus
+   # Shardora may require multiple nodes for consensus
    # Check if other nodes are running
    netstat -an | grep 23001
    ```
@@ -211,7 +211,7 @@ To confirm EIP-1559 is fully working:
 - ⏳ Recipient address creation
 - ⏳ Fund transfer completion
 
-**The EIP-1559 implementation is functionally complete.** The remaining issue is related to Seth's consensus/block production mechanism, not the EIP-1559 implementation itself.
+**The EIP-1559 implementation is functionally complete.** The remaining issue is related to Shardora's consensus/block production mechanism, not the EIP-1559 implementation itself.
 
 ## 📚 Related Documentation
 

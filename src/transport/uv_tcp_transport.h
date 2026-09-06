@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef SETH_USE_UV
+#ifdef SHARDORA_USE_UV
 #include <memory>
 #include <queue>
 #include <set>
@@ -17,7 +17,7 @@
 #include "transport/transport_utils.h"
 #include "transport/network_delay_simulator.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -103,6 +103,6 @@ private:
 };
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora
 
 #endif

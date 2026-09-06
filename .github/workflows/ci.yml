@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 120
 
     steps:
-      - name: Checkout SethPub
+      - name: Checkout ShardoraPub
         uses: actions/checkout@v4
         with:
           # Submodule sources are required for build_third.sh; shallow tree is enough.
@@ -207,7 +207,7 @@ jobs:
         build_type: [Debug, Release]
 
     steps:
-      - name: Checkout SethPub
+      - name: Checkout ShardoraPub
         uses: actions/checkout@v4
         with:
           submodules: false
@@ -243,16 +243,16 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────
-  # Job 3: Build seth binary (for integration tests)
+  # Job 3: Build shardora binary (for integration tests)
   # ─────────────────────────────────────────────────────────────────
-  build-seth:
-    name: Build seth Binary
+  build-shardora:
+    name: Build shardora Binary
     runs-on: ubuntu-22.04
     needs: build-deps
     timeout-minutes: 60
 
     steps:
-      - name: Checkout SethPub
+      - name: Checkout ShardoraPub
         uses: actions/checkout@v4
         with:
           submodules: false
@@ -272,23 +272,23 @@ jobs:
           name: third-party-libs
           path: third_party
 
-      - name: Build seth binary
+      - name: Build shardora binary
         run: |
-          bash build.sh seth Release
+          bash build.sh shardora Release
 
-      - name: Upload seth binary
+      - name: Upload shardora binary
         uses: actions/upload-artifact@v4
         with:
-          name: seth-binary
-          path: cbuild_Release/seth
+          name: shardora-binary
+          path: cbuild_Release/shardora
           if-no-files-found: error
           retention-days: 1
 
   # ─────────────────────────────────────────────────────────────────
-  # Job 4: Integration Tests (SethTests)
+  # Job 4: Integration Tests (ShardoraTests)
   # ─────────────────────────────────────────────────────────────────
   integration-tests:
-    name: Remote Integration Tests (SethTests)
+    name: Remote Integration Tests (ShardoraTests)
     runs-on: ubuntu-22.04
     needs: []
     timeout-minutes: 120
@@ -300,7 +300,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends openssh-client sshpass
 
-      - name: Run SethTests on remote host
+      - name: Run ShardoraTests on remote host
         env:
           REMOTE_HOST: 35.197.170.240
           REMOTE_PORT: 2221
@@ -321,9 +321,9 @@ jobs:
 
           if [[ -n "${REMOTE_SSH_PRIVATE_KEY:-}" ]]; then
             mkdir -p ~/.ssh
-            printf '%s\n' "$REMOTE_SSH_PRIVATE_KEY" > ~/.ssh/seth_ci_key
-            chmod 600 ~/.ssh/seth_ci_key
-            SSH_CMD=(ssh "${SSH_OPTS[@]}" -i ~/.ssh/seth_ci_key "$REMOTE_USER@$REMOTE_HOST")
+            printf '%s\n' "$REMOTE_SSH_PRIVATE_KEY" > ~/.ssh/shardora_ci_key
+            chmod 600 ~/.ssh/shardora_ci_key
+            SSH_CMD=(ssh "${SSH_OPTS[@]}" -i ~/.ssh/shardora_ci_key "$REMOTE_USER@$REMOTE_HOST")
           else
             : "${REMOTE_SSH_PASSWORD:?Set XL_CICD_REMOTE_SSH_PRIVATE_KEY or XL_CICD_REMOTE_PASSWORD secret}"
             export SSHPASS="$REMOTE_SSH_PASSWORD"
@@ -335,10 +335,10 @@ jobs:
 
           DEPLOY_BRANCH="$1"
           COMMIT_SHA="$2"
-          WORKDIR="/root/seth"
+          WORKDIR="/root/shardora"
           NODE_HOST="10.152.0.12"
-          TESTS_DIR="/root/SethTests"
-          export SETH_EXTRA_CMAKE_ARGS="-DSETH_MOCK_VERIFY=ON -DSETH_MOCK_SIGN=ON"
+          TESTS_DIR="/root/ShardoraTests"
+          export SHARDORA_EXTRA_CMAKE_ARGS="-DSHARDORA_MOCK_VERIFY=ON -DSHARDORA_MOCK_SIGN=ON"
           export LD_LIBRARY_PATH="/root/tools/python3.10/lib:${LD_LIBRARY_PATH:-}"
 
           dump_remote_debug() {
@@ -347,21 +347,21 @@ jobs:
               return
             fi
             echo "::group::Remote debug after failure"
-            echo "--- seth processes ---"
-            pgrep -af seth || true
+            echo "--- shardora processes ---"
+            pgrep -af shardora || true
             echo "--- listening ports ---"
             ss -ltnp | grep -E '(:23001|:24009|:1200|:1300)' || true
-            echo "--- recent seth logs ---"
-            find /root/seths -maxdepth 3 -type f \( -name '*.log' -o -name 'seth.log' \) -print -exec tail -n 120 {} \; 2>/dev/null || true
+            echo "--- recent shardora logs ---"
+            find /root/shardoras -maxdepth 3 -type f \( -name '*.log' -o -name 'shardora.log' \) -print -exec tail -n 120 {} \; 2>/dev/null || true
             echo "::endgroup::"
             exit "$rc"
           }
           trap dump_remote_debug EXIT
 
-          echo "::group::Update SethPub"
+          echo "::group::Update ShardoraPub"
           if [[ ! -d "$WORKDIR/.git" ]]; then
             rm -rf "$WORKDIR"
-            git clone https://github.com/iPoW-Stack/SethPub.git "$WORKDIR"
+            git clone https://github.com/iPoW-Stack/ShardoraPub.git "$WORKDIR"
           fi
           cd "$WORKDIR"
           git fetch --force origin "$DEPLOY_BRANCH"
@@ -376,10 +376,10 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Clear stale deployment package"
-          rm -rf /root/seth/pkgs /root/nodes /root/pkg /root/pkg.tar.gz /root/seths
+          rm -rf /root/shardora/pkgs /root/nodes /root/pkg /root/pkg.tar.gz /root/shardoras
           echo "::endgroup::"
 
-          echo "::group::Start remote seth network"
+          echo "::group::Start remote shardora network"
           bash simple_remote.sh 4 "$NODE_HOST"
           echo "::endgroup::"
 
@@ -401,38 +401,38 @@ jobs:
             fi
             if [[ "$attempt" -eq 60 ]]; then
               echo "Remote HTTP port did not become ready: ${NODE_HOST}:23001" >&2
-              echo "--- seth processes ---" >&2
-              pgrep -af seth || true
+              echo "--- shardora processes ---" >&2
+              pgrep -af shardora || true
               echo "--- listening ports ---" >&2
               ss -ltnp | grep -E '(:23001|:24009|:1200|:1300)' || true
               echo "--- recent logs ---" >&2
-              find /root/seths -maxdepth 3 -type f \( -name '*.log' -o -name 'seth.log' \) -print -exec tail -n 80 {} \; 2>/dev/null || true
+              find /root/shardoras -maxdepth 3 -type f \( -name '*.log' -o -name 'shardora.log' \) -print -exec tail -n 80 {} \; 2>/dev/null || true
               exit 1
             fi
             sleep 5
           done
           echo "::endgroup::"
 
-          echo "::group::Update SethTests"
+          echo "::group::Update ShardoraTests"
           if [[ ! -d "$TESTS_DIR/.git" ]]; then
             rm -rf "$TESTS_DIR"
-            git clone https://github.com/iPoW-Stack/SethTests.git "$TESTS_DIR"
+            git clone https://github.com/iPoW-Stack/ShardoraTests.git "$TESTS_DIR"
           fi
           cd "$TESTS_DIR"
           if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
-            git stash push --include-untracked -m "ci-sethtests-autostash-${COMMIT_SHA}" || true
+            git stash push --include-untracked -m "ci-shardoratests-autostash-${COMMIT_SHA}" || true
           fi
           git pull --ff-only || true
           echo "::endgroup::"
 
           echo "::group::Wait for chain receipt readiness"
-          /root/tools/python3.10/bin/python3 - "$NODE_HOST" /root/seth/init_accounts3 <<'PY'
+          /root/tools/python3.10/bin/python3 - "$NODE_HOST" /root/shardora/init_accounts3 <<'PY'
           import sys
           import time
 
           host = sys.argv[1]
           keys_file = sys.argv[2]
-          from seth_sdk import SethClient, StepType
+          from shardora_sdk import ShardoraClient, StepType
 
           keys = []
           with open(keys_file, "r", encoding="utf-8") as fp:
@@ -447,7 +447,7 @@ jobs:
           if len(keys) < 2:
               raise SystemExit(f"need at least two private keys in {keys_file}")
 
-          client = SethClient(host, 23001)
+          client = ShardoraClient(host, 23001)
           dst = client.get_address(keys[1])
           deadline = time.time() + 300
           attempt = 0
@@ -471,8 +471,8 @@ jobs:
           sleep 10
           echo "::endgroup::"
 
-          echo "::group::Run SethTests"
-          /root/tools/python3.10/bin/python3 seth_test_runner.py --host 10.152.0.12 --private-keys /root/seth/init_accounts3 --concurrent --max-workers 16
+          echo "::group::Run ShardoraTests"
+          /root/tools/python3.10/bin/python3 shardora_test_runner.py --host 10.152.0.12 --private-keys /root/shardora/init_accounts3 --concurrent --max-workers 16
           echo "::endgroup::"
           REMOTE_SCRIPT
 
@@ -482,7 +482,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-22.04
-    needs: [build-deps, unit-tests, build-seth, integration-tests]
+    needs: [build-deps, unit-tests, build-shardora, integration-tests]
     if: always()
 
     steps:
@@ -490,7 +490,7 @@ jobs:
         run: |
           echo "Third-party deps:  ${{ needs.build-deps.result }}"
           echo "Unit tests:        ${{ needs.unit-tests.result }}"
-          echo "seth binary:       ${{ needs.build-seth.result }}"
+          echo "shardora binary:       ${{ needs.build-shardora.result }}"
           echo "Integration tests: ${{ needs.integration-tests.result }}"
 
           if [[ "${{ needs.build-deps.result }}" == "failure" || "${{ needs.build-deps.result }}" == "cancelled" ]]; then
@@ -501,8 +501,8 @@ jobs:
             echo "Unit tests failed"
             exit 1
           fi
-          if [[ "${{ needs.build-seth.result }}" == "failure" || "${{ needs.build-seth.result }}" == "cancelled" ]]; then
-            echo "seth binary build failed"
+          if [[ "${{ needs.build-shardora.result }}" == "failure" || "${{ needs.build-shardora.result }}" == "cancelled" ]]; then
+            echo "shardora binary build failed"
             exit 1
           fi
           if [[ "${{ needs.integration-tests.result }}" == "failure" || "${{ needs.integration-tests.result }}" == "cancelled" ]]; then

@@ -2,7 +2,7 @@
 
 #include "init/init_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -115,4 +115,4 @@ TEST(InitUtilsStructs, GenisisNodeInfoPtrAliasHoldsSharedInstance) {
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

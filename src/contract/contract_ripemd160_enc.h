@@ -5,7 +5,7 @@
 #include "common/tick.h"
 #include "pki/rabpre.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -147,4 +147,4 @@ private:
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

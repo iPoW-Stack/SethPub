@@ -6,7 +6,7 @@
 #include "dht/base_dht.h"
 #include "broadcast/broadcast_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace broadcast {
 
@@ -28,4 +28,4 @@ void Broadcast::Send(
 
 }  // namespace broadcast
 
-}  // namespace seth
+}  // namespace shardora

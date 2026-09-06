@@ -8,7 +8,7 @@
 #include "protos/get_proto_hash.h"
 #include "transport/processor.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 
@@ -20,4 +20,4 @@ void VssManager::OnTimeBlock(const std::shared_ptr<view_block::protobuf::ViewBlo
 
 }  // namespace vss
 
-}  // namespace seth
+}  // namespace shardora

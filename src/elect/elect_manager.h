@@ -21,7 +21,7 @@
 #include "security/security.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
     class VssManager;
@@ -128,4 +128,4 @@ private:
 
 }  // namespace elect
 
-}  // namespace seth
+}  // namespace shardora

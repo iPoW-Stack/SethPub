@@ -30,7 +30,7 @@
 #include "network/network_utils.h"
 #include "protos/pools.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -336,4 +336,4 @@ TEST_F(TestToTxsPoolsExtra2, ThreadToStatistic_NextInAdded_AdvancesChain) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

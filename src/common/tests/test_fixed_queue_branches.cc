@@ -2,7 +2,7 @@
 
 #include "common/fixed_queue.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -86,4 +86,4 @@ TEST(FixedQueueBranches, ExistsUsesSplitLoopWhenRearLessThanFront) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

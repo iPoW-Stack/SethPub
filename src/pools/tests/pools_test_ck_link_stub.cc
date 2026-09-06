@@ -5,7 +5,7 @@
 
 #include "ck/ck_client.h"
 
-namespace seth {
+namespace shardora {
 namespace ck {
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -20,4 +20,4 @@ bool ClickHouseClient::InsertBlsElectInfo(const BlsElectInfo& info) try {
 }
 
 }  // namespace ck
-}  // namespace seth
+}  // namespace shardora

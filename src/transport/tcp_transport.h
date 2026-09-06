@@ -1,5 +1,5 @@
 #pragma once
-#ifndef SETH_USE_UV
+#ifndef SHARDORA_USE_UV
 
 #include <condition_variable>
 #include <deque>
@@ -25,7 +25,7 @@
 #include "transport/encoder_factory.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -106,7 +106,7 @@ private:
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora
 
 #else
 #include "transport/uv_tcp_transport.h"

@@ -18,16 +18,16 @@ from protos import elect_pb2 as protos_dot_elect__pb2
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/bls.proto',
-  package='seth.bls.protobuf',
+  package='shardora.bls.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x10protos/bls.proto\x12\x11seth.bls.protobuf\x1a\x12protos/elect.proto\"c\n\rVerifyVecItem\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x0c\n\x04z_c0\x18\x05 \x01(\x0c\x12\x0c\n\x04z_c1\x18\x06 \x01(\x0c\"F\n\x0c\x42lsPublicKey\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\"[\n\x0fVerifyVecBrdReq\x12\x34\n\nverify_vec\x18\x01 \x03(\x0b\x32 .seth.bls.protobuf.VerifyVecItem\x12\x12\n\nchange_idx\x18\x02 \x01(\r\"I\n\x10JoinElectBlsInfo\x12\x35\n\x0bverified_g2\x18\x01 \x01(\x0b\x32 .seth.bls.protobuf.VerifyVecItem\"\xd3\x02\n\rJoinElectInfo\x12\x10\n\x08shard_id\x18\x01 \x01(\r\x12\x12\n\nmember_idx\x18\x02 \x01(\r\x12\x12\n\nchange_idx\x18\x03 \x01(\r\x12\x32\n\x06g2_req\x18\x04 \x01(\x0b\x32\".seth.bls.protobuf.VerifyVecBrdReq\x12\x0c\n\x04\x61\x64\x64r\x18\x05 \x01(\x0c\x12\r\n\x05stoke\x18\x06 \x01(\x04\x12\x12\n\npublic_key\x18\x07 \x01(\x0c\x12\x14\n\x0cstake_amount\x18\x08 \x01(\x04\x12\x1a\n\x12stake_elect_height\x18\t \x01(\x04\x12\x14\n\x0ctotal_staked\x18\n \x01(\x04\x12\x42\n\x08stake_op\x18\x0b \x01(\x0e\x32!.seth.bls.protobuf.StakeOperation:\rSTAKE_OP_NONE\x12\x17\n\x0fstake_timestamp\x18\x0c \x01(\x04\"<\n\x0fLocalPolynomial\x12\x12\n\npolynomial\x18\x01 \x03(\x0c\x12\x15\n\nchange_idx\x18\x02 \x01(\r:\x01\x30\"\xe9\x01\n\x0cLocalBlsItem\x12\x12\n\npolynomial\x18\x01 \x03(\x0c\x12\x19\n\x11local_private_key\x18\x02 \x01(\x0c\x12\x34\n\nverify_vec\x18\x03 \x03(\x0b\x32 .seth.bls.protobuf.VerifyVecItem\x12\x1a\n\x12local_secrity_keys\x18\x04 \x03(\x0c\x12\x36\n\rcommon_pubkey\x18\x05 \x03(\x0b\x32\x1f.seth.bls.protobuf.BlsPublicKey\x12\x0f\n\x07valid_t\x18\x06 \x01(\r\x12\x0f\n\x07valid_n\x18\x07 \x01(\r\"F\n\x0e\x42lsVerifyValue\x12\x34\n\nverify_vec\x18\x01 \x03(\x0b\x32 .seth.bls.protobuf.VerifyVecItem\"9\n\x0fVerifyVecBrdRes\x12\x11\n\tpublic_ip\x18\x01 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x02 \x01(\r\"g\n\x0eSwapSecKeyItem\x12\x0f\n\x07sec_key\x18\x01 \x01(\x0c\x12\x13\n\x0bsec_key_len\x18\x02 \x01(\r\x12/\n\x06old_g2\x18\x03 \x01(\x0b\x32\x1f.seth.bls.protobuf.BlsPublicKey\"@\n\rSwapSecKeyReq\x12/\n\x04keys\x18\x01 \x03(\x0b\x32!.seth.bls.protobuf.SwapSecKeyItem\"D\n\rSwapSecKeyRes\x12\r\n\x05index\x18\x01 \x01(\r\x12\x0f\n\x07sec_key\x18\x02 \x01(\x0c\x12\x13\n\x0bsec_key_len\x18\x03 \x01(\r\"+\n\x12\x41gainstParticipant\x12\x15\n\ragainst_index\x18\x01 \x01(\r\"\xc6\x01\n\x0f\x46inishBroadcast\x12\x0e\n\x06\x62itmap\x18\x01 \x03(\x04\x12/\n\x06pubkey\x18\x02 \x01(\x0b\x32\x1f.seth.bls.protobuf.BlsPublicKey\x12\x36\n\rcommon_pubkey\x18\x03 \x01(\x0b\x32\x1f.seth.bls.protobuf.BlsPublicKey\x12\x12\n\nnetwork_id\x18\x04 \x01(\r\x12\x12\n\nbls_sign_x\x18\x05 \x01(\x0c\x12\x12\n\nbls_sign_y\x18\x06 \x01(\x0c\"\x1f\n\x0e\x43heckVerfiyReq\x12\r\n\x05index\x18\x01 \x01(\r\" \n\x0f\x43heckSwapKeyReq\x12\r\n\x05index\x18\x01 \x01(\r\"@\n\x11\x46inishSyncRequest\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12\x17\n\x0fmissing_indices\x18\x02 \x03(\r\"\x90\x03\n\nBlsMessage\x12\x36\n\nverify_brd\x18\x01 \x01(\x0b\x32\".seth.bls.protobuf.VerifyVecBrdReq\x12\x32\n\x08swap_req\x18\x02 \x01(\x0b\x32 .seth.bls.protobuf.SwapSecKeyReq\x12\x36\n\nfinish_req\x18\x03 \x01(\x0b\x32\".seth.bls.protobuf.FinishBroadcast\x12;\n\x10\x63heck_verify_req\x18\x04 \x01(\x0b\x32!.seth.bls.protobuf.CheckVerfiyReq\x12=\n\x11\x63heck_swapkey_req\x18\x05 \x01(\x0b\x32\".seth.bls.protobuf.CheckSwapKeyReq\x12\r\n\x05index\x18\x06 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x07 \x01(\x04\x12=\n\x0f\x66inish_sync_req\x18\x08 \x01(\x0b\x32$.seth.bls.protobuf.FinishSyncRequest*L\n\x0eStakeOperation\x12\x11\n\rSTAKE_OP_NONE\x10\x00\x12\x12\n\x0eSTAKE_OP_STAKE\x10\x01\x12\x13\n\x0fSTAKE_OP_REDEEM\x10\x02')
+  serialized_pb=_b('\n\x10protos/bls.proto\x12\x11shardora.bls.protobuf\x1a\x12protos/elect.proto\"c\n\rVerifyVecItem\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x0c\n\x04z_c0\x18\x05 \x01(\x0c\x12\x0c\n\x04z_c1\x18\x06 \x01(\x0c\"F\n\x0c\x42lsPublicKey\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\"[\n\x0fVerifyVecBrdReq\x12\x34\n\nverify_vec\x18\x01 \x03(\x0b\x32 .shardora.bls.protobuf.VerifyVecItem\x12\x12\n\nchange_idx\x18\x02 \x01(\r\"I\n\x10JoinElectBlsInfo\x12\x35\n\x0bverified_g2\x18\x01 \x01(\x0b\x32 .shardora.bls.protobuf.VerifyVecItem\"\xd3\x02\n\rJoinElectInfo\x12\x10\n\x08shard_id\x18\x01 \x01(\r\x12\x12\n\nmember_idx\x18\x02 \x01(\r\x12\x12\n\nchange_idx\x18\x03 \x01(\r\x12\x32\n\x06g2_req\x18\x04 \x01(\x0b\x32\".shardora.bls.protobuf.VerifyVecBrdReq\x12\x0c\n\x04\x61\x64\x64r\x18\x05 \x01(\x0c\x12\r\n\x05stoke\x18\x06 \x01(\x04\x12\x12\n\npublic_key\x18\x07 \x01(\x0c\x12\x14\n\x0cstake_amount\x18\x08 \x01(\x04\x12\x1a\n\x12stake_elect_height\x18\t \x01(\x04\x12\x14\n\x0ctotal_staked\x18\n \x01(\x04\x12\x42\n\x08stake_op\x18\x0b \x01(\x0e\x32!.shardora.bls.protobuf.StakeOperation:\rSTAKE_OP_NONE\x12\x17\n\x0fstake_timestamp\x18\x0c \x01(\x04\"<\n\x0fLocalPolynomial\x12\x12\n\npolynomial\x18\x01 \x03(\x0c\x12\x15\n\nchange_idx\x18\x02 \x01(\r:\x01\x30\"\xe9\x01\n\x0cLocalBlsItem\x12\x12\n\npolynomial\x18\x01 \x03(\x0c\x12\x19\n\x11local_private_key\x18\x02 \x01(\x0c\x12\x34\n\nverify_vec\x18\x03 \x03(\x0b\x32 .shardora.bls.protobuf.VerifyVecItem\x12\x1a\n\x12local_secrity_keys\x18\x04 \x03(\x0c\x12\x36\n\rcommon_pubkey\x18\x05 \x03(\x0b\x32\x1f.shardora.bls.protobuf.BlsPublicKey\x12\x0f\n\x07valid_t\x18\x06 \x01(\r\x12\x0f\n\x07valid_n\x18\x07 \x01(\r\"F\n\x0e\x42lsVerifyValue\x12\x34\n\nverify_vec\x18\x01 \x03(\x0b\x32 .shardora.bls.protobuf.VerifyVecItem\"9\n\x0fVerifyVecBrdRes\x12\x11\n\tpublic_ip\x18\x01 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x02 \x01(\r\"g\n\x0eSwapSecKeyItem\x12\x0f\n\x07sec_key\x18\x01 \x01(\x0c\x12\x13\n\x0bsec_key_len\x18\x02 \x01(\r\x12/\n\x06old_g2\x18\x03 \x01(\x0b\x32\x1f.shardora.bls.protobuf.BlsPublicKey\"@\n\rSwapSecKeyReq\x12/\n\x04keys\x18\x01 \x03(\x0b\x32!.shardora.bls.protobuf.SwapSecKeyItem\"D\n\rSwapSecKeyRes\x12\r\n\x05index\x18\x01 \x01(\r\x12\x0f\n\x07sec_key\x18\x02 \x01(\x0c\x12\x13\n\x0bsec_key_len\x18\x03 \x01(\r\"+\n\x12\x41gainstParticipant\x12\x15\n\ragainst_index\x18\x01 \x01(\r\"\xc6\x01\n\x0f\x46inishBroadcast\x12\x0e\n\x06\x62itmap\x18\x01 \x03(\x04\x12/\n\x06pubkey\x18\x02 \x01(\x0b\x32\x1f.shardora.bls.protobuf.BlsPublicKey\x12\x36\n\rcommon_pubkey\x18\x03 \x01(\x0b\x32\x1f.shardora.bls.protobuf.BlsPublicKey\x12\x12\n\nnetwork_id\x18\x04 \x01(\r\x12\x12\n\nbls_sign_x\x18\x05 \x01(\x0c\x12\x12\n\nbls_sign_y\x18\x06 \x01(\x0c\"\x1f\n\x0e\x43heckVerfiyReq\x12\r\n\x05index\x18\x01 \x01(\r\" \n\x0f\x43heckSwapKeyReq\x12\r\n\x05index\x18\x01 \x01(\r\"@\n\x11\x46inishSyncRequest\x12\x12\n\nnetwork_id\x18\x01 \x01(\r\x12\x17\n\x0fmissing_indices\x18\x02 \x03(\r\"\x90\x03\n\nBlsMessage\x12\x36\n\nverify_brd\x18\x01 \x01(\x0b\x32\".shardora.bls.protobuf.VerifyVecBrdReq\x12\x32\n\x08swap_req\x18\x02 \x01(\x0b\x32 .shardora.bls.protobuf.SwapSecKeyReq\x12\x36\n\nfinish_req\x18\x03 \x01(\x0b\x32\".shardora.bls.protobuf.FinishBroadcast\x12;\n\x10\x63heck_verify_req\x18\x04 \x01(\x0b\x32!.shardora.bls.protobuf.CheckVerfiyReq\x12=\n\x11\x63heck_swapkey_req\x18\x05 \x01(\x0b\x32\".shardora.bls.protobuf.CheckSwapKeyReq\x12\r\n\x05index\x18\x06 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x07 \x01(\x04\x12=\n\x0f\x66inish_sync_req\x18\x08 \x01(\x0b\x32$.shardora.bls.protobuf.FinishSyncRequest*L\n\x0eStakeOperation\x12\x11\n\rSTAKE_OP_NONE\x10\x00\x12\x12\n\x0eSTAKE_OP_STAKE\x10\x01\x12\x13\n\x0fSTAKE_OP_REDEEM\x10\x02')
   ,
   dependencies=[protos_dot_elect__pb2.DESCRIPTOR,])
 
 _STAKEOPERATION = _descriptor.EnumDescriptor(
   name='StakeOperation',
-  full_name='seth.bls.protobuf.StakeOperation',
+  full_name='shardora.bls.protobuf.StakeOperation',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -60,48 +60,48 @@ STAKE_OP_REDEEM = 2
 
 _VERIFYVECITEM = _descriptor.Descriptor(
   name='VerifyVecItem',
-  full_name='seth.bls.protobuf.VerifyVecItem',
+  full_name='shardora.bls.protobuf.VerifyVecItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='x_c0', full_name='seth.bls.protobuf.VerifyVecItem.x_c0', index=0,
+      name='x_c0', full_name='shardora.bls.protobuf.VerifyVecItem.x_c0', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='x_c1', full_name='seth.bls.protobuf.VerifyVecItem.x_c1', index=1,
+      name='x_c1', full_name='shardora.bls.protobuf.VerifyVecItem.x_c1', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c0', full_name='seth.bls.protobuf.VerifyVecItem.y_c0', index=2,
+      name='y_c0', full_name='shardora.bls.protobuf.VerifyVecItem.y_c0', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c1', full_name='seth.bls.protobuf.VerifyVecItem.y_c1', index=3,
+      name='y_c1', full_name='shardora.bls.protobuf.VerifyVecItem.y_c1', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='z_c0', full_name='seth.bls.protobuf.VerifyVecItem.z_c0', index=4,
+      name='z_c0', full_name='shardora.bls.protobuf.VerifyVecItem.z_c0', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='z_c1', full_name='seth.bls.protobuf.VerifyVecItem.z_c1', index=5,
+      name='z_c1', full_name='shardora.bls.protobuf.VerifyVecItem.z_c1', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -126,34 +126,34 @@ _VERIFYVECITEM = _descriptor.Descriptor(
 
 _BLSPUBLICKEY = _descriptor.Descriptor(
   name='BlsPublicKey',
-  full_name='seth.bls.protobuf.BlsPublicKey',
+  full_name='shardora.bls.protobuf.BlsPublicKey',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='x_c0', full_name='seth.bls.protobuf.BlsPublicKey.x_c0', index=0,
+      name='x_c0', full_name='shardora.bls.protobuf.BlsPublicKey.x_c0', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='x_c1', full_name='seth.bls.protobuf.BlsPublicKey.x_c1', index=1,
+      name='x_c1', full_name='shardora.bls.protobuf.BlsPublicKey.x_c1', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c0', full_name='seth.bls.protobuf.BlsPublicKey.y_c0', index=2,
+      name='y_c0', full_name='shardora.bls.protobuf.BlsPublicKey.y_c0', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c1', full_name='seth.bls.protobuf.BlsPublicKey.y_c1', index=3,
+      name='y_c1', full_name='shardora.bls.protobuf.BlsPublicKey.y_c1', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -178,20 +178,20 @@ _BLSPUBLICKEY = _descriptor.Descriptor(
 
 _VERIFYVECBRDREQ = _descriptor.Descriptor(
   name='VerifyVecBrdReq',
-  full_name='seth.bls.protobuf.VerifyVecBrdReq',
+  full_name='shardora.bls.protobuf.VerifyVecBrdReq',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='verify_vec', full_name='seth.bls.protobuf.VerifyVecBrdReq.verify_vec', index=0,
+      name='verify_vec', full_name='shardora.bls.protobuf.VerifyVecBrdReq.verify_vec', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='change_idx', full_name='seth.bls.protobuf.VerifyVecBrdReq.change_idx', index=1,
+      name='change_idx', full_name='shardora.bls.protobuf.VerifyVecBrdReq.change_idx', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -216,13 +216,13 @@ _VERIFYVECBRDREQ = _descriptor.Descriptor(
 
 _JOINELECTBLSINFO = _descriptor.Descriptor(
   name='JoinElectBlsInfo',
-  full_name='seth.bls.protobuf.JoinElectBlsInfo',
+  full_name='shardora.bls.protobuf.JoinElectBlsInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='verified_g2', full_name='seth.bls.protobuf.JoinElectBlsInfo.verified_g2', index=0,
+      name='verified_g2', full_name='shardora.bls.protobuf.JoinElectBlsInfo.verified_g2', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -247,90 +247,90 @@ _JOINELECTBLSINFO = _descriptor.Descriptor(
 
 _JOINELECTINFO = _descriptor.Descriptor(
   name='JoinElectInfo',
-  full_name='seth.bls.protobuf.JoinElectInfo',
+  full_name='shardora.bls.protobuf.JoinElectInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='shard_id', full_name='seth.bls.protobuf.JoinElectInfo.shard_id', index=0,
+      name='shard_id', full_name='shardora.bls.protobuf.JoinElectInfo.shard_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='member_idx', full_name='seth.bls.protobuf.JoinElectInfo.member_idx', index=1,
+      name='member_idx', full_name='shardora.bls.protobuf.JoinElectInfo.member_idx', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='change_idx', full_name='seth.bls.protobuf.JoinElectInfo.change_idx', index=2,
+      name='change_idx', full_name='shardora.bls.protobuf.JoinElectInfo.change_idx', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='g2_req', full_name='seth.bls.protobuf.JoinElectInfo.g2_req', index=3,
+      name='g2_req', full_name='shardora.bls.protobuf.JoinElectInfo.g2_req', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='addr', full_name='seth.bls.protobuf.JoinElectInfo.addr', index=4,
+      name='addr', full_name='shardora.bls.protobuf.JoinElectInfo.addr', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='stoke', full_name='seth.bls.protobuf.JoinElectInfo.stoke', index=5,
+      name='stoke', full_name='shardora.bls.protobuf.JoinElectInfo.stoke', index=5,
       number=6, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='public_key', full_name='seth.bls.protobuf.JoinElectInfo.public_key', index=6,
+      name='public_key', full_name='shardora.bls.protobuf.JoinElectInfo.public_key', index=6,
       number=7, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='stake_amount', full_name='seth.bls.protobuf.JoinElectInfo.stake_amount', index=7,
+      name='stake_amount', full_name='shardora.bls.protobuf.JoinElectInfo.stake_amount', index=7,
       number=8, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='stake_elect_height', full_name='seth.bls.protobuf.JoinElectInfo.stake_elect_height', index=8,
+      name='stake_elect_height', full_name='shardora.bls.protobuf.JoinElectInfo.stake_elect_height', index=8,
       number=9, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='total_staked', full_name='seth.bls.protobuf.JoinElectInfo.total_staked', index=9,
+      name='total_staked', full_name='shardora.bls.protobuf.JoinElectInfo.total_staked', index=9,
       number=10, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='stake_op', full_name='seth.bls.protobuf.JoinElectInfo.stake_op', index=10,
+      name='stake_op', full_name='shardora.bls.protobuf.JoinElectInfo.stake_op', index=10,
       number=11, type=14, cpp_type=8, label=1,
       has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='stake_timestamp', full_name='seth.bls.protobuf.JoinElectInfo.stake_timestamp', index=11,
+      name='stake_timestamp', full_name='shardora.bls.protobuf.JoinElectInfo.stake_timestamp', index=11,
       number=12, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -355,20 +355,20 @@ _JOINELECTINFO = _descriptor.Descriptor(
 
 _LOCALPOLYNOMIAL = _descriptor.Descriptor(
   name='LocalPolynomial',
-  full_name='seth.bls.protobuf.LocalPolynomial',
+  full_name='shardora.bls.protobuf.LocalPolynomial',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='polynomial', full_name='seth.bls.protobuf.LocalPolynomial.polynomial', index=0,
+      name='polynomial', full_name='shardora.bls.protobuf.LocalPolynomial.polynomial', index=0,
       number=1, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='change_idx', full_name='seth.bls.protobuf.LocalPolynomial.change_idx', index=1,
+      name='change_idx', full_name='shardora.bls.protobuf.LocalPolynomial.change_idx', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -393,55 +393,55 @@ _LOCALPOLYNOMIAL = _descriptor.Descriptor(
 
 _LOCALBLSITEM = _descriptor.Descriptor(
   name='LocalBlsItem',
-  full_name='seth.bls.protobuf.LocalBlsItem',
+  full_name='shardora.bls.protobuf.LocalBlsItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='polynomial', full_name='seth.bls.protobuf.LocalBlsItem.polynomial', index=0,
+      name='polynomial', full_name='shardora.bls.protobuf.LocalBlsItem.polynomial', index=0,
       number=1, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='local_private_key', full_name='seth.bls.protobuf.LocalBlsItem.local_private_key', index=1,
+      name='local_private_key', full_name='shardora.bls.protobuf.LocalBlsItem.local_private_key', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='verify_vec', full_name='seth.bls.protobuf.LocalBlsItem.verify_vec', index=2,
+      name='verify_vec', full_name='shardora.bls.protobuf.LocalBlsItem.verify_vec', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='local_secrity_keys', full_name='seth.bls.protobuf.LocalBlsItem.local_secrity_keys', index=3,
+      name='local_secrity_keys', full_name='shardora.bls.protobuf.LocalBlsItem.local_secrity_keys', index=3,
       number=4, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='common_pubkey', full_name='seth.bls.protobuf.LocalBlsItem.common_pubkey', index=4,
+      name='common_pubkey', full_name='shardora.bls.protobuf.LocalBlsItem.common_pubkey', index=4,
       number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='valid_t', full_name='seth.bls.protobuf.LocalBlsItem.valid_t', index=5,
+      name='valid_t', full_name='shardora.bls.protobuf.LocalBlsItem.valid_t', index=5,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='valid_n', full_name='seth.bls.protobuf.LocalBlsItem.valid_n', index=6,
+      name='valid_n', full_name='shardora.bls.protobuf.LocalBlsItem.valid_n', index=6,
       number=7, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -466,13 +466,13 @@ _LOCALBLSITEM = _descriptor.Descriptor(
 
 _BLSVERIFYVALUE = _descriptor.Descriptor(
   name='BlsVerifyValue',
-  full_name='seth.bls.protobuf.BlsVerifyValue',
+  full_name='shardora.bls.protobuf.BlsVerifyValue',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='verify_vec', full_name='seth.bls.protobuf.BlsVerifyValue.verify_vec', index=0,
+      name='verify_vec', full_name='shardora.bls.protobuf.BlsVerifyValue.verify_vec', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -497,20 +497,20 @@ _BLSVERIFYVALUE = _descriptor.Descriptor(
 
 _VERIFYVECBRDRES = _descriptor.Descriptor(
   name='VerifyVecBrdRes',
-  full_name='seth.bls.protobuf.VerifyVecBrdRes',
+  full_name='shardora.bls.protobuf.VerifyVecBrdRes',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='public_ip', full_name='seth.bls.protobuf.VerifyVecBrdRes.public_ip', index=0,
+      name='public_ip', full_name='shardora.bls.protobuf.VerifyVecBrdRes.public_ip', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='public_port', full_name='seth.bls.protobuf.VerifyVecBrdRes.public_port', index=1,
+      name='public_port', full_name='shardora.bls.protobuf.VerifyVecBrdRes.public_port', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -535,27 +535,27 @@ _VERIFYVECBRDRES = _descriptor.Descriptor(
 
 _SWAPSECKEYITEM = _descriptor.Descriptor(
   name='SwapSecKeyItem',
-  full_name='seth.bls.protobuf.SwapSecKeyItem',
+  full_name='shardora.bls.protobuf.SwapSecKeyItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sec_key', full_name='seth.bls.protobuf.SwapSecKeyItem.sec_key', index=0,
+      name='sec_key', full_name='shardora.bls.protobuf.SwapSecKeyItem.sec_key', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sec_key_len', full_name='seth.bls.protobuf.SwapSecKeyItem.sec_key_len', index=1,
+      name='sec_key_len', full_name='shardora.bls.protobuf.SwapSecKeyItem.sec_key_len', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='old_g2', full_name='seth.bls.protobuf.SwapSecKeyItem.old_g2', index=2,
+      name='old_g2', full_name='shardora.bls.protobuf.SwapSecKeyItem.old_g2', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -580,13 +580,13 @@ _SWAPSECKEYITEM = _descriptor.Descriptor(
 
 _SWAPSECKEYREQ = _descriptor.Descriptor(
   name='SwapSecKeyReq',
-  full_name='seth.bls.protobuf.SwapSecKeyReq',
+  full_name='shardora.bls.protobuf.SwapSecKeyReq',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='keys', full_name='seth.bls.protobuf.SwapSecKeyReq.keys', index=0,
+      name='keys', full_name='shardora.bls.protobuf.SwapSecKeyReq.keys', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -611,27 +611,27 @@ _SWAPSECKEYREQ = _descriptor.Descriptor(
 
 _SWAPSECKEYRES = _descriptor.Descriptor(
   name='SwapSecKeyRes',
-  full_name='seth.bls.protobuf.SwapSecKeyRes',
+  full_name='shardora.bls.protobuf.SwapSecKeyRes',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='index', full_name='seth.bls.protobuf.SwapSecKeyRes.index', index=0,
+      name='index', full_name='shardora.bls.protobuf.SwapSecKeyRes.index', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sec_key', full_name='seth.bls.protobuf.SwapSecKeyRes.sec_key', index=1,
+      name='sec_key', full_name='shardora.bls.protobuf.SwapSecKeyRes.sec_key', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sec_key_len', full_name='seth.bls.protobuf.SwapSecKeyRes.sec_key_len', index=2,
+      name='sec_key_len', full_name='shardora.bls.protobuf.SwapSecKeyRes.sec_key_len', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -656,13 +656,13 @@ _SWAPSECKEYRES = _descriptor.Descriptor(
 
 _AGAINSTPARTICIPANT = _descriptor.Descriptor(
   name='AgainstParticipant',
-  full_name='seth.bls.protobuf.AgainstParticipant',
+  full_name='shardora.bls.protobuf.AgainstParticipant',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='against_index', full_name='seth.bls.protobuf.AgainstParticipant.against_index', index=0,
+      name='against_index', full_name='shardora.bls.protobuf.AgainstParticipant.against_index', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -687,48 +687,48 @@ _AGAINSTPARTICIPANT = _descriptor.Descriptor(
 
 _FINISHBROADCAST = _descriptor.Descriptor(
   name='FinishBroadcast',
-  full_name='seth.bls.protobuf.FinishBroadcast',
+  full_name='shardora.bls.protobuf.FinishBroadcast',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='bitmap', full_name='seth.bls.protobuf.FinishBroadcast.bitmap', index=0,
+      name='bitmap', full_name='shardora.bls.protobuf.FinishBroadcast.bitmap', index=0,
       number=1, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pubkey', full_name='seth.bls.protobuf.FinishBroadcast.pubkey', index=1,
+      name='pubkey', full_name='shardora.bls.protobuf.FinishBroadcast.pubkey', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='common_pubkey', full_name='seth.bls.protobuf.FinishBroadcast.common_pubkey', index=2,
+      name='common_pubkey', full_name='shardora.bls.protobuf.FinishBroadcast.common_pubkey', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.bls.protobuf.FinishBroadcast.network_id', index=3,
+      name='network_id', full_name='shardora.bls.protobuf.FinishBroadcast.network_id', index=3,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bls_sign_x', full_name='seth.bls.protobuf.FinishBroadcast.bls_sign_x', index=4,
+      name='bls_sign_x', full_name='shardora.bls.protobuf.FinishBroadcast.bls_sign_x', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bls_sign_y', full_name='seth.bls.protobuf.FinishBroadcast.bls_sign_y', index=5,
+      name='bls_sign_y', full_name='shardora.bls.protobuf.FinishBroadcast.bls_sign_y', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -753,13 +753,13 @@ _FINISHBROADCAST = _descriptor.Descriptor(
 
 _CHECKVERFIYREQ = _descriptor.Descriptor(
   name='CheckVerfiyReq',
-  full_name='seth.bls.protobuf.CheckVerfiyReq',
+  full_name='shardora.bls.protobuf.CheckVerfiyReq',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='index', full_name='seth.bls.protobuf.CheckVerfiyReq.index', index=0,
+      name='index', full_name='shardora.bls.protobuf.CheckVerfiyReq.index', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -784,13 +784,13 @@ _CHECKVERFIYREQ = _descriptor.Descriptor(
 
 _CHECKSWAPKEYREQ = _descriptor.Descriptor(
   name='CheckSwapKeyReq',
-  full_name='seth.bls.protobuf.CheckSwapKeyReq',
+  full_name='shardora.bls.protobuf.CheckSwapKeyReq',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='index', full_name='seth.bls.protobuf.CheckSwapKeyReq.index', index=0,
+      name='index', full_name='shardora.bls.protobuf.CheckSwapKeyReq.index', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -815,20 +815,20 @@ _CHECKSWAPKEYREQ = _descriptor.Descriptor(
 
 _FINISHSYNCREQUEST = _descriptor.Descriptor(
   name='FinishSyncRequest',
-  full_name='seth.bls.protobuf.FinishSyncRequest',
+  full_name='shardora.bls.protobuf.FinishSyncRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.bls.protobuf.FinishSyncRequest.network_id', index=0,
+      name='network_id', full_name='shardora.bls.protobuf.FinishSyncRequest.network_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='missing_indices', full_name='seth.bls.protobuf.FinishSyncRequest.missing_indices', index=1,
+      name='missing_indices', full_name='shardora.bls.protobuf.FinishSyncRequest.missing_indices', index=1,
       number=2, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -853,62 +853,62 @@ _FINISHSYNCREQUEST = _descriptor.Descriptor(
 
 _BLSMESSAGE = _descriptor.Descriptor(
   name='BlsMessage',
-  full_name='seth.bls.protobuf.BlsMessage',
+  full_name='shardora.bls.protobuf.BlsMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='verify_brd', full_name='seth.bls.protobuf.BlsMessage.verify_brd', index=0,
+      name='verify_brd', full_name='shardora.bls.protobuf.BlsMessage.verify_brd', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='swap_req', full_name='seth.bls.protobuf.BlsMessage.swap_req', index=1,
+      name='swap_req', full_name='shardora.bls.protobuf.BlsMessage.swap_req', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='finish_req', full_name='seth.bls.protobuf.BlsMessage.finish_req', index=2,
+      name='finish_req', full_name='shardora.bls.protobuf.BlsMessage.finish_req', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='check_verify_req', full_name='seth.bls.protobuf.BlsMessage.check_verify_req', index=3,
+      name='check_verify_req', full_name='shardora.bls.protobuf.BlsMessage.check_verify_req', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='check_swapkey_req', full_name='seth.bls.protobuf.BlsMessage.check_swapkey_req', index=4,
+      name='check_swapkey_req', full_name='shardora.bls.protobuf.BlsMessage.check_swapkey_req', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='index', full_name='seth.bls.protobuf.BlsMessage.index', index=5,
+      name='index', full_name='shardora.bls.protobuf.BlsMessage.index', index=5,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='elect_height', full_name='seth.bls.protobuf.BlsMessage.elect_height', index=6,
+      name='elect_height', full_name='shardora.bls.protobuf.BlsMessage.elect_height', index=6,
       number=7, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='finish_sync_req', full_name='seth.bls.protobuf.BlsMessage.finish_sync_req', index=7,
+      name='finish_sync_req', full_name='shardora.bls.protobuf.BlsMessage.finish_sync_req', index=7,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -971,126 +971,126 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 VerifyVecItem = _reflection.GeneratedProtocolMessageType('VerifyVecItem', (_message.Message,), dict(
   DESCRIPTOR = _VERIFYVECITEM,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.VerifyVecItem)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.VerifyVecItem)
   ))
 _sym_db.RegisterMessage(VerifyVecItem)
 
 BlsPublicKey = _reflection.GeneratedProtocolMessageType('BlsPublicKey', (_message.Message,), dict(
   DESCRIPTOR = _BLSPUBLICKEY,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.BlsPublicKey)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.BlsPublicKey)
   ))
 _sym_db.RegisterMessage(BlsPublicKey)
 
 VerifyVecBrdReq = _reflection.GeneratedProtocolMessageType('VerifyVecBrdReq', (_message.Message,), dict(
   DESCRIPTOR = _VERIFYVECBRDREQ,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.VerifyVecBrdReq)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.VerifyVecBrdReq)
   ))
 _sym_db.RegisterMessage(VerifyVecBrdReq)
 
 JoinElectBlsInfo = _reflection.GeneratedProtocolMessageType('JoinElectBlsInfo', (_message.Message,), dict(
   DESCRIPTOR = _JOINELECTBLSINFO,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.JoinElectBlsInfo)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.JoinElectBlsInfo)
   ))
 _sym_db.RegisterMessage(JoinElectBlsInfo)
 
 JoinElectInfo = _reflection.GeneratedProtocolMessageType('JoinElectInfo', (_message.Message,), dict(
   DESCRIPTOR = _JOINELECTINFO,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.JoinElectInfo)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.JoinElectInfo)
   ))
 _sym_db.RegisterMessage(JoinElectInfo)
 
 LocalPolynomial = _reflection.GeneratedProtocolMessageType('LocalPolynomial', (_message.Message,), dict(
   DESCRIPTOR = _LOCALPOLYNOMIAL,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.LocalPolynomial)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.LocalPolynomial)
   ))
 _sym_db.RegisterMessage(LocalPolynomial)
 
 LocalBlsItem = _reflection.GeneratedProtocolMessageType('LocalBlsItem', (_message.Message,), dict(
   DESCRIPTOR = _LOCALBLSITEM,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.LocalBlsItem)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.LocalBlsItem)
   ))
 _sym_db.RegisterMessage(LocalBlsItem)
 
 BlsVerifyValue = _reflection.GeneratedProtocolMessageType('BlsVerifyValue', (_message.Message,), dict(
   DESCRIPTOR = _BLSVERIFYVALUE,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.BlsVerifyValue)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.BlsVerifyValue)
   ))
 _sym_db.RegisterMessage(BlsVerifyValue)
 
 VerifyVecBrdRes = _reflection.GeneratedProtocolMessageType('VerifyVecBrdRes', (_message.Message,), dict(
   DESCRIPTOR = _VERIFYVECBRDRES,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.VerifyVecBrdRes)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.VerifyVecBrdRes)
   ))
 _sym_db.RegisterMessage(VerifyVecBrdRes)
 
 SwapSecKeyItem = _reflection.GeneratedProtocolMessageType('SwapSecKeyItem', (_message.Message,), dict(
   DESCRIPTOR = _SWAPSECKEYITEM,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.SwapSecKeyItem)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.SwapSecKeyItem)
   ))
 _sym_db.RegisterMessage(SwapSecKeyItem)
 
 SwapSecKeyReq = _reflection.GeneratedProtocolMessageType('SwapSecKeyReq', (_message.Message,), dict(
   DESCRIPTOR = _SWAPSECKEYREQ,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.SwapSecKeyReq)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.SwapSecKeyReq)
   ))
 _sym_db.RegisterMessage(SwapSecKeyReq)
 
 SwapSecKeyRes = _reflection.GeneratedProtocolMessageType('SwapSecKeyRes', (_message.Message,), dict(
   DESCRIPTOR = _SWAPSECKEYRES,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.SwapSecKeyRes)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.SwapSecKeyRes)
   ))
 _sym_db.RegisterMessage(SwapSecKeyRes)
 
 AgainstParticipant = _reflection.GeneratedProtocolMessageType('AgainstParticipant', (_message.Message,), dict(
   DESCRIPTOR = _AGAINSTPARTICIPANT,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.AgainstParticipant)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.AgainstParticipant)
   ))
 _sym_db.RegisterMessage(AgainstParticipant)
 
 FinishBroadcast = _reflection.GeneratedProtocolMessageType('FinishBroadcast', (_message.Message,), dict(
   DESCRIPTOR = _FINISHBROADCAST,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.FinishBroadcast)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.FinishBroadcast)
   ))
 _sym_db.RegisterMessage(FinishBroadcast)
 
 CheckVerfiyReq = _reflection.GeneratedProtocolMessageType('CheckVerfiyReq', (_message.Message,), dict(
   DESCRIPTOR = _CHECKVERFIYREQ,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.CheckVerfiyReq)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.CheckVerfiyReq)
   ))
 _sym_db.RegisterMessage(CheckVerfiyReq)
 
 CheckSwapKeyReq = _reflection.GeneratedProtocolMessageType('CheckSwapKeyReq', (_message.Message,), dict(
   DESCRIPTOR = _CHECKSWAPKEYREQ,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.CheckSwapKeyReq)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.CheckSwapKeyReq)
   ))
 _sym_db.RegisterMessage(CheckSwapKeyReq)
 
 FinishSyncRequest = _reflection.GeneratedProtocolMessageType('FinishSyncRequest', (_message.Message,), dict(
   DESCRIPTOR = _FINISHSYNCREQUEST,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.FinishSyncRequest)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.FinishSyncRequest)
   ))
 _sym_db.RegisterMessage(FinishSyncRequest)
 
 BlsMessage = _reflection.GeneratedProtocolMessageType('BlsMessage', (_message.Message,), dict(
   DESCRIPTOR = _BLSMESSAGE,
   __module__ = 'protos.bls_pb2'
-  # @@protoc_insertion_point(class_scope:seth.bls.protobuf.BlsMessage)
+  # @@protoc_insertion_point(class_scope:shardora.bls.protobuf.BlsMessage)
   ))
 _sym_db.RegisterMessage(BlsMessage)
 

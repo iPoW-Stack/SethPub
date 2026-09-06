@@ -1,6 +1,6 @@
 #include "consensus/zbft/waiting_txs_pools.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -22,7 +22,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::LeaderGetValidTxsIdempotently(
         pools::CheckAddrNonceValidFunction addr_nonce_valid_func) {
     auto thread_id = common::GlobalInfo::Instance()->get_thread_index();
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    // SETH_DEBUG("leader get txs coming thread: %d, pool index: %d", thread_id, pool_index);
+    // SHARDORA_DEBUG("leader get txs coming thread: %d, pool index: %d", thread_id, pool_index);
     #ifdef TEST_NO_CROSS
     std::shared_ptr<WaitingTxsItem> txs_item = nullptr;
     #else
@@ -41,7 +41,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::LeaderGetValidTxsIdempotently(
         txs_item->pool_index = pool_index;
         if (!txs_item->txs.empty()) {
             auto first_tx = *(txs_item->txs.begin());
-            SETH_DEBUG("success leader get single txs coming thread: %d, "
+            SHARDORA_DEBUG("success leader get single txs coming thread: %d, "
                 "pool index: %d, tx count: %d, nonce: %lu, step: %d, unique hash: %s", 
                 thread_id, pool_index, txs_item->txs.size(), 
                 first_tx->tx_info->nonce(), 
@@ -49,7 +49,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::LeaderGetValidTxsIdempotently(
                 common::Encode::HexEncode(first_tx->tx_info->key()).c_str());
         }
     } else {
-        SETH_DEBUG("failed leader get txs coming thread: %d, pool index: %d, tx count: %d", 
+        SHARDORA_DEBUG("failed leader get txs coming thread: %d, pool index: %d, tx count: %d", 
             thread_id, pool_index, 0);
     }
 
@@ -61,13 +61,13 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetSingleTx(
         const transport::MessagePtr& msg_ptr,
         uint32_t pool_index,
         pools::CheckAddrNonceValidFunction addr_nonce_valid_func) {
-    SETH_DEBUG("get single tx pool: %u", pool_index);
+    SHARDORA_DEBUG("get single tx pool: %u", pool_index);
     std::shared_ptr<WaitingTxsItem> txs_item = nullptr;
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (pool_index == common::kImmutablePoolSize) {
-        SETH_DEBUG("leader get time tx tmblock_tx_ptr: %u", pool_index);
+        SHARDORA_DEBUG("leader get time tx tmblock_tx_ptr: %u", pool_index);
         txs_item = GetTimeblockTx(pool_index, true, addr_nonce_valid_func);
-        SETH_DEBUG("GetTimeblockTx: %d", (txs_item != nullptr));
+        SHARDORA_DEBUG("GetTimeblockTx: %d", (txs_item != nullptr));
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -80,7 +80,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetSingleTx(
                     *(*iter)->address_info, 
                     *(*iter)->tx_info,
                     &now_nonce) != 0) {
-                SETH_DEBUG("GetToTxs nonce validation failed, pool: %u, "
+                SHARDORA_DEBUG("GetToTxs nonce validation failed, pool: %u, "
                     "tx_nonce: %lu, now_nonce: %lu, txs_empty: %d",
                     pool_index,
                     (iter != txs_item->txs.end() ? (*iter)->tx_info->nonce() : 0),
@@ -88,7 +88,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetSingleTx(
                     (iter == txs_item->txs.end()));
                 txs_item = nullptr;
             } else {
-                SETH_DEBUG("GetToTxs: %s", common::Encode::HexEncode((*iter)->tx_info->key()).c_str());
+                SHARDORA_DEBUG("GetToTxs: %s", common::Encode::HexEncode((*iter)->tx_info->key()).c_str());
             }
         }
     }
@@ -132,7 +132,7 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetTimeblockTx(
         
         txs_item->txs.push_back(tx_ptr);
         txs_item->tx_type = pools::protobuf::kConsensusRootTimeBlock;
-        SETH_DEBUG("single tx success to get timeblock tx: tx key: %s, nonce: %lu, unique hash: %s",
+        SHARDORA_DEBUG("single tx success to get timeblock tx: tx key: %s, nonce: %lu, unique hash: %s",
             common::Encode::HexEncode(tx_ptr->tx_key).c_str(), 
             tx_ptr->tx_info->nonce(),
             common::Encode::HexEncode(tx_ptr->tx_info->key()).c_str());
@@ -157,14 +157,14 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetToTxs(
         txs_item->pool_index = pool_index;
         txs_item->txs.push_back(tx_ptr);
         txs_item->tx_type = pools::protobuf::kNormalTo;
-        SETH_DEBUG("single tx success get to tx %u, is leader: %d, tx key: %s, nonce: %lu", 
+        SHARDORA_DEBUG("single tx success get to tx %u, is leader: %d, tx key: %s, nonce: %lu", 
             pool_index, leader, 
             common::Encode::HexEncode(tx_ptr->tx_key).c_str(),
             tx_ptr->tx_info->nonce());
         return txs_item;
     } else {
         if (leader) {
-            SETH_DEBUG("leader get to tx coming failed 0, pool: %u", pool_index);
+            SHARDORA_DEBUG("leader get to tx coming failed 0, pool: %u", pool_index);
         }
     }
 
@@ -173,4 +173,4 @@ std::shared_ptr<WaitingTxsItem> WaitingTxsPools::GetToTxs(
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

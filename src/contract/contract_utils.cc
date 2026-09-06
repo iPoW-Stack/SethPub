@@ -2,11 +2,11 @@
 
 #include "common/hash.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
 
 }  // namespace contact
 
-}  // namespace seth
+}  // namespace shardora

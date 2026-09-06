@@ -6,7 +6,7 @@
 #define private public
 #include "common/limit_hash_set.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -126,4 +126,4 @@ TEST_F(TestLimitHashSet, DuplicateAfterEviction) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

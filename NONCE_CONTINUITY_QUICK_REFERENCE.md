@@ -13,7 +13,7 @@ update_nonce_con.wait_for(lock, std::chrono::milliseconds(30000));
 // UpdateAddressNonce()
 if (nonce > prikey_with_nonce[addr]) {
     prikey_with_nonce[addr] = nonce;
-    SETH_INFO("[NONCE_UPDATE] Nonce synchronized...");
+    SHARDORA_INFO("[NONCE_UPDATE] Nonce synchronized...");
 }
 ```
 

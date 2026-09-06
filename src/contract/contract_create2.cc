@@ -2,7 +2,7 @@
 #include "common/hash.h"
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -19,7 +19,7 @@ int ContractCreate2::call(
 
     // 1. 参数检查
     if (param.data.size() < 32) {
-        SETH_ERROR("CREATE2 param data size < 32, size=%lu", param.data.size());
+        SHARDORA_ERROR("CREATE2 param data size < 32, size=%lu", param.data.size());
         return kContractError;
     }
 
@@ -34,7 +34,7 @@ int ContractCreate2::call(
     uint64_t dynamic_gas = 32000 + 6 * word_count;
 
     if (res->gas_left < dynamic_gas) {  // 使用传入的 gas 参数进行检查
-        SETH_ERROR("CREATE2 insufficient gas: provided=%lu, required=%lu", res->gas_left, dynamic_gas);
+        SHARDORA_ERROR("CREATE2 insufficient gas: provided=%lu, required=%lu", res->gas_left, dynamic_gas);
         return kContractError;
     }
 
@@ -83,7 +83,7 @@ int ContractCreate2::call(
     res->status_code = EVMC_SUCCESS;
     res->gas_left -= dynamic_gas;   // 扣除实际消耗的 Gas
 
-    SETH_DEBUG("CREATE2 success - predicted_address: %s, sender: %s, salt: %s, "
+    SHARDORA_DEBUG("CREATE2 success - predicted_address: %s, sender: %s, salt: %s, "
         "init_code_len: %lu, gas: %lu, gas left: %lu, dy gas: %lu, data: %s",
         common::Encode::HexEncode(new_address).c_str(),
         common::Encode::HexEncode(sender).c_str(),
@@ -99,4 +99,4 @@ int ContractCreate2::call(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

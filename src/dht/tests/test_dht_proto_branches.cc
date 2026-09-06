@@ -10,7 +10,7 @@
 #include "dht/dht_utils.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace dht {
 namespace test {
 
@@ -146,4 +146,4 @@ TEST(DhtProtoBranches, CreateConnectRequestSuccessForPublicIp) {
 
 }  // namespace test
 }  // namespace dht
-}  // namespace seth
+}  // namespace shardora

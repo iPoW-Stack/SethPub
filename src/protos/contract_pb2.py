@@ -16,10 +16,10 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/contract.proto',
-  package='seth.contract.protobuf',
+  package='shardora.contract.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x15protos/contract.proto\x12\x16seth.contract.protobuf\"6\n\x0fGetAttrByKeyReq\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\"J\n\x0fGetAttrByKeyRes\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x12\n\nattr_value\x18\x03 \x01(\x0c\"\x8f\x01\n\x0f\x43ontractMessage\x12=\n\x0cget_attr_req\x18\x01 \x01(\x0b\x32\'.seth.contract.protobuf.GetAttrByKeyReq\x12=\n\x0cget_attr_res\x18\x02 \x01(\x0b\x32\'.seth.contract.protobuf.GetAttrByKeyRes')
+  serialized_pb=_b('\n\x15protos/contract.proto\x12\x16shardora.contract.protobuf\"6\n\x0fGetAttrByKeyReq\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\"J\n\x0fGetAttrByKeyRes\x12\x11\n\tcall_addr\x18\x01 \x01(\x0c\x12\x10\n\x08\x61ttr_key\x18\x02 \x01(\x0c\x12\x12\n\nattr_value\x18\x03 \x01(\x0c\"\x8f\x01\n\x0f\x43ontractMessage\x12=\n\x0cget_attr_req\x18\x01 \x01(\x0b\x32\'.shardora.contract.protobuf.GetAttrByKeyReq\x12=\n\x0cget_attr_res\x18\x02 \x01(\x0b\x32\'.shardora.contract.protobuf.GetAttrByKeyRes')
 )
 
 
@@ -27,20 +27,20 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _GETATTRBYKEYREQ = _descriptor.Descriptor(
   name='GetAttrByKeyReq',
-  full_name='seth.contract.protobuf.GetAttrByKeyReq',
+  full_name='shardora.contract.protobuf.GetAttrByKeyReq',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='call_addr', full_name='seth.contract.protobuf.GetAttrByKeyReq.call_addr', index=0,
+      name='call_addr', full_name='shardora.contract.protobuf.GetAttrByKeyReq.call_addr', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='attr_key', full_name='seth.contract.protobuf.GetAttrByKeyReq.attr_key', index=1,
+      name='attr_key', full_name='shardora.contract.protobuf.GetAttrByKeyReq.attr_key', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -65,27 +65,27 @@ _GETATTRBYKEYREQ = _descriptor.Descriptor(
 
 _GETATTRBYKEYRES = _descriptor.Descriptor(
   name='GetAttrByKeyRes',
-  full_name='seth.contract.protobuf.GetAttrByKeyRes',
+  full_name='shardora.contract.protobuf.GetAttrByKeyRes',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='call_addr', full_name='seth.contract.protobuf.GetAttrByKeyRes.call_addr', index=0,
+      name='call_addr', full_name='shardora.contract.protobuf.GetAttrByKeyRes.call_addr', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='attr_key', full_name='seth.contract.protobuf.GetAttrByKeyRes.attr_key', index=1,
+      name='attr_key', full_name='shardora.contract.protobuf.GetAttrByKeyRes.attr_key', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='attr_value', full_name='seth.contract.protobuf.GetAttrByKeyRes.attr_value', index=2,
+      name='attr_value', full_name='shardora.contract.protobuf.GetAttrByKeyRes.attr_value', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -110,20 +110,20 @@ _GETATTRBYKEYRES = _descriptor.Descriptor(
 
 _CONTRACTMESSAGE = _descriptor.Descriptor(
   name='ContractMessage',
-  full_name='seth.contract.protobuf.ContractMessage',
+  full_name='shardora.contract.protobuf.ContractMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='get_attr_req', full_name='seth.contract.protobuf.ContractMessage.get_attr_req', index=0,
+      name='get_attr_req', full_name='shardora.contract.protobuf.ContractMessage.get_attr_req', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='get_attr_res', full_name='seth.contract.protobuf.ContractMessage.get_attr_res', index=1,
+      name='get_attr_res', full_name='shardora.contract.protobuf.ContractMessage.get_attr_res', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -155,21 +155,21 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 GetAttrByKeyReq = _reflection.GeneratedProtocolMessageType('GetAttrByKeyReq', (_message.Message,), dict(
   DESCRIPTOR = _GETATTRBYKEYREQ,
   __module__ = 'protos.contract_pb2'
-  # @@protoc_insertion_point(class_scope:seth.contract.protobuf.GetAttrByKeyReq)
+  # @@protoc_insertion_point(class_scope:shardora.contract.protobuf.GetAttrByKeyReq)
   ))
 _sym_db.RegisterMessage(GetAttrByKeyReq)
 
 GetAttrByKeyRes = _reflection.GeneratedProtocolMessageType('GetAttrByKeyRes', (_message.Message,), dict(
   DESCRIPTOR = _GETATTRBYKEYRES,
   __module__ = 'protos.contract_pb2'
-  # @@protoc_insertion_point(class_scope:seth.contract.protobuf.GetAttrByKeyRes)
+  # @@protoc_insertion_point(class_scope:shardora.contract.protobuf.GetAttrByKeyRes)
   ))
 _sym_db.RegisterMessage(GetAttrByKeyRes)
 
 ContractMessage = _reflection.GeneratedProtocolMessageType('ContractMessage', (_message.Message,), dict(
   DESCRIPTOR = _CONTRACTMESSAGE,
   __module__ = 'protos.contract_pb2'
-  # @@protoc_insertion_point(class_scope:seth.contract.protobuf.ContractMessage)
+  # @@protoc_insertion_point(class_scope:shardora.contract.protobuf.ContractMessage)
   ))
 _sym_db.RegisterMessage(ContractMessage)
 

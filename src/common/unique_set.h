@@ -6,7 +6,7 @@
 #include "common/fixed_queue.h"
 #include "common/hash.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -53,4 +53,4 @@ private:
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

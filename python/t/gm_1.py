@@ -6,31 +6,31 @@ import requests
 import binascii
 from gmssl import sm2, sm3, func
 
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
 # --- 5. Main Execution ---
 PROBE_POOL_SOL = """
 pragma solidity ^0.8.20;
 
 contract ProbePool {
-    uint256 public reserveSETH;
+    uint256 public reserveSHARDORA;
     uint256 public reserveUSDC;
 
-    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSETH, uint256 resUSDC);
+    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSHARDORA, uint256 resUSDC);
 
     constructor(uint256 s, uint256 u) payable {
-        reserveSETH = s;
+        reserveSHARDORA = s;
         reserveUSDC = u;
     }
 
-    function sellSETH(uint256 m) external payable returns (uint256 out) {
-        out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+    function sellSHARDORA(uint256 m) external payable returns (uint256 out) {
+        out = (msg.value * reserveUSDC) / (reserveSHARDORA + msg.value);
         require(out >= m, 'ProbePool: slippage');
 
-        reserveSETH += msg.value;
+        reserveSHARDORA += msg.value;
         reserveUSDC -= out;
 
-        emit PoolSwap(msg.sender, msg.value, out, reserveSETH, reserveUSDC);
+        emit PoolSwap(msg.sender, msg.value, out, reserveSHARDORA, reserveUSDC);
         return out;
     }
 }
@@ -60,9 +60,9 @@ contract ProbeTreasury {
         emit TreasuryForwarded(pool, msg.value, m);
 
         (bool ok, bytes memory ret) = pool.call{value: msg.value}(
-            abi.encodeWithSignature('sellSETH(uint256)', m)
+            abi.encodeWithSignature('sellSHARDORA(uint256)', m)
         );
-        require(ok, 'ProbeTreasury: call sellSETH failed');
+        require(ok, 'ProbeTreasury: call sellSHARDORA failed');
 
         out = abi.decode(ret, (uint256));
         totalSwaps += 1;
@@ -104,21 +104,21 @@ def test_library_with_contrcat(w3, MY, KEY):
     print("\n--- TEST CASE 1: Library ---")
     src = "pragma solidity ^0.8.0; library MathLib { function add(uint a, uint b) public pure returns(uint){return a+b;} } contract Calculator { function use(uint a, uint b) public pure returns(uint){return MathLib.add(a,b);} }"
     l_bin, l_abi = compile_and_link(src, "MathLib")
-    lib = w3.seth.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '01', 'step': StepType.kCreateLibrary}, KEY)
+    lib = w3.shardora.contract(abi=l_abi, bytecode=l_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '01', 'step': StepType.kCreateLibrary}, KEY)
     c_bin, c_abi = compile_and_link(src, "Calculator", libs={"MathLib": lib.address})
-    calc = w3.seth.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '02'}, KEY)
+    calc = w3.shardora.contract(abi=c_abi, bytecode=c_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '02'}, KEY)
     print(f"Result: {calc.functions.use(10, 20).transact(KEY)['decoded_output']}")
 
 def test_contract_call_contract(w3, MY, KEY):
     print("\n--- TEST CASE 3: Chain Call ---")
     p_bin, p_abi = compile_and_link(PROBE_POOL_SOL, "ProbePool")
-    pool = w3.seth.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000], 'amount': 5000000 }, KEY)
+    pool = w3.shardora.contract(abi=p_abi, bytecode=p_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '03', 'args': [10000, 10000], 'amount': 5000000 }, KEY)
 
     t_bin, t_abi = compile_and_link(PROBE_TREASURY_SOL, "ProbeTreasury")
-    treasury = w3.seth.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)], 'amount': 5000000 }, KEY)
+    treasury = w3.shardora.contract(abi=t_abi, bytecode=t_bin).deploy({'from': MY, 'salt': RANDOM_SALT + '04', 'args': [to_checksum_address(pool.address)], 'amount': 5000000 }, KEY)
 
     b_bin, b_abi = compile_and_link(PROBE_BRIDGE_SOL, "ProbeBridge")
-    bridge = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=MY).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
+    bridge = w3.shardora.contract(abi=b_abi, bytecode=b_bin, sender_address=MY).deploy({'from': MY, 'salt': RANDOM_SALT + '05', 'args': [to_checksum_address(treasury.address)]}, KEY)
 
     treasury.functions.setBridge(to_checksum_address(bridge.address)).transact(KEY)
     receipt = bridge.functions.request(1).transact(KEY, value=5)
@@ -141,7 +141,7 @@ def test_transfer(w3, MY, KEY, dest):
     balance_before = w3.client.get_balance(dest) # 1. Record balance before transfer
     print(f"Balance before: {balance_before}")
     
-    receipt = w3.seth.send_transaction({'to': dest, 'value': transfer_amount}, KEY) # 2. Execute transfer transaction
+    receipt = w3.shardora.send_transaction({'to': dest, 'value': transfer_amount}, KEY) # 2. Execute transfer transaction
     
     if receipt.get('status') == 0: # 3. Verify transaction status
         print(f"Transfer Sent Successfully. Hash: {receipt.get('tx_hash', 'N/A')}")
@@ -186,7 +186,7 @@ def test_gmssl_transfer(w3, GM_KEY):
     }
 
     print("Sending GmSSL Transfer...")
-    receipt = w3.seth.send_gmssl_transaction(tx_dict, GM_KEY) # 3. Initiate transaction
+    receipt = w3.shardora.send_gmssl_transaction(tx_dict, GM_KEY) # 3. Initiate transaction
 
     print(f"GmSSL Transfer Status: {receipt.get('status')}")
     if receipt.get('status') == 0:
@@ -217,7 +217,7 @@ def test_gmssl_contract_flow(w3, GM_KEY):
     print(f"GmSSL Sender Address pk: {gm_pubkey}, GM_MY: {GM_MY}")
     # 3. Deploy contract
     print("[*] Deploying GmVault via GmSSL...")
-    gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
+    gm_vault = w3.shardora.contract(abi=abi, bytecode=bin_code)
     gm_vault.deploy({
         'from': GM_MY,
         'salt': secrets.token_hex(31) + 'gm_auto',
@@ -247,7 +247,7 @@ def test_gmssl_contract_flow(w3, GM_KEY):
 
 def gmssl_sign_test():
     IP, PORT = "127.0.0.1", 23001
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     test_transfer(
         w3, MY, 
@@ -260,7 +260,7 @@ def gmssl_sign_test():
 
 if __name__ == "__main__":
     IP, PORT = "127.0.0.1", 23001
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     MY = w3.client.get_address("71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6")
     test_transfer(
         w3, MY, 

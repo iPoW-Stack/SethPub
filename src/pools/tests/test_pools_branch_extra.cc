@@ -1,7 +1,7 @@
 // Small-file branch coverage:
 //
 //   - cross_pool.cc 85-87, 90, 94: SyncMissingBlocks BlockExists==true branch
-//     (height_tree_ptr_->Set; synced_height_ advance; SETH_DEBUG; continue).
+//     (height_tree_ptr_->Set; synced_height_ advance; SHARDORA_DEBUG; continue).
 //   - leaf_height_tree.cc 60, 67: Set(child_index, val) out-of-range guards.
 //   - leaf_height_tree.cc 83, 111: Set(index)/Valid out-of-range guards.
 //   - leaf_height_tree.cc 227: GetRoot for is_branch_=true.
@@ -37,7 +37,7 @@
 #include "common/global_info.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -89,7 +89,7 @@ std::shared_ptr<db::Db> TestCrossPoolBranch::db_ptr_ = nullptr;
 // SyncMissingBlocks: latest_height_ != kInvalidUint64 AND some
 // `invalid_heights[i]` already has its block saved → enters the
 // BlockExists==true branch and runs lines 85-87 (Set, synced advance) and
-// 90/94 (SETH_DEBUG, continue).
+// 90/94 (SHARDORA_DEBUG, continue).
 TEST_F(TestCrossPoolBranch, SyncMissingBlocks_BlockExistsBranch_Runs) {
     CrossPool pool;
     constexpr uint32_t kRemote   = network::kConsensusShardBeginNetworkId + 1;
@@ -285,4 +285,4 @@ TEST_F(TestHeightTreeLevelBranch, ValidWithoutSet_ReturnsFalse) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

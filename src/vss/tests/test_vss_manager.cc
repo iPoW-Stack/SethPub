@@ -17,7 +17,7 @@
 #include "vss/vss_utils.h"
 #include "vss/random_num.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 
@@ -160,7 +160,7 @@ TEST_F(TestVssManager, RandomNumRemoteSetHash) {
     std::string owner_id = "node_123";
     uint64_t hash_val = 0xDEADBEEF;
 
-    rn.Sethash(owner_id, hash_val);
+    rn.Shardoraash(owner_id, hash_val);
     ASSERT_EQ(rn.GetHash(), hash_val);
     ASSERT_FALSE(rn.IsRandomValid());  // Not valid until final random is set
 }
@@ -172,7 +172,7 @@ TEST_F(TestVssManager, RandomNumRemoteSetFinalRandom) {
     uint64_t hash_val = common::Hash::Hash64(std::to_string(final_random));
 
     // First set hash
-    rn.Sethash(owner_id, hash_val);
+    rn.Shardoraash(owner_id, hash_val);
     ASSERT_FALSE(rn.IsRandomValid());
 
     // Then set final random (must match hash)
@@ -187,7 +187,7 @@ TEST_F(TestVssManager, RandomNumRemoteSetFinalRandomWrongHash) {
     uint64_t final_random = 12345678;
     uint64_t wrong_hash = 0xBADBAD;  // Doesn't match
 
-    rn.Sethash(owner_id, wrong_hash);
+    rn.Shardoraash(owner_id, wrong_hash);
     rn.SetFinalRandomNum(owner_id, final_random);
     // Should NOT become valid because hash doesn't match
     ASSERT_FALSE(rn.IsRandomValid());
@@ -201,7 +201,7 @@ TEST_F(TestVssManager, RandomNumRemoteSetFinalRandomWrongOwner) {
     uint64_t final_random = 99999;
     uint64_t hash_val = common::Hash::Hash64(std::to_string(final_random));
 
-    rn.Sethash(owner_id, hash_val);
+    rn.Shardoraash(owner_id, hash_val);
     // Wrong owner tries to set final random
     rn.SetFinalRandomNum(wrong_owner, final_random);
     ASSERT_FALSE(rn.IsRandomValid());
@@ -321,4 +321,4 @@ TEST_F(TestVssManager, XorCommutativity) {
 
 }  // namespace vss
 
-}  // namespace seth
+}  // namespace shardora

@@ -15,7 +15,7 @@
 #include "security/security.h"
 #include "transport/tcp_transport.h"
 
-namespace seth {
+namespace shardora {
 
 namespace elect {
 
@@ -90,4 +90,4 @@ bool ElectProto::CreateWaitingHeartbeat(
 
 }  // namespace elect
 
-}  // namespace seth
+}  // namespace shardora

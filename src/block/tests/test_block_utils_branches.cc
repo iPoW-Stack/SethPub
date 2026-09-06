@@ -7,7 +7,7 @@
 
 #include "block/block_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace block {
 namespace test {
 
@@ -125,4 +125,4 @@ TEST(BlockUtilsBranches, LeaderWithToTxItemStoresAssignedPointers) {
 
 }  // namespace test
 }  // namespace block
-}  // namespace seth
+}  // namespace shardora

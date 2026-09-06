@@ -3,7 +3,7 @@
 #include "protos/transport.pb.h"
 #include "dht/dht_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace network {
 
@@ -29,4 +29,4 @@ private:
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

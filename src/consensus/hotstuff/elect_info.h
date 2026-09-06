@@ -17,7 +17,7 @@
 #include <network/universal_manager.h>
 #include <security/security.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -87,20 +87,20 @@ public:
     inline common::BftMemberPtr GetMemberByIdx(uint32_t member_idx) const {
         // Check if members_ is null
         if (!members_) {
-            SETH_ERROR("GetMemberByIdx: members_ is null, elect_height: %lu", elect_height_);
+            SHARDORA_ERROR("GetMemberByIdx: members_ is null, elect_height: %lu", elect_height_);
             return nullptr;
         }
         
         // Check if member_idx is out of bounds
         if (member_idx >= members_->size()) {
-            SETH_ERROR("GetMemberByIdx: member_idx %u out of range (size: %lu), elect_height: %lu",
+            SHARDORA_ERROR("GetMemberByIdx: member_idx %u out of range (size: %lu), elect_height: %lu",
                 member_idx, members_->size(), elect_height_);
             return nullptr;
         }
         
         auto member = (*members_)[member_idx];
         if (!member) {
-            SETH_ERROR("GetMemberByIdx: member at idx %u is null, elect_height: %lu",
+            SHARDORA_ERROR("GetMemberByIdx: member at idx %u is null, elect_height: %lu",
                 member_idx, elect_height_);
         }
         
@@ -198,7 +198,7 @@ public:
     #ifndef NDEBUG
         auto val = libBLS::ThresholdUtils::fieldElementToString(
             elect_item->common_pk().X.c0);
-        SETH_DEBUG("new elect coming sharding: %u, elect height: %lu, common pk: %s",
+        SHARDORA_DEBUG("new elect coming sharding: %u, elect height: %lu, common pk: %s",
             sharding_id, elect_item->ElectHeight(), val.c_str());
     #endif
     }
@@ -231,7 +231,7 @@ public:
                 &common_pk,
                 &sec_key);
             if (members == nullptr) {
-                SETH_ERROR("failed get elect members: %u, %lu",
+                SHARDORA_ERROR("failed get elect members: %u, %lu",
                     sharding_id, elect_height);
                 break;
             }
@@ -240,7 +240,7 @@ public:
                 // members found but common_pk unavailable — return an item with zero pk so
                 // VerifyThresSign returns kElectItemNotFound instead of falling back to the
                 // (potentially stale) genesis common_pk and producing a spurious verify failure.
-                SETH_WARN("elect members found but common_pk is zero: shard %u, elect_height %lu; "
+                SHARDORA_WARN("elect members found but common_pk is zero: shard %u, elect_height %lu; "
                     "returning ElectItem with zero pk to block incorrect genesis fallback",
                     sharding_id, elect_height);
                 res_ptr = std::make_shared<ElectItem>(
@@ -253,7 +253,7 @@ public:
                 break;
             }
             
-            SETH_DEBUG("new elect coming sharding: %u, elect height: %lu, common pk: %d",
+            SHARDORA_DEBUG("new elect coming sharding: %u, elect height: %lu, common pk: %d",
                 sharding_id, elect_height, (common_pk != libff::alt_bn128_G2::zero()));
     // #ifndef NDEBUG
     //         if (sharding_id == common::GlobalInfo::Instance()->network_id())
@@ -273,7 +273,7 @@ public:
         if (res_ptr) {
             auto val = libBLS::ThresholdUtils::fieldElementToString(
                 res_ptr->common_pk().X.c0);
-            SETH_DEBUG("success get elect sharding: %u, des elect_height: %lu, "
+            SHARDORA_DEBUG("success get elect sharding: %u, des elect_height: %lu, "
                 "elect height: %lu, common pk: %s",
                 sharding_id, elect_height, res_ptr->ElectHeight(), val.c_str());
         }
@@ -283,7 +283,7 @@ public:
 
     inline std::shared_ptr<ElectItem> GetElectItemWithShardingId(uint32_t sharding_id) const {
         if (sharding_id > network::kConsensusShardEndNetworkId) {
-            SETH_DEBUG("get elect item failed sharding id: %u", sharding_id);
+            SHARDORA_DEBUG("get elect item failed sharding id: %u", sharding_id);
             // //assert(false);
             return nullptr;
         }
@@ -297,11 +297,11 @@ public:
     void RefreshMemberAddrs(uint32_t sharding_id) {
         auto elect_items_ptr = LoadElectItem(sharding_id);
         if (!elect_items_ptr) {
-            SETH_DEBUG("Leader pool elect item null");
+            SHARDORA_DEBUG("Leader pool elect item null");
             return;
         }
         for (auto& member : *(elect_items_ptr->Members())) {
-            // SETH_DEBUG("get Leader pool %s failed: %d, %u %d", 
+            // SHARDORA_DEBUG("get Leader pool %s failed: %d, %u %d", 
             //     common::Encode::HexEncode(member->id).c_str(), 
             //     common::GlobalInfo::Instance()->network_id(),
             //     member->public_ip,
@@ -314,7 +314,7 @@ public:
                         if ((*iter)->id == member->id) {
                             member->public_ip = common::IpToUint32((*iter)->public_ip.c_str());
                             member->public_port = (*iter)->public_port;
-                            SETH_DEBUG("set member %s ip port %s:%d",
+                            SHARDORA_DEBUG("set member %s ip port %s:%d",
                                 common::Encode::HexEncode((*iter)->id).c_str(), 
                                 (*iter)->public_ip.c_str(), 
                                 (*iter)->public_port);
@@ -360,5 +360,5 @@ private:
 
 } // namespace consensus
 
-} // namespace seth
+} // namespace shardora
 

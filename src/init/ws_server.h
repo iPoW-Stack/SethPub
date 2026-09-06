@@ -14,7 +14,7 @@
 // #include "transport/multi_thread.h"
 // #include "websocket/websocket_server.h"
 
-// namespace seth {
+// namespace shardora {
 
 // namespace init {
 
@@ -129,4 +129,4 @@
 
 // }  // namespace init
 
-// }  // namespace seth
+// }  // namespace shardora

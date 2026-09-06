@@ -19,7 +19,7 @@
 #include "network/network_utils.h"
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -430,4 +430,4 @@ TEST_F(TestCrossPoolEnhanced, Init_WithNullDb_HandlesGracefully) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

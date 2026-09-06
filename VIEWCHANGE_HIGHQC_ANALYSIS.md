@@ -45,8 +45,8 @@ uint64_t preblock_time = pools_mgr_->latest_timestamp(pool_idx());
 // 区块时间戳必须满足：
 // 1. 大于上一个区块的时间戳（单调递增）
 // 2. 不能超过当前本地时间 10 秒以上（防止未来时间戳）
-if (seth_block->timestamp() <= preblock_time && 
-    seth_block->timestamp() + 10000lu >= cur_time) {
+if (shardora_block->timestamp() <= preblock_time && 
+    shardora_block->timestamp() + 10000lu >= cur_time) {
     // 时间戳非法，丢弃该区块
     return false;
 }

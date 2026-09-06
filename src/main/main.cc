@@ -10,10 +10,10 @@ static void GlobalInitSpdlog() {
     auto max_files = 60;
     auto logger = spdlog::create_async<spdlog::sinks::rotating_file_sink_mt>(
         "async_file",
-        "log/seth.log",
+        "log/shardora.log",
         max_size,
         max_files);
-    // auto logger = spdlog::basic_logger_mt("sync_file", "log/seth.log", false);
+    // auto logger = spdlog::basic_logger_mt("sync_file", "log/shardora.log", false);
     spdlog::set_default_logger(logger);
     spdlog::set_pattern("%Y-%m-%d %H:%M:%S.%e [thread %t] %-5l [%n] %v%$");
     for (auto& sink : logger->sinks()) {
@@ -27,10 +27,10 @@ static void GlobalInitSpdlog() {
 
 int main(int argc, char** argv) {
     GlobalInitSpdlog();
-    seth::common::SignalRegister();
-    seth::init::NetworkInit init;
+    shardora::common::SignalRegister();
+    shardora::init::NetworkInit init;
     if (init.Init(argc, argv) != 0) {
-        SETH_ERROR("init network error!");
+        SHARDORA_ERROR("init network error!");
         return 1;
     }
 

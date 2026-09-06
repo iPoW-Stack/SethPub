@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * Minimal treasury that forwards value to ProbePool.sellSETH.
+ * Minimal treasury that forwards value to ProbePool.sellSHARDORA.
  */
 contract ProbeTreasury {
     address public pool;
@@ -28,7 +28,7 @@ contract ProbeTreasury {
 
     function swap(uint256 minOut) external payable onlyBridge returns (uint256 out) {
         (bool ok, bytes memory ret) = pool.call{value: msg.value}(
-            abi.encodeWithSignature("sellSETH(uint256)", minOut)
+            abi.encodeWithSignature("sellSHARDORA(uint256)", minOut)
         );
         require(ok, "ProbeTreasury: pool call failed");
         out = abi.decode(ret, (uint256));

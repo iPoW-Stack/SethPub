@@ -10,7 +10,7 @@
 #include "common/encode.h"
 #include "big_num/libsnark.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bignum {
 
@@ -329,4 +329,4 @@ TEST_F(TestLibsnark, PairingZeroPointsBytes) {
 
 }  // namespace bignum
 
-}  // namespace seth
+}  // namespace shardora

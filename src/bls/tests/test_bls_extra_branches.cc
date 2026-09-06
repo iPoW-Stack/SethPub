@@ -6,7 +6,7 @@
 #include "bls/bls_utils.h"
 #include "common/bitmap.h"
 
-namespace seth {
+namespace shardora {
 namespace bls {
 namespace test {
 
@@ -130,4 +130,4 @@ TEST(BlsUtilsExtraTest, BlsFinishItemCommonPkMapEmpty) {
 
 }  // namespace test
 }  // namespace bls
-}  // namespace seth
+}  // namespace shardora

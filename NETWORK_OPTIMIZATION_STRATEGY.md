@@ -29,7 +29,7 @@
 **实施**:
 ```bash
 # 禁用网络延迟
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 ```
 
 ### 方案2: 改进网络延迟注入（长期方案）
@@ -51,7 +51,7 @@ export SETH_NETWORK_ENABLED=0
 ### 1. 禁用网络延迟注入
 ```bash
 # 在启动脚本中添加
-export SETH_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_ENABLED=0
 ```
 
 ### 2. 增加TCP缓冲区
@@ -74,7 +74,7 @@ uv_tcp_keepalive(&ex_uv_tcp->uv_tcp, 1, 120);  // 从60改为120
 // 在OnClientPacket中
 static const uint32_t kMaxPacketBytes = 2u * 1024u * 1024u;  // 2MB
 if (len == 0 || len > kMaxPacketBytes) {
-    SETH_WARN("oversized or empty packet from %s:%d, len=%u", ...);
+    SHARDORA_WARN("oversized or empty packet from %s:%d, len=%u", ...);
     return false;
 }
 ```
@@ -84,10 +84,10 @@ if (len == 0 || len > kMaxPacketBytes) {
 ### 禁用网络延迟的配置
 ```bash
 # temp_cmd.sh 中
-export SETH_NETWORK_ENABLED=0
-export SETH_NETWORK_DELAY_MS=0
-export SETH_NETWORK_JITTER_MS=0
-export SETH_NETWORK_LOSS_RATE=0
+export SHARDORA_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_DELAY_MS=0
+export SHARDORA_NETWORK_JITTER_MS=0
+export SHARDORA_NETWORK_LOSS_RATE=0
 ```
 
 ### 优化TCP参数
@@ -107,7 +107,7 @@ sysctl -w net.ipv4.tcp_fin_timeout=30
 ulimit -n 65536
 
 # 增加线程数
-export SETH_THREAD_COUNT=32
+export SHARDORA_THREAD_COUNT=32
 ```
 
 ## 预期效果

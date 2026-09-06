@@ -4,7 +4,7 @@
 #include "common/utils.h"
 #include "consensus/consensus_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 
 std::string StatusToString(uint32_t status) {
@@ -73,4 +73,4 @@ bool IsShardSingleBlockTx(uint32_t tx_type) {
 }
 
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

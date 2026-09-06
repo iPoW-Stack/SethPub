@@ -20,7 +20,7 @@
 #include "consensus/hotstuff/consensus_statistic.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -162,4 +162,4 @@ TEST(ConsensusFunctionCoverage100, MemberConsensusStatHashesReflectCounters) {
 
 }  // namespace test
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

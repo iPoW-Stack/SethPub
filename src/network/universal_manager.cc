@@ -14,7 +14,7 @@
 #include "network/network_utils.h"
 #include "network/bootstrap.h"
 
-namespace seth {
+namespace shardora {
 
 namespace network {
 
@@ -45,23 +45,23 @@ void UniversalManager::Destroy() {
 
 void UniversalManager::RegisterUniversal(uint32_t network_id, dht::BaseDhtPtr& dht) {
     if (network_id >= kUniversalNetworkCount) {
-        SETH_ERROR("invalid network id: %u", network_id);
+        SHARDORA_ERROR("invalid network id: %u", network_id);
         return;
     }
 
     auto dht_ptr = LoadDht(network_id);
     if (dht_ptr != nullptr) {
-        // SETH_ERROR("regiestered network id: %u", network_id);
+        // SHARDORA_ERROR("regiestered network id: %u", network_id);
         return;
     }
 
     StoreDht(network_id, dht);
-    // SETH_DEBUG("add universal network: %d", network_id);
+    // SHARDORA_DEBUG("add universal network: %d", network_id);
 }
 
 void UniversalManager::UnRegisterUniversal(uint32_t network_id) {
     if (network_id >= kUniversalNetworkCount) {
-        SETH_ERROR("invalid network id: %u", network_id);
+        SHARDORA_ERROR("invalid network id: %u", network_id);
         return;
     }
 
@@ -74,7 +74,7 @@ void UniversalManager::UnRegisterUniversal(uint32_t network_id) {
 
 dht::BaseDhtPtr UniversalManager::GetUniversal(uint32_t network_id) {
     if (network_id >= kUniversalNetworkCount) {
-//         SETH_ERROR("invalid network id: %u", network_id);
+//         SHARDORA_ERROR("invalid network id: %u", network_id);
         return nullptr;
     }
 
@@ -167,7 +167,7 @@ int UniversalManager::CreateUniversalNetwork(const common::Config& config) {
         return res;
     }
 
-    SETH_DEBUG("now get universal dht 8");
+    SHARDORA_DEBUG("now get universal dht 8");
     auto universal_dht = GetUniversal(kUniversalNetworkId);
     if (universal_dht == nullptr) {
         return kNetworkError;
@@ -239,4 +239,4 @@ void UniversalManager::StoreDht(uint32_t network_id, const dht::BaseDhtPtr& dht)
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

@@ -6,7 +6,7 @@
 #include "common/utils.h"
 #include "pools/leaf_height_tree.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -51,4 +51,4 @@ private:
 
 };  // namespace pools
 
-};  // namespace seth
+};  // namespace shardora

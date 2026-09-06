@@ -16,7 +16,7 @@
 #include "network/network_utils.h"
 #include <tools/utils.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -115,7 +115,7 @@ struct AggregateSignature {
             const std::string& sx = agg_sig_proto.sign_x();
             if (!sx.empty()) {
                 if (!IsLibffDecimalFieldString(sx)) {
-                    SETH_ERROR("load from proto failed, invalid sign_x");
+                    SHARDORA_ERROR("load from proto failed, invalid sign_x");
                     sig_ = libff::alt_bn128_G1::zero();
                     return false;
                 }
@@ -124,7 +124,7 @@ struct AggregateSignature {
             const std::string& sy = agg_sig_proto.sign_y();
             if (!sy.empty()) {
                 if (!IsLibffDecimalFieldString(sy)) {
-                    SETH_ERROR("load from proto failed, invalid sign_y");
+                    SHARDORA_ERROR("load from proto failed, invalid sign_y");
                     sig_ = libff::alt_bn128_G1::zero();
                     return false;
                 }
@@ -133,18 +133,18 @@ struct AggregateSignature {
             const std::string& sz = agg_sig_proto.sign_z();
             if (!sz.empty()) {
                 if (!IsLibffDecimalFieldString(sz)) {
-                    SETH_ERROR("load from proto failed, invalid sign_z");
+                    SHARDORA_ERROR("load from proto failed, invalid sign_z");
                     sig_ = libff::alt_bn128_G1::zero();
                     return false;
                 }
                 sig_.Z = libff::alt_bn128_Fq(sz.c_str());
             }
         } catch (const std::exception& e) {   
-            SETH_ERROR("load from proto failed, err: %s", e.what());
+            SHARDORA_ERROR("load from proto failed, err: %s", e.what());
             sig_ = libff::alt_bn128_G1::zero();
             return false;
         } catch (...) {
-            SETH_ERROR("load from proto failed, unknown err");
+            SHARDORA_ERROR("load from proto failed, unknown err");
             sig_ = libff::alt_bn128_G1::zero();
             return false;
         }
@@ -251,4 +251,4 @@ std::shared_ptr<SyncInfo> new_sync_info();
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

@@ -37,7 +37,7 @@
 #include "protos/prefix_db.h"
 #include <protos/view_block.pb.h>
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -47,14 +47,14 @@ struct MinTxItem : public TxItem {
     MinTxItem(transport::MessagePtr msg, protos::AddressInfoPtr ai)
         : TxItem(msg, -1, ai) {}
     int HandleTx(uint32_t, view_block::protobuf::ViewBlockItem&,
-                 sethvm::SethhainHost&, hotstuff::BalanceAndNonceMap&,
+                 shardoravm::ShardorahainHost&, hotstuff::BalanceAndNonceMap&,
                  block::protobuf::BlockTx&) override { return 0; }
     int TxToBlockTx(const pools::protobuf::TxMessage&,
                     block::protobuf::BlockTx*) override { return 0; }
 };
 
 // Create a TxItemPtr.  Pubkey is intentionally left empty (size 0, not 64)
-// so that SETH_DEBUG branches involving security_->GetAddress() are skipped.
+// so that SHARDORA_DEBUG branches involving security_->GetAddress() are skipped.
 static TxItemPtr MakeTx(uint64_t addr_nonce, uint64_t tx_nonce,
                         pools::protobuf::StepType step,
                         const std::string& addr = "addr") {
@@ -469,4 +469,4 @@ TEST_F(TestTxPoolExtra, GetTxSyncToLeader_InvalidTx_BreaksLoop) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

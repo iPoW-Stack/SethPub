@@ -88,7 +88,7 @@ def generate_user_for_target_shard_pool(target_shard, target_pool):
 ```cpp
 // ContractCall::HandleTx()
 auto preppayment_id = block_tx.to() + block_tx.from();
-auto res = GetTempAccountBalance(pre_seth_host, preppayment_id,
+auto res = GetTempAccountBalance(pre_shardora_host, preppayment_id,
                                   acc_balance_map, &from_balance, &from_nonce);
 // Gas 从预付账户扣除，而非用户主余额
 // 执行失败只扣 gas，不发生资产转移

@@ -13,7 +13,7 @@
 #include "security/security.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace dht {
     class BaseDht;
@@ -76,4 +76,4 @@ private:
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

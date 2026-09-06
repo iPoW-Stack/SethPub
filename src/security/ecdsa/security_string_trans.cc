@@ -3,7 +3,7 @@
 #include "common/encode.h"
 #include "security/ecdsa/crypto_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -111,4 +111,4 @@ void SecurityStringTrans::EcPointToString(
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

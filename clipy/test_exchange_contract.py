@@ -20,12 +20,12 @@ from ecdsa.util import sigencode_string_canonize
 from ecdsa import SigningKey, SECP256k1
 
 sys.path.insert(0, os.path.dirname(__file__))
-from seth_sdk import (
-    SethWeb3Mock, SethClient, SethMethod, StepType,
+from shardora_sdk import (
+    ShardoraWeb3Mock, ShardoraClient, ShardoraMethod, StepType,
     compile_and_link, calc_create2_address, normalize_hex,
 )
 
-# ── Seth shard constants ──────────────────────────────────────────────────────
+# ── Shardora shard constants ──────────────────────────────────────────────────────
 HASH_SEED_1 = 23456785675590
 UNICAST_ADDR_LEN = 20
 CONSENSUS_SHARD_BEGIN = 3
@@ -39,14 +39,14 @@ def calc_shard_id(addr_hex: str) -> int:
     shard_range = MAX_SHARD_ID - CONSENSUS_SHARD_BEGIN + 1
     return (_hash64(b) % shard_range) + CONSENSUS_SHARD_BEGIN
 
-_W3_CACHE: Dict[int, SethWeb3Mock] = {}
+_W3_CACHE: Dict[int, ShardoraWeb3Mock] = {}
 
-def w3_for_shard(shard: int) -> SethWeb3Mock:
+def w3_for_shard(shard: int) -> ShardoraWeb3Mock:
     if shard not in _W3_CACHE:
-        _W3_CACHE[shard] = SethWeb3Mock(HOST, SHARD_PORT[shard])
+        _W3_CACHE[shard] = ShardoraWeb3Mock(HOST, SHARD_PORT[shard])
     return _W3_CACHE[shard]
 
-def w3_funder() -> SethWeb3Mock:
+def w3_funder() -> ShardoraWeb3Mock:
     return w3_for_shard(3)
 
 def get_address(pk: str) -> str:
@@ -61,7 +61,7 @@ def gen_key_for_shard(target_shard: int) -> Tuple[str, str]:
             return sk.to_string().hex(), addr
 
 # ── Config ────────────────────────────────────────────────────────────────────
-HOST = os.environ.get("SETH_HOST", "127.0.0.1")
+HOST = os.environ.get("SHARDORA_HOST", "127.0.0.1")
 SHARDS = [3, 4, 5, 6]
 SHARD_PORT = {s: int(f"2{s}001") for s in SHARDS}
 
@@ -241,12 +241,12 @@ class NonceManager:
             self.refresh(addr, to, step)
 
 
-def client_for_sender(pk: str) -> SethClient:
+def client_for_sender(pk: str) -> ShardoraClient:
     return w3_for_shard(calc_shard_id(get_address(pk))).client
 
 
 def send_with_nonce(
-    client: SethClient,
+    client: ShardoraClient,
     pk_hex: str,
     to: str,
     step: int,
@@ -355,7 +355,7 @@ def send_ecdsa_tx(
     contract_code: str = "",
     input_hex: str = "",
     prefund: int = 0,
-) -> Tuple[str, SethClient, bool]:
+) -> Tuple[str, ShardoraClient, bool]:
     client = client_for_sender(sender_pk)
     txh, ok_send = send_with_nonce(
         client, sender_pk, to, step, nonce,
@@ -365,7 +365,7 @@ def send_ecdsa_tx(
     return txh, client, ok_send
 
 
-def _poll_receipt(client: SethClient, tx_hash: str) -> Optional[dict]:
+def _poll_receipt(client: ShardoraClient, tx_hash: str) -> Optional[dict]:
     try:
         r = requests.post(
             client.receipt_url, data={"tx_hash": tx_hash},
@@ -381,7 +381,7 @@ def _poll_receipt(client: SethClient, tx_hash: str) -> Optional[dict]:
 
 
 def batch_wait_receipts(
-    pending: Dict[str, Tuple[str, SethClient]],
+    pending: Dict[str, Tuple[str, ShardoraClient]],
     timeout: int = BATCH_TX_TIMEOUT,
 ) -> Dict[str, dict]:
     """Wait for all tx receipts. Missing entries get status=-1."""
@@ -444,7 +444,7 @@ def fund_all_accounts(addrs: List[str], target_balance: int) -> None:
     if not to_fund:
         return
 
-    fund_pending: Dict[str, Tuple[str, SethClient]] = {}
+    fund_pending: Dict[str, Tuple[str, ShardoraClient]] = {}
     fc = w3_funder().client
     nonce = int(finfo.get("nonce", 0))
     for a, need in to_fund:
@@ -506,7 +506,7 @@ def setup_all_shards(shards: List[int], bytecode: str, abi: list) -> List[ShardB
                 buyer_addr1=b.buyer_addrs[ci % len(b.buyer_addrs)],
                 buyer_key2=b.buyer_keys[(ci + 1) % len(b.buyer_keys)],
                 salt=secrets.token_hex(31) + f"{ci:02x}",
-                exchange=w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=b.deployer_addr),
+                exchange=w3.shardora.contract(abi=abi, bytecode=bytecode, sender_address=b.deployer_addr),
             ))
         bundles.append(b)
         print(f"  shard {shard}: {ACCOUNTS_PER_SHARD} accounts, {CONTRACTS_PER_SHARD} contracts")
@@ -540,7 +540,7 @@ def batch_deploy_all(jobs: List[ContractJob], bytecode: str, nm: NonceManager) -
         for deployer in {j.deployer_addr for j in todo}:
             nm.refresh(deployer, step=deploy_step)
 
-        pending: Dict[str, Tuple[str, SethClient]] = {}
+        pending: Dict[str, Tuple[str, ShardoraClient]] = {}
         for job in todo:
             job.failed = [f for f in job.failed if not f.startswith("deploy:")]
             addr = calc_create2_address(job.deployer_addr, job.salt, bc)
@@ -607,7 +607,7 @@ def batch_prefund_all(jobs: List[ContractJob], nm: NonceManager) -> None:
         for _, _, pk in todo:
             nm.refresh(get_address(pk), step=prefund_step)
 
-        pending: Dict[str, Tuple[str, SethClient]] = {}
+        pending: Dict[str, Tuple[str, ShardoraClient]] = {}
         for job, role, pk in todo:
             addr = get_address(pk)
             nonce = nm.next(addr, step=prefund_step)
@@ -638,7 +638,7 @@ def batch_prefund_all(jobs: List[ContractJob], nm: NonceManager) -> None:
 
 
 def _encode_call(job: ContractJob, fn: str, *args) -> str:
-    method: SethMethod = getattr(job.exchange.functions, fn)(*args)
+    method: ShardoraMethod = getattr(job.exchange.functions, fn)(*args)
     return method.encoded_input
 
 
@@ -680,7 +680,7 @@ def batch_contract_calls(
                 seen.add(k)
                 nm.refresh(addr, job.exchange.address, exec_step)
 
-        pending: Dict[str, Tuple[str, SethClient]] = {}
+        pending: Dict[str, Tuple[str, ShardoraClient]] = {}
         meta: Dict[str, ContractJob] = {}
         for job, pk, input_hex, value, prefund in todo:
             job.failed = [f for f in job.failed if not f.startswith(f"{phase}:")]

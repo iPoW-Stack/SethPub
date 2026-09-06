@@ -40,7 +40,7 @@
 void on_write(uv_write_t* req, int status) {
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)req->handle;
     if (status < 0) {
-        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — closing connection",
+        SHARDORA_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — closing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
         tcp_transport->FreeConnection(ex_uv_tcp);
         // 新增: 正确关闭 libuv handle 以防止进一步的回调
@@ -48,7 +48,7 @@ void on_write(uv_write_t* req, int status) {
             uv_close((uv_handle_t*)&ex_uv_tcp->uv_tcp, on_close);
         }
     } else {
-        SETH_DEBUG("on_write called back.");
+        SHARDORA_DEBUG("on_write called back.");
     }
     free(req);
 }
@@ -63,12 +63,12 @@ void on_write(uv_write_t* req, int status) {
 **修复**:
 ```cpp
 void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
-    SETH_DEBUG("get client data: %d", nread);
+    SHARDORA_DEBUG("get client data: %d", nread);
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)tcp;
     if (nread >= 0) {
         ex_uv_tcp->msg_decoder->Decode(buf->base, nread);
         auto packet = ex_uv_tcp->msg_decoder->GetPacket();
-        SETH_DEBUG("get packet data: %d", (packet != nullptr));
+        SHARDORA_DEBUG("get packet data: %d", (packet != nullptr));
         while (packet != nullptr) {
             bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
@@ -85,7 +85,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
             packet = ex_uv_tcp->msg_decoder->GetPacket();
         }
     } else {
-        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — closing connection",
+        SHARDORA_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — closing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, nread, uv_strerror(nread));
         tcp_transport->FreeConnection(ex_uv_tcp);
         // 新增: 正确关闭 libuv handle
@@ -109,7 +109,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 // This can happen when TC layer corrupts packet headers, causing len to be garbage.
 static const uint32_t kMaxPacketBytes = 1u * 1024u * 1024u + 1024  * 512;  // 1.5 MB hard limit
 if (len == 0 || len > kMaxPacketBytes) {
-    SETH_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
+    SHARDORA_WARN("oversized or empty packet from %s:%d, len=%u — closing connection",
               from_ip, from_port, len);
     // 修复: 启用返回 false 以信号 on_read 关闭连接
     return false;
@@ -132,7 +132,7 @@ if (ex_uv_tcp == nullptr) {
         // 2. Handle 类型仍为 UV_TCP (未被破坏)
         if (uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp) ||
             ex_uv_tcp->uv_tcp.type != UV_TCP) {
-            SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting",
+            SHARDORA_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting",
                 des_ip.c_str(), des_port, 
                 uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp),
                 ex_uv_tcp->uv_tcp.type);
@@ -176,7 +176,7 @@ if (ex_uv_tcp == nullptr) {
 
 ## 验证方法
 
-1. 编译项目: `./build.sh seth`
-2. 启用应用层网络延迟: `export SETH_NETWORK_ENABLED=1`
+1. 编译项目: `./build.sh shardora`
+2. 启用应用层网络延迟: `export SHARDORA_NETWORK_ENABLED=1`
 3. 运行测试: 观察连接是否能正确恢复
 4. 检查日志: 确认 `[TCP_RECONN]` 消息显示正确的关闭行为

@@ -10,13 +10,13 @@
 
 **修改前**:
 ```cpp
-SETH_ERROR("invalid consensus, txs not equal to leader %u, %u",
+SHARDORA_ERROR("invalid consensus, txs not equal to leader %u, %u",
     txs_ptr->txs.size(), tx_propose.txs_size());
 ```
 
 **修改后**:
 ```cpp
-SETH_ERROR("invalid consensus, txs not equal to leader: local_txs=%zu, leader_txs=%d, pool_idx=%u, "
+SHARDORA_ERROR("invalid consensus, txs not equal to leader: local_txs=%zu, leader_txs=%d, pool_idx=%u, "
     "local_first_tx_hash=%s, leader_first_tx_hash=%s",
     txs_ptr->txs.size(), tx_propose.txs_size(), pool_idx_,
     (txs_ptr->txs.empty() ? "empty" : common::Encode::HexEncode(
@@ -38,12 +38,12 @@ SETH_ERROR("invalid consensus, txs not equal to leader: local_txs=%zu, leader_tx
 
 **修改前**:
 ```cpp
-SETH_WARN("GetAndAddTxsLocally error!");
+SHARDORA_WARN("GetAndAddTxsLocally error!");
 ```
 
 **修改后**:
 ```cpp
-SETH_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
+SHARDORA_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
     "parent_hash=%s, get_txs_time=%lums, txs_count=%zu",
     (int)s, pool_idx(), view_block.height(), 
     common::Encode::HexEncode(view_block.parent_hash()).substr(0, 16).c_str(),
@@ -65,14 +65,14 @@ SETH_WARN("GetAndAddTxsLocally error! status=%d, pool_idx=%u, view_height=%lu, "
 
 **修改前**:
 ```cpp
-SETH_ERROR("handle propose message failed hash: %lu, propose_debug: %s",
+SHARDORA_ERROR("handle propose message failed hash: %lu, propose_debug: %s",
     msg_ptr->header.hash64(),
     ProtobufToJson(msg_ptr->header).c_str());
 ```
 
 **修改后**:
 ```cpp
-SETH_ERROR("handle propose message failed: status=%d, hash=%lu, view=%lu, height=%lu, "
+SHARDORA_ERROR("handle propose message failed: status=%d, hash=%lu, view=%lu, height=%lu, "
     "pool_idx=%u, txs_count=%d, propose_debug=%s",
     (int)st,
     msg_ptr->header.hash64(),
@@ -141,7 +141,7 @@ error [async_file] [hotstuff.cc][HandleProposeMsgImpl][739] handle propose messa
 
 ## 编译和测试
 
-1. 编译项目：`./build.sh seth`
+1. 编译项目：`./build.sh shardora`
 2. 运行测试：`./txcli 0 3 0 <ip> <port>`
 3. 观察日志：当出现错误时，会看到更详细的信息
 

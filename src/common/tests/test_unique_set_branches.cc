@@ -4,7 +4,7 @@
 
 #include "common/unique_set.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -38,4 +38,4 @@ TEST(UniqueSetBranches, ExistsFalseWhenKeyNeverAdded) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

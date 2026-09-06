@@ -133,7 +133,7 @@ If issues arise, the CI automatically falls back to the original script:
 - ✅ CI "Build Third-Party Dependencies" job completes within timeout
 - ✅ Completion marker `.build_third_complete` is created
 - ✅ Third-party artifacts are uploaded successfully
-- ✅ Subsequent build jobs (unit tests, seth binary) work correctly
+- ✅ Subsequent build jobs (unit tests, shardora binary) work correctly
 - ✅ Overall CI pipeline passes
 
 ## Troubleshooting

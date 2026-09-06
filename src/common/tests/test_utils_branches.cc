@@ -8,7 +8,7 @@
 #include "common/hash.h"
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -218,4 +218,4 @@ TEST(IsBytescodeValidTest, MultipleOpcodes) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

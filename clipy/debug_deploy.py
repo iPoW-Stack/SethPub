@@ -6,7 +6,7 @@ from test_exchange_contract import (
     setup_all_shards, fund_all_shards, NonceManager, calc_create2_address,
     send_ecdsa_tx, batch_wait_receipts, calc_shard_id, normalize_hex,
 )
-from seth_sdk import compile_and_link, StepType
+from shardora_sdk import compile_and_link, StepType
 import test_exchange_contract as tec
 
 tec.HOST = "192.168.25.129"

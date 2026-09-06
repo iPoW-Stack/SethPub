@@ -7,7 +7,7 @@
 #include "common/log.h"
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -19,7 +19,7 @@ int Oqs::SetPrivateKey(const std::string& prikey) {
     sig_ptr_ = OQS_SIG_new(OQS_SIG_alg_ml_dsa_44);
     auto rc = OQS_SIG_keypair(sig_ptr_, public_key_, secret_key_);
     if (rc != OQS_SUCCESS) {
-        SETH_ERROR("Keypair generation failed");
+        SHARDORA_ERROR("Keypair generation failed");
         return kSecurityError;
     }
 
@@ -51,7 +51,7 @@ int Oqs::Sign(const std::string &hash, std::string *sign) {
     uint8_t signature[OQS_SIG_dilithium_2_length_signature];
     auto rc = OQS_SIG_sign(sig_ptr_, signature, &sig_len, (uint8_t*)hash.c_str(), hash.size(), secret_key_);
     if (rc != OQS_SUCCESS) {
-        SETH_ERROR("Signing failed");
+        SHARDORA_ERROR("Signing failed");
         return kSecurityError;
     }
 
@@ -69,7 +69,7 @@ int Oqs::Verify(const std::string& hash, const std::string& str_pk, const std::s
         sign.size(), 
         (uint8_t*)str_pk.c_str());
     if (rc != OQS_SUCCESS) {
-        SETH_ERROR("Signature verification failed!");
+        SHARDORA_ERROR("Signature verification failed!");
         return kSecurityError;
     }
 
@@ -120,4 +120,4 @@ std::string Oqs::UnicastAddress(const std::string& src_address) {
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

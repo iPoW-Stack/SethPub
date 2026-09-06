@@ -120,7 +120,7 @@ bash build_third_fixed.sh
 The script will show progress for each step:
 
 ```
-=== Seth Third Party Build Script (Fixed) ===
+=== Shardora Third Party Build Script (Fixed) ===
 Starting third party dependencies build...
 
 Build configuration:
@@ -223,4 +223,4 @@ This solution addresses all the major issues in the original `build_third.sh` sc
 - ✅ Improved build process with fallbacks
 - ✅ Comprehensive status reporting
 
-The fixed script should work on most Linux distributions and provide a much more reliable build process for the Seth blockchain project's third-party dependencies.
+The fixed script should work on most Linux distributions and provide a much more reliable build process for the Shardora blockchain project's third-party dependencies.

@@ -37,7 +37,7 @@ Removed the duplicate declaration and kept only one clean version.
 ### Step 1: Clean Build (Recommended)
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make clean
 make -j$(nproc)
 ```
@@ -49,8 +49,8 @@ make -j$(nproc)
 Look for any errors in the output. The compilation should complete successfully with:
 
 ```
-[100%] Linking CXX executable seth
-[100%] Built target seth
+[100%] Linking CXX executable shardora
+[100%] Built target shardora
 ```
 
 If you see errors about `sign_for_recover` being redeclared, the fix didn't apply correctly.
@@ -58,7 +58,7 @@ If you see errors about `sign_for_recover` being redeclared, the fix didn't appl
 ### Step 3: Verify Binary Timestamp
 
 ```bash
-ls -lh /root/seth/build/seth
+ls -lh /root/shardora/build/shardora
 ```
 
 The timestamp should be recent (just now). If it's old, the compilation didn't happen.
@@ -69,31 +69,31 @@ The timestamp should be recent (just now). If it's old, the compilation didn't h
 
 ```bash
 # Stop old node
-pkill -f seth
+pkill -f shardora
 
 # Wait for it to fully stop
 sleep 3
 
 # Start new node
-cd /root/seth
+cd /root/shardora
 ./start_node.sh
 
 # Or if you use a different command:
-# nohup ./build/seth --config=./config.json > logs/seth.log 2>&1 &
+# nohup ./build/shardora --config=./config.json > logs/shardora.log 2>&1 &
 ```
 
 ### Step 2: Verify Node is Running
 
 ```bash
-ps aux | grep seth | grep -v grep
+ps aux | grep shardora | grep -v grep
 ```
 
-Should show the seth process running.
+Should show the shardora process running.
 
 ### Step 3: Run EIP-1559 Tests
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 test_eip1559.py
 ```
 
@@ -131,7 +131,7 @@ Total: 2/2 tests passed
 ### Step 1: Monitor Logs
 
 ```bash
-tail -f /root/seth/logs/seth.log | grep -E "EIP-1559|recovery|v_byte|pubkey"
+tail -f /root/shardora/logs/shardora.log | grep -E "EIP-1559|recovery|v_byte|pubkey"
 ```
 
 ### Step 2: Look for These Patterns
@@ -180,7 +180,7 @@ Note: This should match the expected sender address
 **Solution**: The fix didn't apply. Check that the file was saved correctly:
 
 ```bash
-grep -A 5 "signature for recovery" /root/seth/src/init/http_handler.cc
+grep -A 5 "signature for recovery" /root/shardora/src/init/http_handler.cc
 ```
 
 Should show only ONE declaration of `sign_for_recover` after the log statement.
@@ -189,13 +189,13 @@ Should show only ONE declaration of `sign_for_recover` after the log statement.
 
 1. **Check if v was flipped**:
    ```bash
-   tail -100 /root/seth/logs/seth.log | grep "flipped from tx"
+   tail -100 /root/shardora/logs/shardora.log | grep "flipped from tx"
    ```
    Should see: `v=0 (flipped from tx)` when transaction had v=1
 
 2. **Check recovered pubkey**:
    ```bash
-   tail -100 /root/seth/logs/seth.log | grep "recovery succeeded"
+   tail -100 /root/shardora/logs/shardora.log | grep "recovery succeeded"
    ```
    Should see: `pubkey=5e3ae491ca10790f96913451a70f3d3e701d885218b6820ca1db188e369d61756819...`
 
@@ -205,13 +205,13 @@ Should show only ONE declaration of `sign_for_recover` after the log statement.
 
 ```bash
 # Check for errors
-tail -50 /root/seth/logs/seth.log
+tail -50 /root/shardora/logs/shardora.log
 
 # Check if port is in use
 netstat -tlnp | grep 23001
 
 # Kill any stuck processes
-pkill -9 -f seth
+pkill -9 -f shardora
 sleep 2
 ./start_node.sh
 ```
@@ -252,7 +252,7 @@ Once tests pass:
   - Line ~2320: Fixed duplicate variable declaration
   - Added comprehensive logging
 
-- `clipy/seth3.py`:
+- `clipy/shardora3.py`:
   - Fixed double 0x prefix
   - Fixed EIP-1559 signing RLP debug output
 

@@ -122,7 +122,7 @@ pool_index     = Hash32(deploy_address) % kImmutablePoolSize
   → 完全原子，无补偿交易
 ```
 
-源码位置：[src/common/utils.h](src/common/utils.h)（`GetAddressPoolIndex`）、[src/sethvm/seth_host.cc](src/sethvm/seth_host.cc)（intra-pool EVM CALL）
+源码位置：[src/common/utils.h](src/common/utils.h)（`GetAddressPoolIndex`）、[src/shardoravm/shardora_host.cc](src/shardoravm/shardora_host.cc)（intra-pool EVM CALL）
 
 ---
 
@@ -477,8 +477,8 @@ AMM 的恒定乘积公式 `(x+Δx)(y-Δy) ≥ k` 是**非可交换的**——执
 |------|------|-----|----------|
 | 并行共识 / EVS / GBP | Akaverse, IEEE TDSC | — | `src/consensus/` |
 | 分片扩容 / 双委员会 / FTS | Shardora, IEEE TNSE | 10.1109/TNSE.2026.3684813 | `src/elect/`, `src/bls/` |
-| 跨分片合约 / SCoRE | SCoRE, SOSP 2026 | — | `src/pools/to_txs_pools.cc`, `src/sethvm/` |
+| 跨分片合约 / SCoRE | SCoRE, SOSP 2026 | — | `src/pools/to_txs_pools.cc`, `src/shardoravm/` |
 | NFT 版权验证 / NMFT | NMFT, IEEE TIFS | 10.1109/TIFS.2025.3639980 | github.com/tenondvpn/nmft |
-| AMM 共置原子性 | — | — | `src/common/utils.h`, `src/sethvm/seth_host.cc` |
+| AMM 共置原子性 | — | — | `src/common/utils.h`, `src/shardoravm/shardora_host.cc` |
 
 GitHub: https://github.com/tenondvpn/shardora

@@ -120,7 +120,7 @@ python test_eip1559.py --key <your_private_key_hex>
 
 A: 检查以下几点：
 
-1. Seth 节点是否正在运行
+1. Shardora 节点是否正在运行
 2. 节点地址和端口是否正确
 3. 账户余额是否充足
 4. 查看节点日志获取详细错误信息
@@ -144,8 +144,8 @@ EIP-1559 Transaction Test
 
 optional arguments:
   -h, --help   show this help message and exit
-  --host HOST  Seth node host (default: 127.0.0.1)
-  --port PORT  Seth node port (default: 23001)
+  --host HOST  Shardora node host (default: 127.0.0.1)
+  --port PORT  Shardora node port (default: 23001)
   --key KEY    Private key (hex, default: test key)
 ```
 
@@ -158,8 +158,8 @@ EIP-1559 Transaction Simple Example
 
 optional arguments:
   -h, --help   show this help message and exit
-  --host HOST  Seth node host (default: 127.0.0.1)
-  --port PORT  Seth node port (default: 23001)
+  --host HOST  Shardora node host (default: 127.0.0.1)
+  --port PORT  Shardora node port (default: 23001)
   --key KEY    Private key (hex, default: test key)
 ```
 

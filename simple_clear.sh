@@ -65,31 +65,31 @@ init() {
 }
 
 make_package() {
-    rm -rf /root/seths/seth/pkg
-    mkdir /root/seths/seth/pkg
-    cp /root/seths/seth/seth /root/seths/seth/pkg
-    cp /root/seths/seth/conf/GeoLite2-City.mmdb /root/seths/seth/pkg
-    cp /root/seths/seth/conf/log4cpp.properties /root/seths/seth/pkg
-    cp /root/seth/shards3 /root/seths/seth/pkg
-    cp /root/seth/root_nodes /root/seths/seth/pkg/shards2
-    cp /root/seth/temp_cmd.sh /root/seths/seth/pkg
-    cp /root/seth/start_cmd.sh /root/seths/seth/pkg
-    cp /root/seth/wondershaper /root/seths/seth/pkg
-    cp -rf /root/seths/seth/root_db /root/seths/seth/pkg/shard_db_2
-    cp -rf /root/seths/seth/shard_db_3 /root/seths/seth/pkg
-    cp -rf /root/seths/temp /root/seths/seth/pkg
-    cp -rf /root/seth/gdb/* /root/seths/seth/pkg
-    cd /root/seths/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    rm -rf /root/shardoras/shardora/pkg
+    mkdir /root/shardoras/shardora/pkg
+    cp /root/shardoras/shardora/shardora /root/shardoras/shardora/pkg
+    cp /root/shardoras/shardora/conf/GeoLite2-City.mmdb /root/shardoras/shardora/pkg
+    cp /root/shardoras/shardora/conf/log4cpp.properties /root/shardoras/shardora/pkg
+    cp /root/shardora/shards3 /root/shardoras/shardora/pkg
+    cp /root/shardora/root_nodes /root/shardoras/shardora/pkg/shards2
+    cp /root/shardora/temp_cmd.sh /root/shardoras/shardora/pkg
+    cp /root/shardora/start_cmd.sh /root/shardoras/shardora/pkg
+    cp /root/shardora/wondershaper /root/shardoras/shardora/pkg
+    cp -rf /root/shardoras/shardora/root_db /root/shardoras/shardora/pkg/shard_db_2
+    cp -rf /root/shardoras/shardora/shard_db_3 /root/shardoras/shardora/pkg
+    cp -rf /root/shardoras/temp /root/shardoras/shardora/pkg
+    cp -rf /root/shardora/gdb/* /root/shardoras/shardora/pkg
+    cd /root/shardoras/shardora/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 get_bootstrap() {
-    rm -rf /root/seth/shards2
-    cp -rf /root/seth/root_nodes /root/seth/shards2
+    rm -rf /root/shardora/shards2
+    cp -rf /root/shardora/root_nodes /root/shardora/shards2
     node_ips_array=(${node_ips//,/ })
     for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
         i=1
         for ip in "${node_ips_array[@]}"; do 
-            tmppubkey=`sed -n "$i""p" /root/seth/shards$shard_id| awk -F'\t' '{print $2}'`
+            tmppubkey=`sed -n "$i""p" /root/shardora/shards$shard_id| awk -F'\t' '{print $2}'`
             node_info=$tmppubkey":"$ip":1"$shard_id"00"$i
             bootstrap=$node_info","$bootstrap
             i=$((i+1))
@@ -129,7 +129,7 @@ clear_command() {
     done
 
     for ip in "${node_ips_array[@]}"; do 
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "mv /root/pkg.tar.gz /root/$nodes_count.tar.gz; killall -9 seth" &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "mv /root/pkg.tar.gz /root/$nodes_count.tar.gz; killall -9 shardora" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3
@@ -151,7 +151,7 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do 
-        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/seths/seth/pkg.tar.gz root@$ip:/root &
+        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/shardoras/shardora/pkg.tar.gz root@$ip:/root &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished

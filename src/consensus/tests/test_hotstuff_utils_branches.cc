@@ -4,7 +4,7 @@
 #include "consensus/hotstuff/utils.h"
 #include "protos/block.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -256,4 +256,4 @@ TEST(HotstuffUtilsBranches, GetBlockHashChangesWhenQcRoutingFieldsChange) {
 
 }  // namespace test
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

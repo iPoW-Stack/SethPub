@@ -7,7 +7,7 @@
 #define private public
 #include "common/bloom_filter.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -290,4 +290,4 @@ TEST_F(TestBloomFilterExtended, NotEqualSelfIsFalse) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

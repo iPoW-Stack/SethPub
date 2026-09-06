@@ -33,7 +33,7 @@
 #include "protos/pools.pb.h"
 #include <protos/view_block.pb.h>
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -255,4 +255,4 @@ TEST_F(TestToTxsPoolsExtra, ClearLeaderToHeights_ClearsStore) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

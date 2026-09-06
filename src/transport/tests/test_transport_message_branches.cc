@@ -4,7 +4,7 @@
 
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace transport {
 namespace test {
 
@@ -149,4 +149,4 @@ TEST(TransportUtilsBranches, CloseSocketHandlesInvalidDescriptor) {
 
 }  // namespace test
 }  // namespace transport
-}  // namespace seth
+}  // namespace shardora

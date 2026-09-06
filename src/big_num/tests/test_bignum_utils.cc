@@ -9,7 +9,7 @@
 
 #include "big_num/bignum_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bignum {
 
@@ -230,4 +230,4 @@ TEST_F(TestBignumUtils, U256Division) {
 
 }  // namespace bignum
 
-}  // namespace seth
+}  // namespace shardora

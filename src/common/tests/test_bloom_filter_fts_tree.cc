@@ -11,7 +11,7 @@
 #include "common/fts_tree.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -82,4 +82,4 @@ TEST(TestFtsTreeExtra, PrintFtsTreeSmoke) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

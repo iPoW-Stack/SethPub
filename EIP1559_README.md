@@ -12,7 +12,7 @@
 
 ## 简介
 
-本次更新为 Seth 区块链添加了完整的 **EIP-1559 (Type 2)** 交易支持，使其与以太坊生态系统完全兼容。
+本次更新为 Shardora 区块链添加了完整的 **EIP-1559 (Type 2)** 交易支持，使其与以太坊生态系统完全兼容。
 
 ### 主要特性
 
@@ -39,7 +39,7 @@
 ### 1. 编译 C++ 代码
 
 ```bash
-cd /path/to/seth
+cd /path/to/shardora
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
@@ -48,7 +48,7 @@ make -j$(nproc)
 ### 2. 启动节点
 
 ```bash
-./seth_node --config config.json
+./shardora_node --config config.json
 ```
 
 ### 3. 运行测试
@@ -66,10 +66,10 @@ python test_eip1559.py --host 127.0.0.1 --port 23001 --key <your_private_key>
 ### 4. 使用示例
 
 ```python
-from seth_sdk import SethWeb3Mock, _eth_sign_and_send
+from shardora_sdk import ShardoraWeb3Mock, _eth_sign_and_send
 
 # 初始化客户端
-w3 = SethWeb3Mock("127.0.0.1", 23001)
+w3 = ShardoraWeb3Mock("127.0.0.1", 23001)
 sender = w3.client.get_address(private_key)
 
 # 发送 EIP-1559 交易
@@ -96,7 +96,7 @@ print(f"Transaction sent: {tx_hash}")
 | 文件 | 说明 |
 |------|------|
 | `src/init/http_handler.cc` | 添加 EIP-1559 RLP 解码和签名验证 |
-| `clipy/seth3.py` | 增强交易签名函数以支持 EIP-1559 |
+| `clipy/shardora3.py` | 增强交易签名函数以支持 EIP-1559 |
 
 ### 新增的文件
 
@@ -114,9 +114,9 @@ print(f"Transaction sent: {tx_hash}")
 ### 示例 1: 原生代币转账
 
 ```python
-from seth_sdk import SethWeb3Mock, _eth_sign_and_send
+from shardora_sdk import ShardoraWeb3Mock, _eth_sign_and_send
 
-w3 = SethWeb3Mock("127.0.0.1", 23001)
+w3 = ShardoraWeb3Mock("127.0.0.1", 23001)
 sender = w3.client.get_address(private_key)
 nonce = w3.client.get_nonce(sender)
 
@@ -138,7 +138,7 @@ tx_hash = _eth_sign_and_send(
 ### 示例 2: 合约部署
 
 ```python
-from seth_sdk import compile_and_link
+from shardora_sdk import compile_and_link
 
 # 编译合约
 bytecode, abi = compile_and_link(contract_source, "MyContract")
@@ -331,7 +331,7 @@ except Exception as e:
 
 ### Q4: 是否兼容 MetaMask？
 
-**A**: 是的，完全兼容。MetaMask 可以直接发送 EIP-1559 交易到 Seth 节点。
+**A**: 是的，完全兼容。MetaMask 可以直接发送 EIP-1559 交易到 Shardora 节点。
 
 ### Q5: 如何调试交易问题？
 
@@ -394,7 +394,7 @@ gas_limit = 5000000
 
 ## 许可证
 
-本项目遵循 Seth 区块链的开源许可证。
+本项目遵循 Shardora 区块链的开源许可证。
 
 ## 支持
 
@@ -407,6 +407,6 @@ gas_limit = 5000000
 
 ---
 
-**维护者**: Seth 开发团队  
+**维护者**: Shardora 开发团队  
 **最后更新**: 2024年  
 **状态**: ✅ 生产就绪

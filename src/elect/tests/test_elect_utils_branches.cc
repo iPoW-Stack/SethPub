@@ -4,7 +4,7 @@
 
 #include "elect/elect_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace elect {
 namespace test {
 
@@ -48,4 +48,4 @@ TEST(ElectUtilsBranches, GetElectHeartbeatHashDeterministicAndSensitive) {
 
 }  // namespace test
 }  // namespace elect
-}  // namespace seth
+}  // namespace shardora

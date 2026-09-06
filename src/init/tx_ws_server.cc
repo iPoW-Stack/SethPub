@@ -14,7 +14,7 @@
 #include "common/encode.h"
 #include "common/log.h"
 
-namespace seth {
+namespace shardora {
 namespace init {
 
 static const std::string kWsMagic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
@@ -58,13 +58,13 @@ int TxWsServer::Init(const std::string& ip, uint16_t port) {
 
     int r = uv_tcp_bind(&server_tcp_, reinterpret_cast<const sockaddr*>(&addr), 0);
     if (r != 0) {
-        SETH_ERROR("[TxWsServer] bind failed on %s:%u: %s", ip.c_str(), port, uv_strerror(r));
+        SHARDORA_ERROR("[TxWsServer] bind failed on %s:%u: %s", ip.c_str(), port, uv_strerror(r));
         return 1;
     }
 
     r = uv_listen(reinterpret_cast<uv_stream_t*>(&server_tcp_), 128, OnNewConnection);
     if (r != 0) {
-        SETH_ERROR("[TxWsServer] listen failed: %s", uv_strerror(r));
+        SHARDORA_ERROR("[TxWsServer] listen failed: %s", uv_strerror(r));
         return 1;
     }
 
@@ -73,7 +73,7 @@ int TxWsServer::Init(const std::string& ip, uint16_t port) {
 
     running_.store(true);
     loop_thread_ = std::thread(&TxWsServer::RunLoop, this);
-    SETH_DEBUG("[TxWsServer] listening on %s:%u (private loop, isolated from TcpTransport)",
+    SHARDORA_DEBUG("[TxWsServer] listening on %s:%u (private loop, isolated from TcpTransport)",
               ip.c_str(), port);
     return 0;
 }
@@ -139,7 +139,7 @@ void TxWsServer::OnAsync(uv_async_t* handle) {
 
 void TxWsServer::OnNewConnection(uv_stream_t* srv, int status) {
     if (status < 0) {
-        SETH_ERROR("[TxWsServer] accept error: %s", uv_strerror(status));
+        SHARDORA_ERROR("[TxWsServer] accept error: %s", uv_strerror(status));
         return;
     }
     auto* self = static_cast<TxWsServer*>(srv->data);
@@ -295,7 +295,7 @@ void TxWsServer::CompleteAndPush(const std::string& hash_hex, const std::string&
         EnqueueFrame(c, frame);
     }
     if (!conns.empty()) {
-        SETH_DEBUG("[TxWsServer] pushed result for tx %s to %zu client(s)",
+        SHARDORA_DEBUG("[TxWsServer] pushed result for tx %s to %zu client(s)",
                   hash_hex.c_str(), conns.size());
     }
 }
@@ -320,7 +320,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
         // Check cache first: if this tx already completed, push immediately.
         auto cached = completed_txs_.find(hash);
         if (cached != completed_txs_.end()) {
-            SETH_DEBUG("[TxWsServer] late-subscribe hit cache for tx %s", hash.c_str());
+            SHARDORA_DEBUG("[TxWsServer] late-subscribe hit cache for tx %s", hash.c_str());
             EnqueueFrame(c, cached->second.frame);
             return;
         }
@@ -331,7 +331,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
             conn_to_hashes_[c].insert(hash);
             c->subscriptions.insert(hash);
         }
-        SETH_DEBUG("[TxWsServer] subscribed txhash: %s", hash.c_str());
+        SHARDORA_DEBUG("[TxWsServer] subscribed txhash: %s", hash.c_str());
         EnqueueFrame(c, R"({"status":"subscribed","txhash":")" + hash + R"("})");
 
     } else if (payload.rfind(kUnsub, 0) == 0) {
@@ -346,7 +346,7 @@ void TxWsServer::HandleWsFrame(Conn* c, const std::string& payload) {
             conn_to_hashes_[c].erase(hash);
             c->subscriptions.erase(hash);
         }
-        SETH_DEBUG("[TxWsServer] unsubscribed txhash: %s", hash.c_str());
+        SHARDORA_DEBUG("[TxWsServer] unsubscribed txhash: %s", hash.c_str());
         EnqueueFrame(c, R"({"status":"unsubscribed","txhash":")" + hash + R"("})");
 
     } else {
@@ -371,7 +371,7 @@ void TxWsServer::CloseConn(Conn* c) {
     c->tcp.data = nullptr;
     uv_close(reinterpret_cast<uv_handle_t*>(&c->tcp),
              [](uv_handle_t* h) { delete static_cast<Conn*>(h->data); });
-    SETH_DEBUG("[TxWsServer] connection closed");
+    SHARDORA_DEBUG("[TxWsServer] connection closed");
 }
 
 // ── Send helpers ──────────────────────────────────────────────────────────────
@@ -486,4 +486,4 @@ std::string TxWsServer::BuildTxJson(
 }
 
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

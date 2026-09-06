@@ -1,5 +1,5 @@
 #include "transport/uv_tcp_transport.h"
-#ifdef SETH_USE_UV
+#ifdef SHARDORA_USE_UV
 
 #ifndef WIN32
 #include <netinet/tcp.h>
@@ -12,7 +12,7 @@
 #include "transport/multi_thread.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -109,7 +109,7 @@ std::atomic<bool> uv_transport_inited = false;
 
 static bool TcpOutputQueuesReady(const char* context) {
     if (output_queues_ == nullptr) {
-        SETH_ERROR("%s: TcpTransport output queue not ready (Init not called or already torn down).", context);
+        SHARDORA_ERROR("%s: TcpTransport output queue not ready (Init not called or already torn down).", context);
         return false;
     }
     return true;
@@ -127,7 +127,7 @@ struct write_ex_t {
 };
 
 void on_close(uv_handle_t* handle) {
-    SETH_INFO("close called: %p!", static_cast<void*>(handle));
+    SHARDORA_INFO("close called: %p!", static_cast<void*>(handle));
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)handle;
     //assert(ex_uv_tcp->msg_decoder != nullptr);
     if (ex_uv_tcp->msg_decoder) {
@@ -144,13 +144,13 @@ void on_write(uv_write_t* req, int status) {
     if (status < 0) {
         // Write failed (broken pipe, connection reset, USER_TIMEOUT, etc.) —
         // remove the dead connection so the next Send() creates a fresh one.
-        SETH_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — freeing connection",
+        SHARDORA_WARN("[TCP_RECONN] on_write failed: %s:%d, status=%d (%s) — freeing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
         tcp_transport->FreeConnection(ex_uv_tcp);
         // Note: Do NOT call uv_close here. FreeConnection puts the handle in invalid_conns_
         // queue, and RealFreeInvalidConnections will close it later with proper timing.
     } else {
-        SETH_DEBUG("[TCP_RECONN] on_write success: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
+        SHARDORA_DEBUG("[TCP_RECONN] on_write success: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
     }
     delete wr;
 }
@@ -260,7 +260,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     bool network_enabled = tcp_transport->GetNetworkDelaySimulator().IsEnabled();
     if (network_enabled) {
         if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
-            SETH_DEBUG("[NETWORK_SIM] dropping received packet from %s:%d", from_ip, from_port);
+            SHARDORA_DEBUG("[NETWORK_SIM] dropping received packet from %s:%d", from_ip, from_port);
             return false;
         }
         tcp_transport->GetNetworkDelaySimulator().ApplyDelay();
@@ -271,7 +271,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     uint32_t len = 0;
     msg_packet->GetMessageEx(&data, &len);
     if (data == nullptr) {
-        SETH_DEBUG("data == nullptr");
+        SHARDORA_DEBUG("data == nullptr");
         return false;
     }
 
@@ -279,7 +279,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     // for headers, signatures, and protobuf overhead on top of the propose payload.
     static const uint32_t kMaxPacketBytes = (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2);
     if (len == 0 || len > kMaxPacketBytes) {
-        SETH_WARN("[PACKET_VALIDATION] oversized or empty packet from %s:%d, len=%u (max=%u) — closing connection",
+        SHARDORA_WARN("[PACKET_VALIDATION] oversized or empty packet from %s:%d, len=%u (max=%u) — closing connection",
                   from_ip, from_port, len, kMaxPacketBytes);
         // Return false to signal caller (on_read) to close this connection
         return false;
@@ -287,7 +287,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
 
     MessagePtr msg_ptr = std::make_shared<TransportMessage>();
     if (!msg_ptr->header.ParseFromArray(data, len)) {
-        SETH_ERROR("Message ParseFromString from string failed!"
+        SHARDORA_ERROR("Message ParseFromString from string failed!"
             "[%s:%d][len: %d]",
             from_ip, from_port, len);
         return false;  // caller closes connection
@@ -306,7 +306,7 @@ bool OnClientPacket(ex_uv_tcp_t* ex_uv_tcp, tnet::Packet& packet) {
     msg_ptr->conn->SetPeerIp(from_ip);
     msg_ptr->conn->SetPeerPort(from_port);
     if (from_port <= 0) {
-        SETH_ERROR("message coming: %s:%d, type: %d, invalid port", from_ip, from_port, msg_ptr->header.type());
+        SHARDORA_ERROR("message coming: %s:%d, type: %d, invalid port", from_ip, from_port, msg_ptr->header.type());
         return false;
     }
 
@@ -319,13 +319,13 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
-    SETH_DEBUG("get client data: %d", nread);
+    SHARDORA_DEBUG("get client data: %d", nread);
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)tcp;
     if (nread >= 0) {
         ex_uv_tcp->last_recv_ts = common::TimeUtils::TimestampSeconds();
         ex_uv_tcp->msg_decoder->Decode(buf->base, nread);
         auto packet = ex_uv_tcp->msg_decoder->GetPacket();
-        SETH_DEBUG("get packet data: %d", (packet != nullptr));
+        SHARDORA_DEBUG("get packet data: %d", (packet != nullptr));
         while (packet != nullptr) {
             bool ok = OnClientPacket(ex_uv_tcp, *packet);
             packet->Free();
@@ -333,7 +333,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
                 // Bad packet (parse error, oversized, invalid port, or dropped by network sim)
                 // Close the connection and let next send create a fresh one
                 free(buf->base);
-                SETH_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection",
+                SHARDORA_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection",
                     ex_uv_tcp->ip, ex_uv_tcp->port);
                 tcp_transport->FreeConnection(ex_uv_tcp);
                 return;
@@ -342,7 +342,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
         }
     } else {
         // Connection error (EOF, reset, timeout, etc.)
-        SETH_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — freeing connection",
+        SHARDORA_WARN("[TCP_RECONN] on_read error: %s:%d, nread=%zd (%s) — freeing connection",
             ex_uv_tcp->ip, ex_uv_tcp->port, nread, uv_strerror(nread));
         tcp_transport->FreeConnection(ex_uv_tcp);
     }
@@ -354,7 +354,7 @@ void on_connect(uv_connect_t* connection, int status) {
     uv_stream_t* stream = connection->handle;
     ex_uv_tcp_t* ex_uv_tcp = (ex_uv_tcp_t*)stream;
     if (status < 0) {
-        SETH_WARN("[TCP_RECONN] failed to connect %s:%d, status=%d (%s) — will retry on next send",
+        SHARDORA_WARN("[TCP_RECONN] failed to connect %s:%d, status=%d (%s) — will retry on next send",
             ex_uv_tcp->ip, ex_uv_tcp->port, status, uv_strerror(status));
         connect_ex_t* ex_conn = (connect_ex_t*)connection;
         delete ex_conn->msg;
@@ -363,7 +363,7 @@ void on_connect(uv_connect_t* connection, int status) {
         return;
     }
 
-    SETH_DEBUG("[TCP_RECONN] successfully connected to %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
+    SHARDORA_DEBUG("[TCP_RECONN] successfully connected to %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
 
     // Increase buffer sizes for high-throughput scenarios
     int new_recv_size = 20 * 1024 * 1024;  // 20MB (from 10MB)
@@ -390,7 +390,7 @@ void on_connect(uv_connect_t* connection, int status) {
     bool network_enabled = tcp_transport->GetNetworkDelaySimulator().IsEnabled();
     if (network_enabled) {
         if (tcp_transport->GetNetworkDelaySimulator().ShouldDropPacket()) {
-            SETH_DEBUG("[NETWORK_SIM] dropping packet on connect to %s:%d",
+            SHARDORA_DEBUG("[NETWORK_SIM] dropping packet on connect to %s:%d",
                 ex_uv_tcp->ip, ex_uv_tcp->port);
             delete wr;
             free(ex_conn);
@@ -415,7 +415,7 @@ void alloc_buffer(uv_handle_t*, size_t suggested_size, uv_buf_t* buf) {
 
 void on_new_connection(uv_stream_t* server, int status) {
     if (status < 0) {
-        SETH_DEBUG("connection failed: %s", uv_strerror(status));
+        SHARDORA_DEBUG("connection failed: %s", uv_strerror(status));
         return;
     }
 
@@ -441,7 +441,7 @@ void on_new_connection(uv_stream_t* server, int status) {
         uv_inet_ntop(AF_INET, &addr->sin_addr, ex_uv_tcp->ip, sizeof(ex_uv_tcp->ip));
         ex_uv_tcp->port = ntohs(addr->sin_port);
         ex_uv_tcp->connect_ts = common::TimeUtils::TimestampSeconds();
-        SETH_DEBUG("new connection: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
+        SHARDORA_DEBUG("new connection: %s:%d", ex_uv_tcp->ip, ex_uv_tcp->port);
         uv_read_start((uv_stream_t*)&ex_uv_tcp->uv_tcp, alloc_buffer, on_read);
         tcp_transport->AddConnection(ex_uv_tcp);
     } else {
@@ -459,7 +459,7 @@ void on_new_connection(uv_stream_t* server, int status) {
 
 
 void signal_handler(uv_signal_t* handle, int signum) {
-    SETH_WARN("uv tcp server signal coming: %d", signum);
+    SHARDORA_WARN("uv tcp server signal coming: %d", signum);
     uv_signal_stop(handle);
     uv_walk(loop, [](uv_handle_t* h, void*) {
         if (!uv_is_closing(h)) {
@@ -578,7 +578,7 @@ int TcpTransport::Send(
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
     if (output_item->msg.size() >= (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2)) {
-        SETH_ERROR("dropping oversized msg (conn): size=%zu, type=%d", output_item->msg.size(), message.type());
+        SHARDORA_ERROR("dropping oversized msg (conn): size=%zu, type=%d", output_item->msg.size(), message.type());
         return kTransportError;
     }
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
@@ -598,7 +598,7 @@ int TcpTransport::Send(
     output_item->hash64 = 0;
     output_item->msg = message;
     if (output_item->msg.size() >= (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2)) {
-        SETH_ERROR("dropping oversized msg (conn/str): size=%zu", output_item->msg.size());
+        SHARDORA_ERROR("dropping oversized msg (conn/str): size=%zu", output_item->msg.size());
         return kTransportError;
     }
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
@@ -629,14 +629,14 @@ int TcpTransport::Send(
     output_item->hash64 = message.hash64();
     message.SerializeToString(&output_item->msg);
     if (output_item->msg.size() >= (uint32_t)(common::kMaxProposeMsgBytes * 3 / 2)) {
-        SETH_ERROR("dropping oversized msg (ip): size=%zu, type=%d, des=%s:%d",
+        SHARDORA_ERROR("dropping oversized msg (ip): size=%zu, type=%d, des=%s:%d",
             output_item->msg.size(), message.type(), des_ip.c_str(), des_port);
         return kTransportError;
     }
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
-    SETH_DEBUG("success add sent out message des: %s, %d, hash64: %lu", des_ip.c_str(),des_port, message.hash64());
+    SHARDORA_DEBUG("success add sent out message des: %s, %d, hash64: %lu", des_ip.c_str(),des_port, message.hash64());
     return kTransportSuccess;
 }
 
@@ -696,7 +696,7 @@ void uv_async_cb(uv_async_t* handle) {
                     uint64_t now = common::TimeUtils::TimestampSeconds();
                     bool stale = IsConnectionStale(ex_uv_tcp, now, &stale_reason);
                     if (stale) {
-                        SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d "
+                        SHARDORA_WARN("[TCP_RECONN] stale connection detected: %s:%d "
                             "(reason=%s, last_recv=%lu, closing=%d, type=%d) — reconnecting",
                             des_ip.c_str(), des_port,
                             stale_reason ? stale_reason : "unknown",
@@ -706,7 +706,7 @@ void uv_async_cb(uv_async_t* handle) {
                         transport::TcpTransport::Instance()->FreeConnection(ex_uv_tcp);
                         ex_uv_tcp = nullptr;
                     } else {
-                        SETH_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p",
+                        SHARDORA_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p",
                             des_ip.c_str(), des_port, static_cast<void*>(&ex_uv_tcp->uv_tcp));
                     }
                 }
@@ -727,7 +727,7 @@ void uv_async_cb(uv_async_t* handle) {
                 ex_uv_tcp->msg_decoder = new MsgDecoder();
                 memcpy(ex_uv_tcp->ip, des_ip.c_str(), des_ip.size());
                 ex_uv_tcp->port = des_port;
-                SETH_DEBUG("now connect to server: %s:%d, hash64: %lu", 
+                SHARDORA_DEBUG("now connect to server: %s:%d, hash64: %lu", 
                     des_ip.c_str(), des_port, item_ptr->hash64);
                 int res = uv_tcp_connect(
                     (uv_connect_t*)&ex_conn->uv_conn, 
@@ -735,14 +735,14 @@ void uv_async_cb(uv_async_t* handle) {
                     (const struct sockaddr*)&server_addr, 
                     on_connect);
                 if (res < 0) {
-                    SETH_ERROR("[TCP_RECONN] failed to initiate connect to %s:%d, res=%d (%s), hash64=%lu", 
+                    SHARDORA_ERROR("[TCP_RECONN] failed to initiate connect to %s:%d, res=%d (%s), hash64=%lu", 
                         des_ip.c_str(), des_port, res, uv_strerror(res), item_ptr->hash64);
                     delete msg;
                     delete ex_uv_tcp->msg_decoder;
                     free(ex_uv_tcp);
                     free(ex_conn);
                 } else {
-                    SETH_DEBUG("[TCP_RECONN] initiated connect to %s:%d, hash64=%lu", 
+                    SHARDORA_DEBUG("[TCP_RECONN] initiated connect to %s:%d, hash64=%lu", 
                         des_ip.c_str(), des_port, item_ptr->hash64);
                 }
             } else {
@@ -752,7 +752,7 @@ void uv_async_cb(uv_async_t* handle) {
                 wr->msg.append(item_ptr->msg);
                 uv_buf_t buf = uv_buf_init(const_cast<char*>(wr->msg.data()), wr->msg.size());
                 if (item_ptr->type == common::kHotstuffMessage) {
-                    SETH_DEBUG("[TCP_RECONN] sending to existing connection: %s:%d, hash64=%lu", 
+                    SHARDORA_DEBUG("[TCP_RECONN] sending to existing connection: %s:%d, hash64=%lu", 
                         des_ip.c_str(), des_port, item_ptr->hash64);
                 }
                 
@@ -760,7 +760,7 @@ void uv_async_cb(uv_async_t* handle) {
                 bool network_enabled = transport::TcpTransport::Instance()->GetNetworkDelaySimulator().IsEnabled();
                 if (network_enabled) {
                     if (transport::TcpTransport::Instance()->GetNetworkDelaySimulator().ShouldDropPacket()) {
-                        SETH_DEBUG("[NETWORK_SIM] dropping packet to %s:%d", 
+                        SHARDORA_DEBUG("[NETWORK_SIM] dropping packet to %s:%d", 
                             des_ip.c_str(), des_port);
                         delete wr;
                         continue;
@@ -770,7 +770,7 @@ void uv_async_cb(uv_async_t* handle) {
                 
                 int wr_res = uv_write(&wr->req, (uv_stream_t*)&ex_uv_tcp->uv_tcp, &buf, 1, on_write);
                 if (wr_res < 0) {
-                    SETH_WARN("[TCP_RECONN] uv_write failed immediately: %s:%d, res=%d (%s), "
+                    SHARDORA_WARN("[TCP_RECONN] uv_write failed immediately: %s:%d, res=%d (%s), "
                         "hash64=%lu — freeing connection",
                         des_ip.c_str(), des_port, wr_res, uv_strerror(wr_res), item_ptr->hash64);
                     delete wr;
@@ -805,20 +805,20 @@ void TcpTransport::Run() {
     struct sockaddr_in addr;
     common::Split<> splits(ip_port_.c_str(), ':');
     if (splits.Count() != 2) {
-        SETH_FATAL("invalid ip port: %s", ip_port_.c_str());
+        SHARDORA_FATAL("invalid ip port: %s", ip_port_.c_str());
         return;
     }
 
     uint16_t port = 0;
     if (!common::StringUtil::ToUint16(splits[1], &port)) {
-        SETH_FATAL("invalid ip port: %s", ip_port_.c_str());
+        SHARDORA_FATAL("invalid ip port: %s", ip_port_.c_str());
         return;
     }
 
     uv_ip4_addr(splits[0], port, &addr);
     int bind_res = uv_tcp_bind(&server, (const struct sockaddr*)&addr, UV_TCP_REUSEPORT);
     if (bind_res < 0) {
-        SETH_ERROR("bind failed: %s", uv_strerror(bind_res));
+        SHARDORA_ERROR("bind failed: %s", uv_strerror(bind_res));
     }
 
     // 2. 深度注入：通过底层 fd 设置 SO_REUSEADDR (防止 TIME_WAIT 导致绑定失败)
@@ -839,23 +839,23 @@ void TcpTransport::Run() {
                 break;
             }
         
-            SETH_FATAL("listen failed: %s: %d, server inactive.", splits[0], port);
+            SHARDORA_FATAL("listen failed: %s: %d, server inactive.", splits[0], port);
             return;
         }
         
-        SETH_ERROR("listen failed: %s: %d, res: %d", splits[0], port, r);
+        SHARDORA_ERROR("listen failed: %s: %d, res: %d", splits[0], port, r);
         std::this_thread::sleep_for(std::chrono::microseconds(100000ull));
     } while (try_times++ < 10);
 
     if (try_times >= 10) {
-        SETH_FATAL("listen failed: %s: %d", splits[0], port);
+        SHARDORA_FATAL("listen failed: %s: %d", splits[0], port);
         return;
     }
     
     uv_signal_t sig;
     uv_signal_init(loop, &sig);
     uv_signal_start(&sig, signal_handler, SIGINT);
-    SETH_DEBUG("init uv tcp transport success: %s", ip_port_.c_str());
+    SHARDORA_DEBUG("init uv tcp transport success: %s", ip_port_.c_str());
     uv_async_init(loop, &async_handle, uv_async_cb);
     uv_timer_init(loop, &health_timer);
     uv_timer_start(&health_timer, [](uv_timer_t*) {
@@ -867,7 +867,7 @@ void TcpTransport::Run() {
     uv_transport_inited = true;
     while (!destroy_) {
         if (uv_run(loop, UV_RUN_DEFAULT) != 0) {
-            SETH_ERROR("uv run failed!");
+            SHARDORA_ERROR("uv run failed!");
         }
 
         if (!destroy_) {
@@ -881,12 +881,12 @@ ex_uv_tcp_t* TcpTransport::GetConnection(const std::string& ip, uint16_t port) {
     std::string peer_spec = ip + ":" + std::to_string(port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
-        SETH_DEBUG("[TCP_RECONN] GetConnection: found existing connection %s:%d %p",
+        SHARDORA_DEBUG("[TCP_RECONN] GetConnection: found existing connection %s:%d %p",
             ip.c_str(), port, static_cast<void*>(&iter->second->uv_tcp));
         return iter->second;
     }
 
-    SETH_DEBUG("[TCP_RECONN] GetConnection: no existing connection for %s:%d, will create new",
+    SHARDORA_DEBUG("[TCP_RECONN] GetConnection: no existing connection for %s:%d, will create new",
         ip.c_str(), port);
     return nullptr;
 }
@@ -920,7 +920,7 @@ void TcpTransport::CheckConnectionsHealth() {
     for (auto& kv : conn_map_) {
         const char* reason = nullptr;
         if (IsConnectionStale(kv.second, now, &reason)) {
-            SETH_WARN("[TCP_RECONN] health sweep: stale %s (reason=%s, last_recv=%lu) — freeing",
+            SHARDORA_WARN("[TCP_RECONN] health sweep: stale %s (reason=%s, last_recv=%lu) — freeing",
                 kv.first.c_str(), reason ? reason : "unknown", kv.second->last_recv_ts);
             stale_conns.push_back(kv.second);
         }
@@ -934,7 +934,7 @@ void TcpTransport::FreeConnection(ex_uv_tcp_t* ex_uv_tcp) {
     std::string peer_spec = std::string(ex_uv_tcp->ip) + ":" + std::to_string(ex_uv_tcp->port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
-        SETH_WARN("[TCP_RECONN] FreeConnection: %s:%d %p — removed from conn_map, "
+        SHARDORA_WARN("[TCP_RECONN] FreeConnection: %s:%d %p — removed from conn_map, "
             "next send will create new connection (closing=%d, type=%d)",
             ex_uv_tcp->ip, ex_uv_tcp->port, static_cast<void*>(&ex_uv_tcp->uv_tcp),
             uv_is_closing((uv_handle_t*)&ex_uv_tcp->uv_tcp),
@@ -952,12 +952,12 @@ void TcpTransport::AddConnection(ex_uv_tcp_t* uv_tcp) {
     std::string peer_spec = std::string(uv_tcp->ip) + ":" + std::to_string(uv_tcp->port);
     auto iter = conn_map_.find(peer_spec);
     if (iter != conn_map_.end()) {
-        SETH_WARN("[TCP_RECONN] AddConnection: replacing existing connection for %s:%d",
+        SHARDORA_WARN("[TCP_RECONN] AddConnection: replacing existing connection for %s:%d",
             uv_tcp->ip, uv_tcp->port);
         FreeConnection(iter->second);
     }
 
-    SETH_DEBUG("[TCP_RECONN] AddConnection: %s:%d %p (new connection established)",
+    SHARDORA_DEBUG("[TCP_RECONN] AddConnection: %s:%d %p (new connection established)",
         uv_tcp->ip, uv_tcp->port, static_cast<void*>(&uv_tcp->uv_tcp));
     conn_map_[peer_spec] = uv_tcp;
 }
@@ -1008,6 +1008,6 @@ std::string TcpTransport::GetHeaderHashForSign(const transport::protobuf::Header
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora
 
 #endif

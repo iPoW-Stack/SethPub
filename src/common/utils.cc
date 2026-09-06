@@ -41,7 +41,7 @@
 #include "common/string_utils.h"
 #include "common/unique_set.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
     
@@ -134,7 +134,7 @@ uint8_t RandomCountry() {
 
 uint32_t GetAddressPoolIndex(const std::string& addr) {
     if (memcmp(addr.c_str(), kRootPoolsAddressPrefix.c_str(), kRootPoolsAddressPrefix.size()) == 0) {
-        SETH_DEBUG("success get common::kGlobalPoolIndex: %s, %s, size: %u", 
+        SHARDORA_DEBUG("success get common::kGlobalPoolIndex: %s, %s, size: %u", 
             common::Encode::HexEncode(addr).c_str(), 
             common::Encode::HexEncode(kRootPoolsAddressPrefix).c_str(),
             kRootPoolsAddressPrefix.size());
@@ -209,7 +209,7 @@ uint32_t iclock() {
 }
 
 static void SignalCallback(int sig_int) {
-    SETH_ERROR("signal coming: %d", sig_int);
+    SHARDORA_ERROR("signal coming: %d", sig_int);
     common::GlobalInfo::Instance()->set_global_stoped();
 }
 
@@ -430,4 +430,4 @@ ValidationStatus IsContractBytescodeValid(const std::string& bytecode) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

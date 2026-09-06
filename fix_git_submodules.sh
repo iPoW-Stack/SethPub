@@ -1,6 +1,6 @@
 #!/bin/bash
 # Git Submodules Fix Script
-# Resolves Git submodule issues for Seth blockchain project
+# Resolves Git submodule issues for Shardora blockchain project
 
 set -e
 

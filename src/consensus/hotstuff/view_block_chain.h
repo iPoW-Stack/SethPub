@@ -13,9 +13,9 @@
 #include "consensus/hotstuff/hotstuff_utils.h"
 #include "consensus/hotstuff/storage_lru_map.h"
 #include "protos/prefix_db.h"
-#include "sethvm/seth_host.h"
+#include "shardoravm/shardora_host.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
     class TxPoolManager;
@@ -47,7 +47,7 @@ public:
         const std::shared_ptr<ViewBlock>& view_block, 
         bool directly_store, 
         BalanceAndNonceMapPtr balane_map_ptr,
-        std::shared_ptr<sethvm::SethhainHost> seth_host_ptr,
+        std::shared_ptr<shardoravm::ShardorahainHost> shardora_host_ptr,
         bool init);
     // Get Block by hash value, fetch from neighbor nodes if necessary
     std::shared_ptr<ViewBlockInfo> Get(const HashStr& hash) const;
@@ -167,7 +167,7 @@ public:
         }
 
         // Allow setting old view blocks
-        SETH_DEBUG("changed latest commited block %u_%u_%lu, new view: %lu, sign x: %s",
+        SHARDORA_DEBUG("changed latest commited block %u_%u_%lu, new view: %lu, sign x: %s",
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
             view_block->block_info().height(),
@@ -194,7 +194,7 @@ public:
 
     bool ChainIsFull() const {
         if (!IsQcTcValid(high_view_block_->qc())) {
-            SETH_DEBUG("pool: %d, check pool chain is full failed, invalid qc: %s", 
+            SHARDORA_DEBUG("pool: %d, check pool chain is full failed, invalid qc: %s", 
                 pool_index_, ProtobufToJson(high_view_block_->qc()).c_str());
             return false;
         }
@@ -208,7 +208,7 @@ public:
                     pool_index_, 
                     latest_committed_block->block_info().height());
             }
-            SETH_DEBUG("pool: %d, check pool chain is full failed, high view block has no block info, view: %lu", 
+            SHARDORA_DEBUG("pool: %d, check pool chain is full failed, high view block has no block info, view: %lu", 
                 pool_index_, high_view_block_->qc().view());
             return false;
         }
@@ -220,7 +220,7 @@ public:
         auto latest_committed_block = LatestCommittedBlock();
         if (latest_committed_block && 
                 latest_committed_block->block_info().height() == high_view_block_->block_info().height()) {
-            SETH_DEBUG("pool: %d, check pool chain is full, latest committed block height: %lu, high view block height: %lu", 
+            SHARDORA_DEBUG("pool: %d, check pool chain is full, latest committed block height: %lu, high view block height: %lu", 
                 pool_index_, latest_committed_block->block_info().height(), high_view_block_->block_info().height());
             return pools_mgr_->PoolChainIsFull(
                 pool_index_, 
@@ -253,7 +253,7 @@ private:
         //assert(!view_block_info->view_block->qc().view_block_hash().empty());
         auto it = view_blocks_info_.find(view_block_info->view_block->qc().view_block_hash());
         if (it != view_blocks_info_.end() && it->second->view_block != nullptr) {
-            SETH_DEBUG("exists, failed add view block: %s, %u_%u_%lu, height: %lu, "
+            SHARDORA_DEBUG("exists, failed add view block: %s, %u_%u_%lu, height: %lu, "
                 "parent hash: %s, tx size: %u, strings: %s",
                 common::Encode::HexEncode(view_block_info->view_block->qc().view_block_hash()).c_str(),
                 view_block_info->view_block->qc().network_id(),
@@ -267,7 +267,7 @@ private:
         }
         
         view_blocks_info_[view_block_info->view_block->qc().view_block_hash()] = view_block_info;
-        SETH_DEBUG("store now add view block: %s, %u_%u_%lu, height: %lu, "
+        SHARDORA_DEBUG("store now add view block: %s, %u_%u_%lu, height: %lu, "
             "parent hash: %s, tx size: %u, strings: %s",
             common::Encode::HexEncode(view_block_info->view_block->qc().view_block_hash()).c_str(),
             view_block_info->view_block->qc().network_id(),
@@ -279,21 +279,21 @@ private:
             String().c_str());
         // //assert(view_with_blocks_.find(view_block_info->view_block->qc().view()) == view_with_blocks_.end());
         view_with_blocks_[view_block_info->view_block->qc().view()] = view_block_info;
-        SETH_DEBUG("success add view block info now size: %u", view_blocks_info_.size());
+        SHARDORA_DEBUG("success add view block info now size: %u", view_blocks_info_.size());
     }
 
     std::shared_ptr<ViewBlockInfo> GetViewBlockInfo(
             std::shared_ptr<ViewBlock> view_block, 
             BalanceAndNonceMapPtr acc_balance_map_ptr,
-            std::shared_ptr<sethvm::SethhainHost> seth_host_ptr) {
+            std::shared_ptr<shardoravm::ShardorahainHost> shardora_host_ptr) {
         auto view_block_info_ptr = std::make_shared<ViewBlockInfo>();
-        SETH_DEBUG("2 success add view block remove add %u_%u_%lu", 
+        SHARDORA_DEBUG("2 success add view block remove add %u_%u_%lu", 
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
             view_block->qc().view());
         view_block_info_ptr->view_block = view_block;
         view_block_info_ptr->acc_balance_map_ptr = acc_balance_map_ptr;
-        view_block_info_ptr->seth_host_ptr = seth_host_ptr;
+        view_block_info_ptr->shardora_host_ptr = shardora_host_ptr;
         return view_block_info_ptr;
     }
 
@@ -376,4 +376,4 @@ Status GetLatestViewBlockFromDb(
         
 } // namespace consensus
     
-} // namespace seth
+} // namespace shardora

@@ -10,7 +10,7 @@
 #include "common/global_info.h"
 #include "init/genesis_block_init.h"
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -257,4 +257,4 @@ TEST_F(GenesisBlockInitTest, MemoryManagement) {
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

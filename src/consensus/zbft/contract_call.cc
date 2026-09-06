@@ -2,33 +2,33 @@
 
 #include "common/defer.h"
 #include "network/network_utils.h"
-#include "sethvm/execution.h"
-#include "sethvm/host_journal_stack.h"
+#include "shardoravm/execution.h"
+#include "shardoravm/host_journal_stack.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
 int ContractCall::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& pre_seth_host,
+        shardoravm::ShardorahainHost& pre_shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     // gas just consume from 's prefund
     auto btime = common::TimeUtils::TimestampMs();
-    SETH_DEBUG("contract called now.");
+    SHARDORA_DEBUG("contract called now.");
     uint64_t from_balance = 0;
     uint64_t from_nonce = 0;
     auto preppayment_id = block_tx.to() + block_tx.from();
-    auto res = GetTempAccountBalance(pre_seth_host, preppayment_id, acc_balance_map, &from_balance, &from_nonce);
+    auto res = GetTempAccountBalance(pre_shardora_host, preppayment_id, acc_balance_map, &from_balance, &from_nonce);
     if (res != kConsensusSuccess) {
         return kConsensusError;
     }
 
     uint64_t src_to_balance = 0;
     uint64_t src_to_nonce = 0;
-    res = GetTempAccountBalance(pre_seth_host, block_tx.to(), acc_balance_map, &src_to_balance, &src_to_nonce);
+    res = GetTempAccountBalance(pre_shardora_host, block_tx.to(), acc_balance_map, &src_to_balance, &src_to_nonce);
     if (res != kConsensusSuccess) {
         return kConsensusError;
     }
@@ -41,10 +41,10 @@ int ContractCall::HandleTx(
                     + CalcCalldataGas(block_tx.contract_input());
     int64_t contract_balance_add = 0;
     auto gas_limit = block_tx.gas_limit();
-    sethvm::SethhainHost seth_host;
-    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
-    seth_host.tx_context_ = pre_seth_host.tx_context_;
-    seth_host.pre_seth_host_ = &pre_seth_host;
+    shardoravm::ShardorahainHost shardora_host;
+    shardora_host.view_block_chain_ = pre_shardora_host.view_block_chain_;
+    shardora_host.tx_context_ = pre_shardora_host.tx_context_;
+    shardora_host.pre_shardora_host_ = &pre_shardora_host;
     do {
         if (address_info->destructed()) {
             block_tx.set_status(kConsensusContractDestructed);
@@ -66,7 +66,7 @@ int ContractCall::HandleTx(
 
         if (block_tx.amount() >= from_balance) {
             block_tx.set_status(kConsensusOutOfPrefund);
-            SETH_WARN("prefundent invalid user: %s, prefund: %lu, contract: %s,"
+            SHARDORA_WARN("prefundent invalid user: %s, prefund: %lu, contract: %s,"
                 "amount: %lu, gas limit: %lu, gas price: %lu",
                 common::Encode::HexEncode(block_tx.from()).c_str(),
                 from_balance,
@@ -99,24 +99,24 @@ int ContractCall::HandleTx(
         }
     } else {
         new_contract_balance += block_tx.amount();
-        InitHost(seth_host, block_tx, gas_limit, block_tx.gas_price(), view_block);
+        InitHost(shardora_host, block_tx, gas_limit, block_tx.gas_price(), view_block);
         // user caller prefund 's gas
-        seth_host.AddTmpAccountBalance(
+        shardora_host.AddTmpAccountBalance(
             block_tx.from(),
             from_balance);
-        seth_host.AddTmpAccountBalance(
+        shardora_host.AddTmpAccountBalance(
             block_tx.to(),
             new_contract_balance);
         if (block_tx.contract_input().size() >= protos::kContractBytesStartCode.size()) {
-            SETH_DEBUG("now call contract address: %s, bytes: %s", 
+            SHARDORA_DEBUG("now call contract address: %s, bytes: %s", 
                 common::Encode::HexEncode(address_info->addr()).c_str(), 
                 common::Encode::HexEncode(address_info->bytes_code()).c_str());
             auto evm_begin_us = common::TimeUtils::TimestampUs();
-            int call_res = ContractExcute(address_info, new_contract_balance, seth_host, block_tx, gas_limit, &evmc_res);
+            int call_res = ContractExcute(address_info, new_contract_balance, shardora_host, block_tx, gas_limit, &evmc_res);
             auto evm_end_us = common::TimeUtils::TimestampUs();
             auto evm_elapsed_us = evm_end_us - evm_begin_us;
             if (evm_elapsed_us > 1000) {  // log if > 1ms
-                SETH_WARN("ContractExcute slow: %lu us, tx_idx: %d, contract: %s, "
+                SHARDORA_WARN("ContractExcute slow: %lu us, tx_idx: %d, contract: %s, "
                     "input_size: %lu, status: %d, gas_used: %lu",
                     evm_elapsed_us, tx_index,
                     common::Encode::HexEncode(address_info->addr()).c_str(),
@@ -126,7 +126,7 @@ int ContractCall::HandleTx(
             }
             if (call_res != kConsensusSuccess || evmc_res.status_code != EVMC_SUCCESS) {
                 block_tx.set_status(EvmcStatusToZbftStatus(evmc_res.status_code));
-                SETH_DEBUG("call contract failed, call_res: %d, evmc res: %d, gas_limit: %lu, bytes: %s, input: %s!",
+                SHARDORA_DEBUG("call contract failed, call_res: %d, evmc res: %d, gas_limit: %lu, bytes: %s, input: %s!",
                     call_res, (int32_t)evmc_res.status_code, gas_limit, "common::Encode::HexEncode(address_info->bytes_code()).c_str()",
                     common::Encode::HexEncode(block_tx.contract_input()).c_str());
             }
@@ -138,7 +138,7 @@ int ContractCall::HandleTx(
             }
 
             // ── 叠加跨链路由 gas（事后合计，避免与 EVM 计数器冲突）────────
-            gas_used += static_cast<uint64_t>(seth_host.cross_gas_charged_);
+            gas_used += static_cast<uint64_t>(shardora_host.cross_gas_charged_);
             // ─────────────────────────────────────────────────────────────
         }
 
@@ -148,12 +148,12 @@ int ContractCall::HandleTx(
                 tx_info->key().size(), tx_info->value().size(), true);
             if (gas_limit < gas_used) {
                 block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-                SETH_DEBUG("1 balance error: %lu, %lu, %lu",
+                SHARDORA_DEBUG("1 balance error: %lu, %lu, %lu",
                     from_balance, gas_limit, gas_used);
             }
         } else {
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_ERROR("leader balance error: %llu, %llu",
+            SHARDORA_ERROR("leader balance error: %llu, %llu",
                 from_balance, gas_used * block_tx.gas_price());
             from_balance = 0;
         }
@@ -164,12 +164,12 @@ int ContractCall::HandleTx(
             if (tmp_from_balance >= int64_t(gas_used * block_tx.gas_price())) {
                 if (tmp_from_balance < dec_amount) {
                     block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                    SETH_ERROR("leader balance error: %llu, %llu", tmp_from_balance, dec_amount);
+                    SHARDORA_ERROR("leader balance error: %llu, %llu", tmp_from_balance, dec_amount);
                 }
             } else {
                 tmp_from_balance = 0;
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("leader balance error: %llu, %llu",
+                SHARDORA_ERROR("leader balance error: %llu, %llu",
                     tmp_from_balance, gas_used * block_tx.gas_price());
             }
         } else {
@@ -183,9 +183,9 @@ int ContractCall::HandleTx(
         if (block_tx.status() == kConsensusSuccess) {
             int64_t caller_balance_add = 0;
             contract_balance_add = 0;
-            int64_t gas_more = seth_host.gas_more_;
+            int64_t gas_more = shardora_host.gas_more_;
             int res = SaveContractCreateInfo(
-                seth_host,
+                shardora_host,
                 block_tx,
                 dep_contract_balance_map,
                 contract_balance_add);
@@ -198,14 +198,14 @@ int ContractCall::HandleTx(
 
                 if (gas_used > gas_limit) {
                     block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-                    SETH_DEBUG("1 balance error: %lu, %lu, %lu",
+                    SHARDORA_DEBUG("1 balance error: %lu, %lu, %lu",
                         tmp_from_balance, gas_limit, gas_more);
                     break;
                 }
 
                 if (tmp_from_balance < int64_t(gas_used * block_tx.gas_price())) {
                     block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                    SETH_ERROR("balance error: %llu, %llu",
+                    SHARDORA_ERROR("balance error: %llu, %llu",
                         tmp_from_balance, gas_more * block_tx.gas_price());
                     break;
                 }
@@ -217,7 +217,7 @@ int ContractCall::HandleTx(
                     static_cast<int64_t>(gas_used * block_tx.gas_price());
                 if ((int64_t)tmp_from_balance < dec_amount) {
                     block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                    SETH_ERROR("leader balance error: %llu, %llu",
+                    SHARDORA_ERROR("leader balance error: %llu, %llu",
                         tmp_from_balance, caller_balance_add);
                     break;
                 }
@@ -225,23 +225,23 @@ int ContractCall::HandleTx(
                 tmp_from_balance -= dec_amount;
                 if (new_contract_balance < -contract_balance_add) {
                     block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                    SETH_ERROR("to balance error: %llu, %llu",
+                    SHARDORA_ERROR("to balance error: %llu, %llu",
                         new_contract_balance, contract_balance_add);
                     break;
                 }
                 
                 // change contract 's amount, now is contract 's new balance
                 new_contract_balance += contract_balance_add;
-                if (seth_host.recorded_selfdestructs_ != nullptr && new_contract_balance > 0) {
+                if (shardora_host.recorded_selfdestructs_ != nullptr && new_contract_balance > 0) {
                     std::string destruct_from = std::string(
-                        (char*)seth_host.recorded_selfdestructs_->selfdestructed.bytes,
-                        sizeof(seth_host.recorded_selfdestructs_->selfdestructed.bytes));
+                        (char*)shardora_host.recorded_selfdestructs_->selfdestructed.bytes,
+                        sizeof(shardora_host.recorded_selfdestructs_->selfdestructed.bytes));
                     std::string destruct_to = std::string(
-                        (char*)seth_host.recorded_selfdestructs_->beneficiary.bytes,
-                        sizeof(seth_host.recorded_selfdestructs_->beneficiary.bytes));
+                        (char*)shardora_host.recorded_selfdestructs_->beneficiary.bytes,
+                        sizeof(shardora_host.recorded_selfdestructs_->beneficiary.bytes));
                     if (destruct_from != block_tx.to() || destruct_from == destruct_to) {
                         block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                        SETH_ERROR("self destruct error not equal: %s, %s, beneficiary: %s",
+                        SHARDORA_ERROR("self destruct error not equal: %s, %s, beneficiary: %s",
                             common::Encode::HexEncode(destruct_from).c_str(),
                             common::Encode::HexEncode(block_tx.to()).c_str(),
                             common::Encode::HexEncode(destruct_to).c_str());
@@ -261,7 +261,7 @@ int ContractCall::HandleTx(
                         to_item_ptr->set_amount(new_contract_balance + to_item_ptr->amount());
                     }
 
-                    SETH_ERROR("self destruct success nonce: %lu, %s, %s, "
+                    SHARDORA_ERROR("self destruct success nonce: %lu, %s, %s, "
                         "beneficiary: %s, amount: %lu, status: %d",
                         block_tx.nonce(),
                         common::Encode::HexEncode(destruct_from).c_str(),
@@ -322,14 +322,14 @@ int ContractCall::HandleTx(
     auto etime = common::TimeUtils::TimestampMs();
     auto handle_tx_elapsed = etime - btime;
     if (handle_tx_elapsed > 5) {  // log if HandleTx > 5ms
-        SETH_WARN("ContractCall::HandleTx slow: %lu ms, tx_idx: %d, nonce: %lu, "
+        SHARDORA_WARN("ContractCall::HandleTx slow: %lu ms, tx_idx: %d, nonce: %lu, "
             "contract: %s, caller: %s, status: %d, gas_used: %lu",
             handle_tx_elapsed, tx_index, block_tx.nonce(),
             common::Encode::HexEncode(block_tx.to()).c_str(),
             common::Encode::HexEncode(block_tx.from()).c_str(),
             block_tx.status(), gas_used);
     }
-    SETH_DEBUG("contract nonce %lu, to: %s, user: %s, test_from_balance: %lu, prepament: %lu, "
+    SHARDORA_DEBUG("contract nonce %lu, to: %s, user: %s, test_from_balance: %lu, prepament: %lu, "
         "gas used: %lu, gas_price: %lu, status: %d, step: %d, "
         "amount: %ld, to_balance: %ld, contract_balance_add: %ld, "
         "contract new balance: %lu, use time: %lu",
@@ -348,8 +348,8 @@ int ContractCall::HandleTx(
         new_contract_balance,
         (etime - btime));
 
-     for (auto event_iter = seth_host.recorded_logs_.begin();
-            event_iter != seth_host.recorded_logs_.end(); ++event_iter) {
+     for (auto event_iter = shardora_host.recorded_logs_.begin();
+            event_iter != shardora_host.recorded_logs_.end(); ++event_iter) {
         auto log = block_tx.add_events();
         log->set_data((*event_iter).data);
         for (auto topic_iter = (*event_iter).topics.begin();
@@ -378,7 +378,7 @@ int ContractCall::HandleTx(
     }
 
     auto status_val = tx_hash_status.SerializeAsString();
-    SETH_DEBUG("call contract status: %d, rel: %d, txhash: %s, output: %s, from: %s, to: %s", 
+    SHARDORA_DEBUG("call contract status: %d, rel: %d, txhash: %s, output: %s, from: %s, to: %s", 
         (int32_t)evmc_res.status_code, 
         tx_hash_status.status(),
         common::Encode::HexEncode(block_tx.tx_hash()).c_str(),
@@ -390,12 +390,12 @@ int ContractCall::HandleTx(
             acc_balance_map[iter->first] = iter->second;
         }
 
-        for (auto iter = seth_host.create2_accounts_.begin();
-                iter != seth_host.create2_accounts_.end(); ++iter) {
+        for (auto iter = shardora_host.create2_accounts_.begin();
+                iter != shardora_host.create2_accounts_.end(); ++iter) {
             auto contract_info = std::make_shared<address::protobuf::AddressInfo>();
             auto id = std::string((char*)iter->first.bytes, sizeof(iter->first.bytes));
             contract_info->set_addr(id);
-            contract_info->set_balance(sethvm::EvmcBytes32ToUint64(iter->second.balance));
+            contract_info->set_balance(shardoravm::EvmcBytes32ToUint64(iter->second.balance));
             contract_info->set_sharding_id(view_block.qc().network_id());
             contract_info->set_pool_index(view_block.qc().pool_index());
             contract_info->set_type(address::protobuf::kNormal);
@@ -409,10 +409,10 @@ int ContractCall::HandleTx(
         }
 
         // ── pending_cross_actions_ → cross_to_map_ ──────────────────────
-        for (auto& action : seth_host.pending_cross_actions_) {
+        for (auto& action : shardora_host.pending_cross_actions_) {
             if (action.base_root_address.empty()) continue;
 
-            if (action.type == sethvm::CrossShardActionType::kTransfer) {
+            if (action.type == shardoravm::CrossShardActionType::kTransfer) {
                 if (action.to.empty()) continue;
                 std::string key = action.emitter + std::to_string(action.nonce);
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
@@ -431,13 +431,13 @@ int ContractCall::HandleTx(
                     item->set_base_root_address(action.base_root_address);
                     item->set_cross_nonce(action.nonce);
                     cross_to_map_[key] = item;
-                    SETH_INFO("CrossShardBase cross-transfer queued: base=%s, to=%s, amount=%lu, nonce=%lu, dest_shard=%u pool=%u",
+                    SHARDORA_INFO("CrossShardBase cross-transfer queued: base=%s, to=%s, amount=%lu, nonce=%lu, dest_shard=%u pool=%u",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
                         common::Encode::HexEncode(action.to).c_str(),
                         action.amount, action.nonce,
                         action.dest_shard_id, action.dest_pool_index);
                 }
-            } else if (action.type == sethvm::CrossShardActionType::kSetStorage) {
+            } else if (action.type == shardoravm::CrossShardActionType::kSetStorage) {
                 if (action.storage_key.empty()) continue;
                 std::string key = action.emitter + "s" + std::to_string(action.nonce);
                 if (cross_to_map_.find(key) == cross_to_map_.end()) {
@@ -457,7 +457,7 @@ int ContractCall::HandleTx(
                     item->set_cross_storage_key(action.storage_key);
                     item->set_cross_storage_value(action.storage_val);
                     cross_to_map_[key] = item;
-                    SETH_INFO("CrossShardBase cross-storage queued: base=%s, key_len=%zu, nonce=%lu, dest_shard=%u pool=%u",
+                    SHARDORA_INFO("CrossShardBase cross-storage queued: base=%s, key_len=%zu, nonce=%lu, dest_shard=%u pool=%u",
                         common::Encode::HexEncode(action.base_root_address).c_str(),
                         action.storage_key.size(), action.nonce,
                         action.dest_shard_id, action.dest_pool_index);
@@ -466,33 +466,33 @@ int ContractCall::HandleTx(
         }
         // ─────────────────────────────────────────────────────────────────
 
-        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-        seth_host.MergeToPrev();
+        shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        shardora_host.MergeToPrev();
         for (auto exists_iter = cross_to_map_.begin(); exists_iter != cross_to_map_.end(); ++exists_iter) {
-            auto iter = pre_seth_host.cross_to_map_.find(exists_iter->first);
+            auto iter = pre_shardora_host.cross_to_map_.find(exists_iter->first);
             std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-            if (iter == pre_seth_host.cross_to_map_.end()) {
-                pre_seth_host.cross_to_map_[exists_iter->first] = exists_iter->second;
+            if (iter == pre_shardora_host.cross_to_map_.end()) {
+                pre_shardora_host.cross_to_map_[exists_iter->first] = exists_iter->second;
             } else {
                 to_item_ptr = iter->second;
                 to_item_ptr->set_amount(exists_iter->second->amount() + to_item_ptr->amount());
             }
         }
     } else {
-        pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        pre_shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
     }
 
     return kConsensusSuccess;
 }
 
 int ContractCall::SaveContractCreateInfo(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::BlockTx& block_tx,
         hotstuff::BalanceAndNonceMap& dep_contract_balance_map,
         int64_t& contract_balance_add) {
     int64_t other_add = 0;
-    for (auto transfer_iter = seth_host.to_account_value_.begin();
-            transfer_iter != seth_host.to_account_value_.end(); ++transfer_iter) {
+    for (auto transfer_iter = shardora_host.to_account_value_.begin();
+            transfer_iter != shardora_host.to_account_value_.end(); ++transfer_iter) {
         // transfer from must caller or contract address, other not allowed.
         // if (transfer_iter->first != block_tx.from() && transfer_iter->first != block_tx.to()) {
         //     //assert(false);
@@ -507,7 +507,7 @@ int ContractCall::SaveContractCreateInfo(
             }
 
             if (block_tx.to() != transfer_iter->first) {
-                auto addr_info = seth_host.view_block_chain_->ChainGetAccountInfo(to_iter->first);
+                auto addr_info = shardora_host.view_block_chain_->ChainGetAccountInfo(to_iter->first);
                 if (addr_info == nullptr) {
                     //assert(false);
                     return kConsensusError;
@@ -518,7 +518,7 @@ int ContractCall::SaveContractCreateInfo(
                     return kConsensusError;
                 }
 
-                if (addr_info->pool_index() != seth_host.view_block_chain_->pool_index()) {
+                if (addr_info->pool_index() != shardora_host.view_block_chain_->pool_index()) {
                     //assert(false);
                     return kConsensusError;
                 }
@@ -553,7 +553,7 @@ int ContractCall::SaveContractCreateInfo(
                 to_item_ptr->set_amount(to_iter->second + to_item_ptr->amount());
             }
             
-            SETH_DEBUG("contract call transfer nonce: %lu, from: %s, to: %s, amount: %lu, contract_balance_add: %ld",
+            SHARDORA_DEBUG("contract call transfer nonce: %lu, from: %s, to: %s, amount: %lu, contract_balance_add: %ld",
                 block_tx.nonce(),
                 common::Encode::HexEncode(transfer_iter->first).c_str(),
                 common::Encode::HexEncode(to_iter->first).c_str(),
@@ -572,18 +572,18 @@ int ContractCall::SaveContractCreateInfo(
         return kConsensusError;
     }
 
-    SETH_DEBUG("user success call contract.");
+    SHARDORA_DEBUG("user success call contract.");
     return kConsensusSuccess;
 }
 
 int ContractCall::ContractExcute(
         protos::AddressInfoPtr& contract_info,
         uint64_t contract_balance,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::BlockTx& tx,
         uint64_t gas_limit,
         evmc::Result* out_res) {
-    int exec_res = sethvm::Execution::Instance()->execute(
+    int exec_res = shardoravm::Execution::Instance()->execute(
         contract_info->bytes_code(),
         tx.contract_input(),
         tx.from(),
@@ -592,11 +592,11 @@ int ContractCall::ContractExcute(
         tx.amount(),
         gas_limit,
         0,
-        sethvm::kJustCall,
-        seth_host,
+        shardoravm::kJustCall,
+        shardora_host,
         out_res);
-    if (exec_res != sethvm::kSethvmSuccess) {
-        SETH_ERROR("ContractExcute failed: %d, bytes: %s, input: %s",
+    if (exec_res != shardoravm::kShardoravmSuccess) {
+        SHARDORA_ERROR("ContractExcute failed: %d, bytes: %s, input: %s",
             exec_res, common::Encode::HexEncode(contract_info->bytes_code()).c_str(),
             common::Encode::HexEncode(tx.contract_input()).c_str());
         // //assert(false);
@@ -608,4 +608,4 @@ int ContractCall::ContractExcute(
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

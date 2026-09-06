@@ -6,7 +6,7 @@ PASSWORD=$4
 TARGET=$5
 FIRST_NODE_COUNT=$1
 
-# bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
+# bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep shardora@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 shardora"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
@@ -77,7 +77,7 @@ init() {
 
 
     bash build.sh a $TARGET
-    cd /root/seth/cbuild_$TARGET && make txcli
+    cd /root/shardora/cbuild_$TARGET && make txcli
 }
 
 check_cmd_finished() {
@@ -103,7 +103,7 @@ clear_command() {
     run_cmd_count=0
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf /root/pkg/seth /root/pkg/txcli" &
+        sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5  root@$ip "cd /root && rm -rf /root/pkg/shardora /root/pkg/txcli" &
         run_cmd_count=$((run_cmd_count + 1))
         if ((start_pos==1)); then
             sleep 3
@@ -125,7 +125,7 @@ scp_package() {
     node_ips_array=(${node_ips//,/ })
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do
-        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/seth/cbuild_$TARGET/seth root@$ip:/root/pkg/ &
+        sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/shardora/cbuild_$TARGET/shardora root@$ip:/root/pkg/ &
         run_cmd_count=$((run_cmd_count + 1))
         if (($run_cmd_count >= 100)); then
             check_cmd_finished
@@ -150,11 +150,11 @@ ln_all_nodes() {
             fi
 
             for ((i=1; i<=$each_nodes_count;i++)); do
-                echo "/root/seths/s${shard}_${start_pos}/"
-                REMOTE_CMD="if [ -d \"/root/seths/s${shard}_${start_pos}/\" ]; then 
-                                rm -rf /root/seths/s${shard}_${start_pos}/seth && \
-                                rm -rf /root/seths/s${shard}_${start_pos}/log/* && \
-                                ln /root/pkg/seth /root/seths/s${shard}_${start_pos}/seth && \
+                echo "/root/shardoras/s${shard}_${start_pos}/"
+                REMOTE_CMD="if [ -d \"/root/shardoras/s${shard}_${start_pos}/\" ]; then 
+                                rm -rf /root/shardoras/s${shard}_${start_pos}/shardora && \
+                                rm -rf /root/shardoras/s${shard}_${start_pos}/log/* && \
+                                ln /root/pkg/shardora /root/shardoras/s${shard}_${start_pos}/shardora && \
                                 echo \"[Shard $shard] Updated\"; 
                             else 
                                 echo \"[Shard $shard] Not exists, skipping\"; 
@@ -184,7 +184,7 @@ start_all_nodes() {
             start_nodes_count=$FIRST_NODE_COUNT
         fi
 
-        REMOTE_CMD="pkill -9 seth "
+        REMOTE_CMD="pkill -9 shardora "
         sshpass -p "$PASSWORD" ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip "$REMOTE_CMD" &
         if ((start_pos == 1)); then
             sleep 3

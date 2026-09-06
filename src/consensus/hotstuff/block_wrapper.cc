@@ -4,9 +4,9 @@
 #include <common/utils.h>
 #include <consensus/hotstuff/block_wrapper.h>
 #include <consensus/hotstuff/view_block_chain.h>
-#include "sethvm/seth_host.h"
+#include "shardoravm/shardora_host.h"
 
-namespace seth {
+namespace shardora {
 namespace hotstuff {
 
 BlockWrapper::BlockWrapper(
@@ -39,7 +39,7 @@ Status BlockWrapper::Wrap(
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto* prev_block = &prev_view_block->block_info();
     if (!prev_block) {
-        SETH_WARN("get prev block failed, pool index: %d", pool_idx_);
+        SHARDORA_WARN("get prev block failed, pool index: %d", pool_idx_);
         return Status::kInvalidArgument;
     }
 
@@ -49,11 +49,11 @@ Status BlockWrapper::Wrap(
     block->set_chain_id(kGlobalChainId);
     block->set_all_gas(0);
     block->set_height(prev_block->height()+1);
-    SETH_DEBUG("propose block net: %u, pool: %u, set height: %lu, pre height: %lu",
+    SHARDORA_DEBUG("propose block net: %u, pool: %u, set height: %lu, pre height: %lu",
         view_block->qc().network_id(), view_block->qc().pool_index(), 
         block->height(), prev_block->height());
     if (block->height() <= 0) {
-        SETH_WARN("block->height() <= 0, pool index: %d", pool_idx_);
+        SHARDORA_WARN("block->height() <= 0, pool index: %d", pool_idx_);
         return Status::kInvalidArgument;
     }
 
@@ -83,7 +83,7 @@ Status BlockWrapper::Wrap(
     Status s = LeaderGetTxsIdempotently(msg_ptr, txs_ptr, tx_valid_func);
     auto get_txs_end_ms = common::TimeUtils::TimestampMs();
     if (get_txs_end_ms - get_txs_begin_ms >= 100lu) {
-        SETH_DEBUG("pool: %d, leader get txs use time: %lu ms, merged accounts: %zu, "
+        SHARDORA_DEBUG("pool: %d, leader get txs use time: %lu ms, merged accounts: %zu, "
             "selected: %zu, %u_%u_%lu",
             pool_idx_,
             (get_txs_end_ms - get_txs_begin_ms),
@@ -95,7 +95,7 @@ Status BlockWrapper::Wrap(
     }
     if (s != Status::kSuccess && !no_tx_allowed) {
         // Allow 3 consecutive empty transaction blocks
-        SETH_DEBUG("leader get txs failed check is empty block allowd: %d, "
+        SHARDORA_DEBUG("leader get txs failed check is empty block allowd: %d, "
             "pool: %d, %u_%u_%lu size: %u, pool size: %u",
             (int32_t)s, pool_idx_, 
             view_block->qc().network_id(), 
@@ -107,7 +107,7 @@ Status BlockWrapper::Wrap(
     }
 
     ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("leader get txs success check is empty block allowd: %d, pool: %d, %u_%u_%lu size: %u",
+    SHARDORA_DEBUG("leader get txs success check is empty block allowd: %d, pool: %d, %u_%u_%lu size: %u",
         (int32_t)s, pool_idx_, 
         view_block->qc().network_id(), 
         view_block->qc().pool_index(), 
@@ -124,7 +124,7 @@ Status BlockWrapper::Wrap(
             auto& tx = *((*it)->tx_info);
             auto tx_gas_limit = tx.gas_limit();
             if (!consensus::CanAddBlockGas(proposed_gas, tx_gas_limit)) {
-                SETH_WARN("pool: %d, block gas limit reached: current=%lu, tx_gas_limit=%lu, "
+                SHARDORA_WARN("pool: %d, block gas limit reached: current=%lu, tx_gas_limit=%lu, "
                     "limit=%lu, stopping at %d/%zu txs",
                     pool_idx_, proposed_gas, tx_gas_limit, consensus::kBlockMaxGasLimit,
                     tx_propose->txs_size(), txs_ptr->txs.size());
@@ -133,7 +133,7 @@ Status BlockWrapper::Wrap(
 
             int tx_size = (*it)->tx_info->ByteSizeLong();
             if (current_size + tx_size > common::kMaxProposeMsgBytes) {
-                SETH_WARN("pool: %d, propose msg size limit reached: current=%d bytes, "
+                SHARDORA_WARN("pool: %d, propose msg size limit reached: current=%d bytes, "
                     "tx_size=%d, limit=%d — stopping at %d/%zu txs",
                     pool_idx_, current_size, tx_size, common::kMaxProposeMsgBytes,
                     tx_propose->txs_size(), txs_ptr->txs.size());
@@ -173,7 +173,7 @@ Status BlockWrapper::Wrap(
 #ifndef NDEBUG
     for (int32_t ti = 0; ti < tx_propose->txs_size(); ++ti) {
         auto& packed_tx = tx_propose->txs(ti);
-        SETH_DEBUG("[TX_PACKED] pool: %d, tx[%d/%d]: to=%s, nonce=%lu, "
+        SHARDORA_DEBUG("[TX_PACKED] pool: %d, tx[%d/%d]: to=%s, nonce=%lu, "
             "step=%d, amount=%lu, view=%lu",
             pool_idx_, ti, tx_propose->txs_size(),
             common::Encode::HexEncode(packed_tx.to()).c_str(),
@@ -184,10 +184,10 @@ Status BlockWrapper::Wrap(
     }
 #endif
     if (tx_propose->txs_size() > 0) {
-        SETH_DEBUG("[TX_PACKED] pool: %d, packed tx count: %d, view: %lu",
+        SHARDORA_DEBUG("[TX_PACKED] pool: %d, packed tx count: %d, view: %lu",
             pool_idx_, tx_propose->txs_size(), view_block->qc().view());
     }
-    SETH_DEBUG("====3 success propose block net: %u, pool: %u, set height: %lu, pre height: %lu, "
+    SHARDORA_DEBUG("====3 success propose block net: %u, pool: %u, set height: %lu, pre height: %lu, "
         "elect height: %lu, timeblock height: %lu, hash: %s, parent hash: %s, %u_%u_%lu",
         view_block->qc().network_id(), view_block->qc().pool_index(),
         block->height(), prev_block->height(), elect_item->ElectHeight(),

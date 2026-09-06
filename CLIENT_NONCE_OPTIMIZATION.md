@@ -177,7 +177,7 @@ void UpdateAddressNonceThread() {
 
 ## 验证方法
 
-1. 编译项目：`./build.sh seth`
+1. 编译项目：`./build.sh shardora`
 2. 运行压测：`./txcli 0 3 0 <ip> <port>`
 3. 观察日志：
    - 不应该看到 "nonce gap detected" 消息

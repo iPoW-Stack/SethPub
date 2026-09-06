@@ -2,7 +2,7 @@
 
 #include "consensus/consensus_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -64,4 +64,4 @@ TEST(TestConsensusUtils, EvmcStatusMappingCoversAllKnownCodes) {
 
 }  // namespace test
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

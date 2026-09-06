@@ -1,10 +1,10 @@
 #!/bin/bash
-# Fixed Third Party Build Script for Seth Blockchain Project
+# Fixed Third Party Build Script for Shardora Blockchain Project
 # This script addresses all the issues found in the original build_third.sh
 
 set -e
 
-echo "=== Seth Third Party Build Script (Fixed) ==="
+echo "=== Shardora Third Party Build Script (Fixed) ==="
 echo "Starting third party dependencies build..."
 
 # Set build configuration

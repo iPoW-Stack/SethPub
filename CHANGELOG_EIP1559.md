@@ -22,7 +22,7 @@
   - 支持 Legacy 的 v 值格式（27/28 或 chainId * 2 + 35 + parity）
   - 正确恢复 65 字节未压缩公钥
 
-#### Python SDK (`clipy/seth3.py`)
+#### Python SDK (`clipy/shardora3.py`)
 
 - **增强的交易签名函数**
   - 添加 `use_eip1559` 参数
@@ -326,10 +326,10 @@ tx_hash = _eth_sign_and_send(
 
 ## 贡献者
 
-- **开发**: Seth 开发团队
-- **测试**: Seth QA 团队
-- **文档**: Seth 技术写作团队
-- **审查**: Seth 架构团队
+- **开发**: Shardora 开发团队
+- **测试**: Shardora QA 团队
+- **文档**: Shardora 技术写作团队
+- **审查**: Shardora 架构团队
 
 ## 致谢
 
@@ -338,7 +338,7 @@ tx_hash = _eth_sign_and_send(
 - 以太坊基金会（EIP-1559 规范）
 - eth_account 库
 - RLP 编码规范
-- Seth 社区反馈
+- Shardora 社区反馈
 
 ## 参考资料
 
@@ -382,11 +382,11 @@ tx_hash = _eth_sign_and_send(
 
 ## 许可证
 
-本实现遵循 Seth 区块链项目的开源许可证。
+本实现遵循 Shardora 区块链项目的开源许可证。
 
 ---
 
 **发布日期**: 2024年  
-**维护者**: Seth 开发团队  
+**维护者**: Shardora 开发团队  
 **状态**: ✅ 生产就绪  
 **版本**: 1.0.0

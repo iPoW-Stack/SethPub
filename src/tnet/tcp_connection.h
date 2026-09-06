@@ -14,7 +14,7 @@
 #include "tnet/utils/packet_encoder.h"
 #include "tnet/utils/msg_packet.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -156,14 +156,14 @@ public:
         if (GetTcpState() == tnet::TcpConnection::kTcpConnecting) {
             auto now_tm_ms = common::TimeUtils::TimestampMs();
             if (now_tm_ms >= create_timestamp_ms_ + kConnectTimeoutMs) {
-                SETH_DEBUG("should remove connect timeout (still connecting).");
+                SHARDORA_DEBUG("should remove connect timeout (still connecting).");
                 ShouldStop();
                 return true;
             }
         }
 
         if (GetTcpState() == tnet::TcpConnection::kTcpClosed) {
-            SETH_DEBUG("should remove connect lost.");
+            SHARDORA_DEBUG("should remove connect lost.");
             ShouldStop();
             return true;
         }
@@ -229,4 +229,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

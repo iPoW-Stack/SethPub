@@ -56,7 +56,7 @@ src_prikey_with_nonce[addr] = nonce;
 // 如果新nonce大于当前发送nonce，立即同步
 if (nonce > prikey_with_nonce[addr]) {
     prikey_with_nonce[addr] = nonce;
-    SETH_INFO("Nonce updated for %s: old=%lu, new=%lu, next_send=%lu",
+    SHARDORA_INFO("Nonce updated for %s: old=%lu, new=%lu, next_send=%lu",
         common::Encode::HexEncode(addr).c_str(), old_nonce, nonce, nonce + 1);
 }
 ```

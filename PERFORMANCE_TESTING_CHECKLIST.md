@@ -31,10 +31,10 @@
 
 ### ✅ 禁用网络延迟
 - [ ] 编辑 `temp_cmd.sh`
-- [ ] 设置 `SETH_NETWORK_ENABLED=0`
-- [ ] 设置 `SETH_NETWORK_DELAY_MS=0`
-- [ ] 设置 `SETH_NETWORK_JITTER_MS=0`
-- [ ] 设置 `SETH_NETWORK_LOSS_RATE=0`
+- [ ] 设置 `SHARDORA_NETWORK_ENABLED=0`
+- [ ] 设置 `SHARDORA_NETWORK_DELAY_MS=0`
+- [ ] 设置 `SHARDORA_NETWORK_JITTER_MS=0`
+- [ ] 设置 `SHARDORA_NETWORK_LOSS_RATE=0`
 
 ### ✅ 系统参数优化
 - [ ] 运行 `ulimit -n 65536`
@@ -109,7 +109,7 @@
 
 ### ✅ 常见问题
 - [ ] 仍然有oversized packet错误?
-  - 检查 `SETH_NETWORK_ENABLED` 是否为0
+  - 检查 `SHARDORA_NETWORK_ENABLED` 是否为0
   - 检查是否重新编译
   - 检查是否重新部署
 

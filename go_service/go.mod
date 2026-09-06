@@ -1,4 +1,4 @@
-module seth-purchase-service
+module shardora-purchase-service
 
 go 1.20
 

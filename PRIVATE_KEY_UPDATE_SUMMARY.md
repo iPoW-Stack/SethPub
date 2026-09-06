@@ -122,7 +122,7 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
 
 6. **Configuration** - 配置文件
    ```cpp
-   conf_.Set("seth", "prikey", prikey_hex);
+   conf_.Set("shardora", "prikey", prikey_hex);
    ```
 
 ## 📊 API 规格
@@ -385,10 +385,10 @@ curl -k -X POST https://localhost:8080/update_private_key \
 
 ```bash
 # 编译项目
-cd build && make seth
+cd build && make shardora
 
 # 启动服务
-./seth
+./shardora
 
 # 测试更新
 python3 test_update_private_key.py <your_private_key>

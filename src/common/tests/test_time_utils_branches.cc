@@ -4,7 +4,7 @@
 
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -41,4 +41,4 @@ TEST(TimeUtilsBranches, MicrosecondsSameEpochAsMilliseconds) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

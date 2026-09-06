@@ -2,7 +2,7 @@
 
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -110,4 +110,4 @@ void MsgDecoder::Free() {
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora

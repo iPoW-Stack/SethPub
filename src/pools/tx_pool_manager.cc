@@ -26,11 +26,11 @@
 #include "transport/processor.h"
 #include "transport/tcp_transport.h"
 
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
 #include <functional>
 #endif
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -41,7 +41,7 @@ bool TxGasLimitWithinBlockLimit(const pools::protobuf::TxMessage& tx_msg) {
         return true;
     }
 
-    SETH_WARN("tx gas limit exceeds block gas limit, step: %d, nonce: %lu, "
+    SHARDORA_WARN("tx gas limit exceeds block gas limit, step: %d, nonce: %lu, "
         "tx_gas_limit: %lu, block_gas_limit: %lu",
         (int32_t)tx_msg.step(),
         tx_msg.nonce(),
@@ -52,7 +52,7 @@ bool TxGasLimitWithinBlockLimit(const pools::protobuf::TxMessage& tx_msg) {
 
 }  // namespace
 
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
 namespace {
 std::function<common::BftMemberPtr(uint32_t)> g_txpm_is_other_leader_test_hook;
 }  // namespace
@@ -85,7 +85,7 @@ TxPoolManager::TxPoolManager(
         tx_pool_[i].Init(this, security_, i, db, kv_sync);
     }
 
-    SETH_DEBUG("TxPoolManager init success: %d", common::kInvalidPoolIndex);
+    SHARDORA_DEBUG("TxPoolManager init success: %d", common::kInvalidPoolIndex);
     InitCrossPools();
     // Time blocks are consensus every 10ms
     tools_tick_.CutOff(
@@ -103,7 +103,7 @@ TxPoolManager::TxPoolManager(
             common::GlobalInfo::Instance()->test_pool_index(), 
             common::GlobalInfo::Instance()->test_pool_index(), 
             common::GlobalInfo::Instance()->test_tx_tps());
-        SETH_WARN("success create test tx thread.");
+        SHARDORA_WARN("success create test tx thread.");
     }
 #endif
 }
@@ -124,7 +124,7 @@ TxPoolManager::~TxPoolManager() {
                 return consensus_timer_in_flight_.load(std::memory_order_acquire) == 0;
             });
         if (!done) {
-            SETH_ERROR(
+            SHARDORA_ERROR(
                 "TxPoolManager::~TxPoolManager: timed out waiting for consensus timer (in_flight=%u)",
                 static_cast<unsigned>(
                     consensus_timer_in_flight_.load(std::memory_order_acquire)));
@@ -172,7 +172,7 @@ int TxPoolManager::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 }
 
 int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr) {
-    // SETH_DEBUG("pools message fierwall coming.");
+    // SHARDORA_DEBUG("pools message fierwall coming.");
     // return transport::kFirewallCheckSuccess;
     auto firewall_begin_ms = common::TimeUtils::TimestampMs();
     auto& header = msg_ptr->header;
@@ -180,7 +180,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     if (!IsUserTransaction(tx_msg.step())) {
         if (!msg_ptr->system_message) {
             auto addr = security_->GetAddressWithPublicKey(tx_msg.pubkey());
-            SETH_DEBUG("pools message fierwall coming is system message, "
+            SHARDORA_DEBUG("pools message fierwall coming is system message, "
                 "step: %u, from: %s, to: %s", (uint32_t)tx_msg.step(),
                 common::Encode::HexEncode(addr).c_str(), 
                 common::Encode::HexEncode(tx_msg.to()).c_str());
@@ -192,20 +192,20 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
     
     if (msg_ptr->header.has_sync_heights() && !msg_ptr->header.has_tx_proto()) {
         // TODO: check all message with valid signature
-        SETH_DEBUG("pools message fierwall coming is sync heights.");
+        SHARDORA_DEBUG("pools message fierwall coming is sync heights.");
         return transport::kFirewallCheckSuccess;
     }
 
     if (!tx_msg.has_sign() || !tx_msg.has_pubkey() ||
             tx_msg.sign().empty() || tx_msg.pubkey().empty()) {
-        SETH_DEBUG("pools check firewall message failed, invalid sign or pk. sign: %d, pk: %d, hash64: %lu", 
+        SHARDORA_DEBUG("pools check firewall message failed, invalid sign or pk. sign: %d, pk: %d, hash64: %lu", 
             tx_msg.sign().size(), tx_msg.pubkey().size(), header.hash64());
         msg_ptr->set_status(transport::kTxInvalidSignature);
         return transport::kFirewallCheckError;
     }
 
     if (!account_tx_qps_check_.check(tx_msg.pubkey())) {
-        SETH_DEBUG("pools check firewall message failed, invalid qps limit pk: %d, hash64: %lu", 
+        SHARDORA_DEBUG("pools check firewall message failed, invalid qps limit pk: %d, hash64: %lu", 
             tx_msg.pubkey().size(), header.hash64());
         msg_ptr->set_status(transport::kTxUserNonceInvalid);
         return transport::kFirewallCheckError;
@@ -239,7 +239,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         // Skip signature verification here to avoid redundant checks.
         
         if (tx_msg.pubkey().empty() || tx_msg.sign().empty()) {
-            SETH_ERROR("ETH tx missing pubkey or sign");
+            SHARDORA_ERROR("ETH tx missing pubkey or sign");
             msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
@@ -252,7 +252,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 security_->GetAddressWithPublicKey(tx_msg.pubkey()));
             
             if (msg_ptr->address_info == nullptr) {
-                SETH_DEBUG("ETH tx: address not found: %s",
+                SHARDORA_DEBUG("ETH tx: address not found: %s",
                     common::Encode::HexEncode(
                         security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
                 msg_ptr->set_status(transport::kTxInvalidAddress);
@@ -260,7 +260,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
             }
         }
         
-        SETH_DEBUG("ETH tx passed firewall check, from: %s",
+        SHARDORA_DEBUG("ETH tx passed firewall check, from: %s",
             common::Encode::HexEncode(
                 security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
         // Fall through to shard check + leader routing below
@@ -270,7 +270,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 msg_ptr->msg_hash,
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed!");
+            SHARDORA_ERROR("verify signature failed!");
             msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
@@ -278,7 +278,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         auto tmp_acc_ptr = acc_mgr_.lock();
         msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(gmssl.GetAddress(tx_msg.pubkey()));
         if (msg_ptr->address_info == nullptr) {
-            SETH_DEBUG("failed get account info: %s", 
+            SHARDORA_DEBUG("failed get account info: %s", 
                 common::Encode::HexEncode(gmssl.GetAddress(tx_msg.pubkey())).c_str());
             msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
@@ -289,7 +289,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 msg_ptr->msg_hash,
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed msg hash: %s, pk: %s, sign: %s", 
+            SHARDORA_ERROR("verify signature failed msg hash: %s, pk: %s, sign: %s", 
                 common::Encode::HexEncode(msg_ptr->msg_hash).c_str(),
                 common::Encode::HexEncode(tx_msg.pubkey()).c_str(),
                 common::Encode::HexEncode(tx_msg.sign()).c_str());
@@ -300,7 +300,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         auto tmp_acc_ptr = acc_mgr_.lock();
         msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(oqs.GetAddress(tx_msg.pubkey()));
         if (msg_ptr->address_info == nullptr) {
-            SETH_DEBUG("failed get account info: %s", 
+            SHARDORA_DEBUG("failed get account info: %s", 
                 common::Encode::HexEncode(oqs.GetAddress(tx_msg.pubkey())).c_str());
             msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
@@ -310,7 +310,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
                 msg_ptr->msg_hash,
                 tx_msg.pubkey(),
                 tx_msg.sign()) != security::kSecuritySuccess) {
-            SETH_ERROR("verify signature failed!");
+            SHARDORA_ERROR("verify signature failed!");
             msg_ptr->set_status(transport::kTxInvalidSignature);
             return transport::kFirewallCheckError;
         }
@@ -318,7 +318,7 @@ int TxPoolManager::TmpFirewallCheckMessage(const transport::MessagePtr& msg_ptr)
         auto tmp_acc_ptr = acc_mgr_.lock();
         msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(security_->GetAddressWithPublicKey(tx_msg.pubkey()));
         if (msg_ptr->address_info == nullptr) {
-            SETH_DEBUG("failed get account info: %s", 
+            SHARDORA_DEBUG("failed get account info: %s", 
                 common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
             msg_ptr->set_status(transport::kTxInvalidAddress);
             return transport::kFirewallCheckError;
@@ -357,7 +357,7 @@ void TxPoolManager::SyncCrossPool() {
             for (uint64_t height = ex_height;
                     height <= cross_synced_max_heights_[shard_id] && count < 64;
                     ++height, ++count) {
-                SETH_DEBUG("now add sync height 1, %u_%u_%lu",
+                SHARDORA_DEBUG("now add sync height 1, %u_%u_%lu",
                     shard_id,
                     common::kGlobalPoolIndex,
                     height);
@@ -385,10 +385,10 @@ void TxPoolManager::FlushHeightTree() {
         }
     }
 
-//     SETH_DEBUG("success call FlushHeightTree");
+//     SHARDORA_DEBUG("success call FlushHeightTree");
     auto st = db_->Put(db_batch);
     if (!st.ok()) {
-        SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+        SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
     }
 }
 
@@ -442,7 +442,7 @@ void TxPoolManager::ConsensusTimerMessage() {
 
     auto etime = common::TimeUtils::TimestampMs();
     if (etime - now_tm_ms >= 10) {
-        SETH_DEBUG("TxPoolManager handle message use time: %lu", (etime - now_tm_ms));
+        SHARDORA_DEBUG("TxPoolManager handle message use time: %lu", (etime - now_tm_ms));
     }
 
     if (!destroy_.load(std::memory_order_acquire)) {
@@ -470,7 +470,7 @@ void TxPoolManager::SyncMinssingRootHeights(uint64_t now_tm_ms) {
                 root_synced_max_heights_[root_prev_synced_pool_index_]) {
             SyncRootBlockWithMaxHeights(
                 root_prev_synced_pool_index_, root_synced_max_heights_[root_prev_synced_pool_index_]);
-            SETH_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
+            SHARDORA_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
                 root_prev_synced_pool_index_,
                 res, 
                 root_cross_pools_[root_prev_synced_pool_index_].latest_height(),
@@ -486,7 +486,7 @@ void TxPoolManager::SyncMinssingRootHeights(uint64_t now_tm_ms) {
                 root_synced_max_heights_[root_prev_synced_pool_index_]) {
             SyncRootBlockWithMaxHeights(
                 root_prev_synced_pool_index_, root_synced_max_heights_[root_prev_synced_pool_index_]);
-            SETH_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
+            SHARDORA_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
                 root_prev_synced_pool_index_,
                 res, root_cross_pools_[root_prev_synced_pool_index_].latest_height(),
                 static_cast<uint64_t>(root_synced_max_heights_[root_prev_synced_pool_index_]));
@@ -508,7 +508,7 @@ void TxPoolManager::SyncMinssingHeights(uint64_t now_tm_ms) {
                 synced_max_heights_[prev_synced_pool_index_]) {
             SyncBlockWithMaxHeights(
                 prev_synced_pool_index_, synced_max_heights_[prev_synced_pool_index_]);
-            SETH_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
+            SHARDORA_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
                 prev_synced_pool_index_,
                 res, 
                 tx_pool_[prev_synced_pool_index_].latest_height(),
@@ -524,7 +524,7 @@ void TxPoolManager::SyncMinssingHeights(uint64_t now_tm_ms) {
                 synced_max_heights_[prev_synced_pool_index_]) {
             SyncBlockWithMaxHeights(
                 prev_synced_pool_index_, synced_max_heights_[prev_synced_pool_index_]);
-            SETH_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
+            SHARDORA_DEBUG("max success sync mising heights pool: %u, height: %lu, max height: %lu, des max height: %lu",
                 prev_synced_pool_index_,
                 res, tx_pool_[prev_synced_pool_index_].latest_height(),
                 static_cast<uint64_t>(synced_max_heights_[prev_synced_pool_index_]));
@@ -537,7 +537,7 @@ void TxPoolManager::SyncRootBlockWithMaxHeights(uint32_t pool_idx, uint64_t heig
         return;
     }
 
-    SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
+    SHARDORA_DEBUG("now add sync height 1, %u_%u_%lu", 
         network::kRootCongressNetworkId,
         pool_idx,
         height);
@@ -563,7 +563,7 @@ void TxPoolManager::SyncBlockWithMaxHeights(uint32_t pool_idx, uint64_t height) 
         return;
     }
 
-    SETH_DEBUG("now add sync height 1, %u_%u_%lu", 
+    SHARDORA_DEBUG("now add sync height 1, %u_%u_%lu", 
         net_id,
         pool_idx,
         height);
@@ -641,7 +641,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     //         tx_pool_[pool_idx].CheckPopedTxs();
     //     }
     // }
-    SETH_DEBUG("tx pool handle message, hash64: %lu, from: %s, to: %s, "
+    SHARDORA_DEBUG("tx pool handle message, hash64: %lu, from: %s, to: %s, "
         "setp: %d, nonce: %lu", 
         msg_ptr->header.hash64(),
         common::Encode::HexEncode(msg_ptr->header.tx_proto().pubkey()).c_str(),
@@ -652,14 +652,14 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     ADD_DEBUG_PROCESS_TIMESTAMP();
     if (header.has_sync_heights()) {
-        SETH_DEBUG("header.has_sync_heights()");
+        SHARDORA_DEBUG("header.has_sync_heights()");
         HandleSyncPoolsMaxHeight(msg_ptr);
         return;
     }
 
     if (TmpFirewallCheckMessage(msg_ptr) != transport::kFirewallCheckSuccess) {
         msg_ptr->set_status(transport::kRequestInvalid);
-        SETH_ERROR("invalid tx");
+        SHARDORA_ERROR("invalid tx");
         return;
     }
 
@@ -681,7 +681,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
             }
 
             if (!NewTxValid(address_info->pool_index(), address_info->addr(), tx_msg.nonce())) {
-                SETH_DEBUG("add failed extend %u, %u, all valid: %u", 
+                SHARDORA_DEBUG("add failed extend %u, %u, all valid: %u", 
                     tx_pool_[address_info->pool_index()].all_tx_size(), 
                     common::GlobalInfo::Instance()->each_tx_pool_max_txs(), 
                     tx_pool_[address_info->pool_index()].all_tx_size());
@@ -695,7 +695,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
 //             ++prev_tps_count_;
 //             uint64_t dur = 1000lu;
 //             if (now_tm > prev_show_tm_ms_ + dur) {
-//                 SETH_DEBUG("pools stored message size: %d, pool index: %d, tx all size: %u, tps: %lu", 
+//                 SHARDORA_DEBUG("pools stored message size: %d, pool index: %d, tx all size: %u, tps: %lu", 
 //                         -1,
 //                         address_info->pool_index(),
 //                         tx_pool_[address_info->pool_index()].all_tx_size(),
@@ -704,7 +704,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
 //                 prev_tps_count_ = 0;
 //             }
 // #endif
-            SETH_ERROR("tx coming: %s", common::Encode::HexEncode(address_info->addr()).c_str());
+            SHARDORA_ERROR("tx coming: %s", common::Encode::HexEncode(address_info->addr()).c_str());
         }
     }
 
@@ -720,7 +720,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
             msg_ptr->handle_status == transport::kTxAccept)) {
         auto& tx_msg = header.tx_proto();
         common::BftMemberPtr leader = nullptr;
-#if defined(SETH_UNITTEST)
+#if defined(SHARDORA_UNITTEST)
         if (g_txpm_is_other_leader_test_hook) {
             leader = g_txpm_is_other_leader_test_hook(msg_ptr->address_info->pool_index());
         } else
@@ -746,7 +746,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
                     found_node->public_ip, 
                     found_node->public_port, 
                     msg_ptr->header);
-                SETH_DEBUG("send tx message to leader, leader id: %s, ip: %s, port: %d, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                SHARDORA_DEBUG("send tx message to leader, leader id: %s, ip: %s, port: %d, hash64: %lu, from: %s, to: %s, nonce: %lu", 
                     common::Encode::HexEncode(leader->id).c_str(),
                     found_node->public_ip.c_str(),
                     found_node->public_port,
@@ -756,7 +756,7 @@ void TxPoolManager::TxPoolHandleMessage(const transport::MessagePtr& msg_ptr) {
                     tx_msg.nonce());
             } else {
                 network::Route::Instance()->Send(msg_ptr);
-                SETH_DEBUG("send tx message to leader, leader id: %s, by route, hash64: %lu, from: %s, to: %s, nonce: %lu", 
+                SHARDORA_DEBUG("send tx message to leader, leader id: %s, by route, hash64: %lu, from: %s, to: %s, nonce: %lu", 
                     common::Encode::HexEncode(leader->id).c_str(),
                     header.hash64(),
                     common::Encode::HexEncode(security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str(),
@@ -774,7 +774,7 @@ int TxPoolManager::BackupConsensusAddTxs(
         const pools::TxItemPtr& valid_tx) {
     if (tx_pool_[pool_index].all_tx_size() >= 
             common::GlobalInfo::Instance()->each_tx_pool_max_txs()) {
-        SETH_DEBUG("add failed extend %u, %u, all valid: %u", 
+        SHARDORA_DEBUG("add failed extend %u, %u, all valid: %u", 
             tx_pool_[pool_index].all_tx_size(), 
             common::GlobalInfo::Instance()->each_tx_pool_max_txs(), 
             tx_pool_[pool_index].all_tx_size());
@@ -792,7 +792,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
     if (header.has_tx_proto()) {
         auto& tx_msg = header.tx_proto();
         ADD_TX_DEBUG_INFO(header.mutable_tx_proto());
-        SETH_DEBUG("success handle message hash64: %lu, from: %s, to: %s, type: %d, nonce: %lu",
+        SHARDORA_DEBUG("success handle message hash64: %lu, from: %s, to: %s, type: %d, nonce: %lu",
             msg_ptr->header.hash64(),
             common::Encode::HexEncode(tx_msg.pubkey()).c_str(),
             common::Encode::HexEncode(tx_msg.to()).c_str(),
@@ -841,7 +841,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             }
             
             msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
-            SETH_DEBUG("get local tokRootCreateAddress tx message hash: %s, to: %s, amount: %lu nonce: %lu", 
+            SHARDORA_DEBUG("get local tokRootCreateAddress tx message hash: %s, to: %s, amount: %lu nonce: %lu", 
                 common::Encode::HexEncode(msg_ptr->msg_hash).c_str(),
                 common::Encode::HexEncode(tx_msg.to()).c_str(),
                 tx_msg.amount(),
@@ -858,7 +858,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
         case pools::protobuf::kConsensusLocalTos: {
             pool_index = common::GetAddressPoolIndex(tx_msg.to());
             msg_ptr->msg_hash = pools::GetTxMessageHash(msg_ptr->header.tx_proto());
-            SETH_DEBUG("get local to tx message hash: %s, nonce: %lu",
+            SHARDORA_DEBUG("get local to tx message hash: %s, nonce: %lu",
                 common::Encode::HexEncode(msg_ptr->msg_hash).c_str(), 
                 msg_ptr->header.tx_proto().nonce());
             break;
@@ -880,7 +880,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
             break;
         }
         default:
-            SETH_DEBUG("invalid tx step: %d", (int32_t)tx_msg.step());
+            SHARDORA_DEBUG("invalid tx step: %d", (int32_t)tx_msg.step());
             //assert(false);
             break;
         }
@@ -892,7 +892,7 @@ void TxPoolManager::HandlePoolsMessage(const transport::MessagePtr& msg_ptr) {
 
         if (pool_index == common::kInvalidPoolIndex) {
             if (msg_ptr->address_info == nullptr) {
-                SETH_DEBUG("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
+                SHARDORA_DEBUG("invalid tx step: %d, address invalid.", (int32_t)tx_msg.step());
                 if (handle_status == transport::kMessageHandle) {
                     msg_ptr->set_status(transport::kTxInvalidAddress);
                 }
@@ -936,7 +936,7 @@ void TxPoolManager::SyncPoolsMaxHeight() {
         auto* sync_heights = msg_ptr->header.mutable_sync_heights();
         sync_heights->set_req(true);
         transport::TcpTransport::Instance()->SetMessageHash(msg_ptr->header);
-        SETH_DEBUG("sync net data from network: %u, hash64: %lu, src sharding id: %u",
+        SHARDORA_DEBUG("sync net data from network: %u, hash64: %lu, src sharding id: %u",
             i, msg_ptr->header.hash64(), msg_ptr->header.src_sharding_id());
         network::Route::Instance()->Send(msg_ptr);
     }
@@ -944,12 +944,12 @@ void TxPoolManager::SyncPoolsMaxHeight() {
 
 void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_ptr) {
     if (tx_pool_ == nullptr) {
-        SETH_DEBUG("tx_pool_ == nullptr");
+        SHARDORA_DEBUG("tx_pool_ == nullptr");
         return;
     }
 
     if (!msg_ptr->header.has_sync_heights()) {
-        SETH_DEBUG("!msg_ptr->header.has_sync_heights()");
+        SHARDORA_DEBUG("!msg_ptr->header.has_sync_heights()");
         return;
     }
 
@@ -992,7 +992,7 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
         transport::TcpTransport::Instance()->SetMessageHash(msg);
         // transport::TcpTransport::Instance()->Send(msg_ptr->conn, msg);
         transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
-        SETH_DEBUG("response pool heights: %s, cross pool heights: %s, "
+        SHARDORA_DEBUG("response pool heights: %s, cross pool heights: %s, "
             "now_max_sharding_id_: %u, src sharding id: %u, src hash64: %lu, des hash64: %lu",
             sync_debug.c_str(), cross_debug.c_str(),
             now_max_sharding_id_, msg_ptr->header.src_sharding_id(),
@@ -1029,7 +1029,7 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
                         break;
                     }
                 
-                    SETH_DEBUG("net: %u, get response pool heights, cross pool heights: %lu, update_height: %lu, "
+                    SHARDORA_DEBUG("net: %u, get response pool heights, cross pool heights: %lu, update_height: %lu, "
                         "cross_synced_max_heights_[i]: %lu, cross_pools_[i].latest_height(): %lu, cross_heights[i]: %lu",
                         sharding_id, update_height, update_height,
                         static_cast<uint64_t>(cross_synced_max_heights_[sharding_id]), cross_pools_[sharding_id].latest_height(),
@@ -1064,7 +1064,7 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
                     }
                 }
 
-                SETH_DEBUG("get root response pool heights: %s", sync_debug.c_str());
+                SHARDORA_DEBUG("get root response pool heights: %s", sync_debug.c_str());
             }
             return;
         }
@@ -1096,7 +1096,7 @@ void TxPoolManager::HandleSyncPoolsMaxHeight(const transport::MessagePtr& msg_pt
             }
         }
 
-        SETH_DEBUG("get response pool heights: %s, cross pool heights: %s", sync_debug.c_str(), cross_debug.c_str());
+        SHARDORA_DEBUG("get response pool heights: %s, cross pool heights: %s", sync_debug.c_str(), cross_debug.c_str());
     }
 }
 
@@ -1112,7 +1112,7 @@ int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     auto tmp_acc_ptr = acc_mgr_.lock();
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(addr);
     if (msg_ptr->address_info == nullptr) {
-        SETH_WARN("no address info: %s", common::Encode::HexEncode(addr).c_str());
+        SHARDORA_WARN("no address info: %s", common::Encode::HexEncode(addr).c_str());
         return transport::kTxInvalidAddress;
     }
 
@@ -1122,7 +1122,7 @@ int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     }
 
     if (msg_ptr->address_info->balance() < consensus::kJoinElectGas) {
-        SETH_WARN("address info join elect gas invalid: %s %lu %lu", 
+        SHARDORA_WARN("address info join elect gas invalid: %s %lu %lu", 
             common::Encode::HexEncode(addr).c_str(), 
             msg_ptr->address_info->balance(), 
             consensus::kJoinElectGas);
@@ -1130,14 +1130,14 @@ int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     }
 
     if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
-        SETH_WARN("sharding error: %d, %d",
+        SHARDORA_WARN("sharding error: %d, %d",
             msg_ptr->address_info->sharding_id(),
             common::GlobalInfo::Instance()->network_id());
         return transport::kTxInvalidAddress;
     }
 
     if (!tx_msg.has_key() || tx_msg.key() != protos::kJoinElectVerifyG2) {
-        SETH_DEBUG("key size error now: %d, max: %d.",
+        SHARDORA_DEBUG("key size error now: %d, max: %d.",
             tx_msg.key().size(), kTxStorageKeyMaxSize);
         return transport::kRequestInvalid;
     }
@@ -1147,20 +1147,20 @@ int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     //         msg_hash,
     //         tx_msg.pubkey(),
     //         tx_msg.sign()) != security::kSecuritySuccess) {
-    //     SETH_WARN("kElectJoin verify signature failed!");
+    //     SHARDORA_WARN("kElectJoin verify signature failed!");
     //     return;
     // }
 
     bls::protobuf::JoinElectInfo join_info;
     if (!join_info.ParseFromString(tx_msg.value())) {
-        SETH_WARN("join_info parse failed address info: %s", common::Encode::HexEncode(addr).c_str());
+        SHARDORA_WARN("join_info parse failed address info: %s", common::Encode::HexEncode(addr).c_str());
         return transport::kRequestInvalid;
     }
 
     uint32_t tmp_shard = join_info.shard_id();
     if (tmp_shard != network::kRootCongressNetworkId) {
         if (tmp_shard != msg_ptr->address_info->sharding_id()) {
-            SETH_DEBUG("join des shard error: %d,  %d.",
+            SHARDORA_DEBUG("join des shard error: %d,  %d.",
                 tmp_shard, msg_ptr->address_info->sharding_id());
         return transport::kRequestInvalid;
         }
@@ -1169,14 +1169,14 @@ int32_t TxPoolManager::HandleElectTx(const transport::MessagePtr& msg_ptr) {
     auto n = common::GlobalInfo::Instance()->each_shard_max_members();
     auto t = common::GetSignerCount(n);
     if (join_info.g2_req().verify_vec_size() != t) {
-        SETH_DEBUG("join des shard error: %d,  %d, "
+        SHARDORA_DEBUG("join des shard error: %d,  %d, "
             "join_info.g2_req().verify_vec_size() != t %u : %u",
             tmp_shard, msg_ptr->address_info->sharding_id(),
             join_info.g2_req().verify_vec_size(), t);
         return transport::kRequestInvalid;
     }
     
-    SETH_DEBUG("elect tx msg hash is %s", 
+    SHARDORA_DEBUG("elect tx msg hash is %s", 
         common::Encode::HexEncode(msg_ptr->msg_hash).c_str());
     msg_ptr->msg_hash = msg_hash;
     return transport::kMessageHandle;
@@ -1186,14 +1186,14 @@ int32_t TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr
     auto& header = msg_ptr->header;
     auto& tx_msg = header.tx_proto();
     // if (tx_msg.has_key() && tx_msg.key().size() > 0) {
-    //     SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+    //     SHARDORA_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
     //     return;
     // }
 
     if (tx_msg.gas_price() <= 0 || tx_msg.gas_limit() <= consensus::kCallContractDefaultUseGas) {
-        SETH_DEBUG("gas price and gas limit error %lu, %lu",
+        SHARDORA_DEBUG("gas price and gas limit error %lu, %lu",
             tx_msg.gas_price(), tx_msg.gas_limit());
-        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusOutOfGas;
     }
 
@@ -1201,33 +1201,33 @@ int32_t TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr
     auto from = security_->GetAddressWithPublicKey(tx_msg.pubkey());
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
-        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractNotExists;
     }
 
     if (contract_info->destructed()) {
-        SETH_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractDestructed;
     }
 
     auto prefund_id = tx_msg.to() + from;
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
     if (msg_ptr->address_info == nullptr) {
-        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractPrefundNotExists;
     }
 
     if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
-        SETH_WARN("sharding error: %d, %d",
+        SHARDORA_WARN("sharding error: %d, %d",
             msg_ptr->address_info->sharding_id(),
             common::GlobalInfo::Instance()->network_id());
-        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         msg_ptr->address_info = nullptr;
         return transport::kTxInvalidAddress;
     }
 
     if (msg_ptr->address_info->balance() <= (tx_msg.amount() + consensus::kCallContractDefaultUseGas * tx_msg.gas_price())) {
-        SETH_WARN("address %s balance invalid: %lu, transfer amount: %lu, "
+        SHARDORA_WARN("address %s balance invalid: %lu, transfer amount: %lu, "
             "default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
@@ -1241,7 +1241,7 @@ int32_t TxPoolManager::HandleContractExcute(const transport::MessagePtr& msg_ptr
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
-    SETH_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
+    SHARDORA_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
@@ -1253,7 +1253,7 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
     // user can't direct call contract, pay contract prefund and call contract direct
     if (!tx_msg.contract_input().empty() ||
             tx_msg.contract_prefund() < consensus::kCallContractDefaultUseGas) {
-        SETH_DEBUG("call contract not has valid contract input"
+        SHARDORA_DEBUG("call contract not has valid contract input"
             "and contract prefund invalid.");
         return transport::kRequestInvalid;
     }
@@ -1262,12 +1262,12 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
         msg_ptr->address_info = nullptr;
-        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractNotExists;
     }
 
     if (!UserTxValid(msg_ptr)) {
-        SETH_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
+        SHARDORA_DEBUG("address %s balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
@@ -1283,7 +1283,7 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kCallContractDefaultUseGas * tx_msg.gas_price()) {
-        SETH_WARN("address %s balance invalid: %lu, transfer amount: %lu, "
+        SHARDORA_WARN("address %s balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu, from: %s, to: %s",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
@@ -1296,7 +1296,7 @@ int32_t TxPoolManager::HandleSetContractPrefund(const transport::MessagePtr& msg
         return consensus::kConsensusAccountBalanceError;
     }
 
-    SETH_DEBUG("success add tx contract prefund id: %s, prefund: %lu, nonce: %lu",
+    SHARDORA_DEBUG("success add tx contract prefund id: %s, prefund: %lu, nonce: %lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
@@ -1308,14 +1308,14 @@ int32_t TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr
     auto& header = msg_ptr->header;
     auto& tx_msg = header.tx_proto();
     // if (tx_msg.has_key() && tx_msg.key().size() > 0) {
-    //     SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+    //     SHARDORA_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
     //     return;
     // }
 
     if (tx_msg.gas_price() <= 0 || tx_msg.gas_limit() <= consensus::kTransferGas) {
-        SETH_DEBUG("gas price and gas limit error %lu, %lu",
+        SHARDORA_DEBUG("gas price and gas limit error %lu, %lu",
             tx_msg.gas_price(), tx_msg.gas_limit());
-        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusOutOfGas;
     }
 
@@ -1323,33 +1323,33 @@ int32_t TxPoolManager::HandleContractRefund(const transport::MessagePtr& msg_ptr
     auto from = security_->GetAddressWithPublicKey(tx_msg.pubkey());
     auto contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info == nullptr) {
-        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractNotExists;
     }
 
     if (contract_info->destructed()) {
-        SETH_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_ERROR("contract destructed: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractDestructed;
     }
 
     auto prefund_id = tx_msg.to() + from;
     msg_ptr->address_info = tmp_acc_ptr->GetAccountInfo(prefund_id);
     if (msg_ptr->address_info == nullptr) {
-        SETH_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_WARN("no contract address info: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractPrefundNotExists;
     }
 
     if (msg_ptr->address_info->sharding_id() != common::GlobalInfo::Instance()->network_id()) {
-        SETH_WARN("sharding error: %d, %d",
+        SHARDORA_WARN("sharding error: %d, %d",
             msg_ptr->address_info->sharding_id(),
             common::GlobalInfo::Instance()->network_id());
-        SETH_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_ERROR("failed add contract call. %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         msg_ptr->address_info = nullptr;
         return transport::kTxInvalidAddress;
     }
 
     msg_ptr->msg_hash = pools::GetTxMessageHash(tx_msg);
-    SETH_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
+    SHARDORA_DEBUG("success add tx contract execute prepyament id: %s, prefund: %lu, nonce: %lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(), 
         msg_ptr->address_info->balance(), 
         msg_ptr->address_info->nonce());
@@ -1366,7 +1366,7 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
     }
 
     if (msg_ptr->address_info == nullptr) {
-        SETH_WARN("no address info.");
+        SHARDORA_WARN("no address info.");
         return false;
     }
 
@@ -1381,7 +1381,7 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
     }
 
     if (msg_ptr->address_info->sharding_id() != local_shard) {
-        SETH_WARN("sharding error id: %s, shard: %d, local shard: %d",
+        SHARDORA_WARN("sharding error id: %s, shard: %d, local shard: %d",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->sharding_id(),
             common::GlobalInfo::Instance()->network_id());
@@ -1390,7 +1390,7 @@ bool TxPoolManager::UserTxValid(const transport::MessagePtr& msg_ptr) {
     }
 
     if (tx_msg.has_key() && tx_msg.key().size() > kTxStorageKeyMaxSize) {
-        SETH_DEBUG("key size error now: %d, max: %d.",
+        SHARDORA_DEBUG("key size error now: %d, max: %d.",
             tx_msg.key().size(), kTxStorageKeyMaxSize);
         return false;
     }
@@ -1411,7 +1411,7 @@ int32_t TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) 
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prefund() +
             consensus::kTransferGas * tx_msg.gas_price()) {
-        SETH_WARN("address: %s balance invalid: %lu, transfer amount: %lu, "
+        SHARDORA_WARN("address: %s balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu",
             common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
             msg_ptr->address_info->balance(),
@@ -1429,7 +1429,7 @@ int32_t TxPoolManager::HandleNormalFromTx(const transport::MessagePtr& msg_ptr) 
 int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_ptr) {
     auto& tx_msg = msg_ptr->header.tx_proto();
     if (!tx_msg.has_contract_code() || tx_msg.contract_code().empty()) {
-        SETH_DEBUG("create contract not has valid contract code: %s",
+        SHARDORA_DEBUG("create contract not has valid contract code: %s",
             common::Encode::HexEncode(tx_msg.contract_code()).c_str());
         return transport::kRequestInvalid;
     }
@@ -1447,22 +1447,22 @@ int32_t TxPoolManager::HandleCreateContractTx(const transport::MessagePtr& msg_p
     }
 
     if (!UserTxValid(msg_ptr)) {
-        SETH_ERROR("create contract error!");
+        SHARDORA_ERROR("create contract error!");
         return transport::kTxInvalidAddress;
     }
 
-    SETH_DEBUG("create contract address: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+    SHARDORA_DEBUG("create contract address: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
     auto tmp_acc_ptr = acc_mgr_.lock();
     protos::AddressInfoPtr contract_info = tmp_acc_ptr->GetAccountInfo(tx_msg.to());
     if (contract_info != nullptr) {
-        SETH_WARN("contract address exists: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
+        SHARDORA_WARN("contract address exists: %s", common::Encode::HexEncode(tx_msg.to()).c_str());
         return consensus::kConsensusContractAddressLocked;
     }
 
     if (msg_ptr->address_info->balance() <
             tx_msg.amount() + tx_msg.contract_prefund() +
             default_gas * tx_msg.gas_price()) {
-        SETH_WARN("address balance invalid: %lu, transfer amount: %lu, "
+        SHARDORA_WARN("address balance invalid: %lu, transfer amount: %lu, "
             "prefund: %lu, default call contract gas: %lu, gas price: %lu",
             msg_ptr->address_info->balance(),
             tx_msg.amount(),
@@ -1615,7 +1615,7 @@ void TxPoolManager::BftCheckInvalidGids(
     //     pool_sec[i] = thread_security;
     //     address_map[from_prikey] = prefix_db_->GetAddressInfo(thread_security->GetAddress());
     //     prikey_with_nonce[from_prikey] = address_map[from_prikey]->nonce();
-    //     SETH_WARN("success get pool: %d, prikey: %s", i, common::Encode::HexEncode(from_prikey).c_str());
+    //     SHARDORA_WARN("success get pool: %d, prikey: %s", i, common::Encode::HexEncode(from_prikey).c_str());
     // }
 
     // std::string to = common::Encode::HexDecode("27d4c39244f26c157b5a87898569ef4ce5807413");
@@ -1655,7 +1655,7 @@ void TxPoolManager::BftCheckInvalidGids(
     //             }
             
     //             tx_pool_[i].AddTx(tx_ptr);
-    //             SETH_DEBUG("success create test tx thread: %s, nonce: %lu",
+    //             SHARDORA_DEBUG("success create test tx thread: %s, nonce: %lu",
     //                 common::Encode::HexEncode(pool_sec[i]->GetAddress()).c_str(), 
     //                 prikey_with_nonce[from_prikey]);
     //         }
@@ -1677,7 +1677,7 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
     }
 
     if (item_functions_[msg_ptr->header.tx_proto().step()] == nullptr) {
-        SETH_DEBUG("not registered step : %d", (int32_t)msg_ptr->header.tx_proto().step());
+        SHARDORA_DEBUG("not registered step : %d", (int32_t)msg_ptr->header.tx_proto().step());
         //assert(false);
         msg_ptr->set_status(transport::kUnkonwn);
         return;
@@ -1696,7 +1696,7 @@ void TxPoolManager::DispatchTx(uint32_t pool_index, const transport::MessagePtr&
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
     tx_pool_[pool_index].AddTx(tx_ptr);
     TMP_ADD_DEBUG_PROCESS_TIMESTAMP();
-    SETH_DEBUG("trace tx success add local transfer to tx pool: %u, "
+    SHARDORA_DEBUG("trace tx success add local transfer to tx pool: %u, "
         "step: %d, addr: %s, nonce: %lu, from pk: %s, to: %s",
         pool_index,
         (int32_t)msg_ptr->header.tx_proto().step(),
@@ -1728,4 +1728,4 @@ void TxPoolManager::GetTxIdempotently(
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

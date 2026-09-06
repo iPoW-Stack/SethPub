@@ -27,7 +27,7 @@
 #include "common/log.h"
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 
 // Log level control for runtime optimization
@@ -209,39 +209,39 @@ private:
 };
 
 // Optimized logging macros that check log level first
-#define SETH_DEBUG_OPT(logfmt, ...) \
+#define SHARDORA_DEBUG_OPT(logfmt, ...) \
     do { \
-        if (seth::common::SystemOptimizer::Instance()->IsLogLevelEnabled(seth::common::LogLevel::DEBUG)) { \
-            SETH_DEBUG(logfmt, ##__VA_ARGS__); \
+        if (shardora::common::SystemOptimizer::Instance()->IsLogLevelEnabled(shardora::common::LogLevel::DEBUG)) { \
+            SHARDORA_DEBUG(logfmt, ##__VA_ARGS__); \
         } \
     } while(0)
 
-#define SETH_INFO_OPT(logfmt, ...) \
+#define SHARDORA_INFO_OPT(logfmt, ...) \
     do { \
-        if (seth::common::SystemOptimizer::Instance()->IsLogLevelEnabled(seth::common::LogLevel::INFO)) { \
-            SETH_INFO(logfmt, ##__VA_ARGS__); \
+        if (shardora::common::SystemOptimizer::Instance()->IsLogLevelEnabled(shardora::common::LogLevel::INFO)) { \
+            SHARDORA_INFO(logfmt, ##__VA_ARGS__); \
         } \
     } while(0)
 
-#define SETH_WARN_OPT(logfmt, ...) \
+#define SHARDORA_WARN_OPT(logfmt, ...) \
     do { \
-        if (seth::common::SystemOptimizer::Instance()->IsLogLevelEnabled(seth::common::LogLevel::WARN)) { \
-            SETH_WARN(logfmt, ##__VA_ARGS__); \
+        if (shardora::common::SystemOptimizer::Instance()->IsLogLevelEnabled(shardora::common::LogLevel::WARN)) { \
+            SHARDORA_WARN(logfmt, ##__VA_ARGS__); \
         } \
     } while(0)
 
-#define SETH_ERROR_OPT(logfmt, ...) \
+#define SHARDORA_ERROR_OPT(logfmt, ...) \
     do { \
-        if (seth::common::SystemOptimizer::Instance()->IsLogLevelEnabled(seth::common::LogLevel::ERROR)) { \
-            SETH_ERROR(logfmt, ##__VA_ARGS__); \
+        if (shardora::common::SystemOptimizer::Instance()->IsLogLevelEnabled(shardora::common::LogLevel::ERROR)) { \
+            SHARDORA_ERROR(logfmt, ##__VA_ARGS__); \
         } \
     } while(0)
 
 // High-frequency path optimization - completely disable debug logs in release
 #ifdef NDEBUG
-#define SETH_DEBUG_FAST(logfmt, ...) do {} while(0)
+#define SHARDORA_DEBUG_FAST(logfmt, ...) do {} while(0)
 #else
-#define SETH_DEBUG_FAST(logfmt, ...) SETH_DEBUG_OPT(logfmt, ##__VA_ARGS__)
+#define SHARDORA_DEBUG_FAST(logfmt, ...) SHARDORA_DEBUG_OPT(logfmt, ##__VA_ARGS__)
 #endif
 
 // Thread-local storage for performance optimization
@@ -249,16 +249,16 @@ extern thread_local uint64_t tls_log_suppression_count;
 extern thread_local uint64_t tls_last_log_time;
 
 // Fast log suppression for high-frequency paths
-#define SETH_DEBUG_THROTTLED(interval_ms, logfmt, ...) \
+#define SHARDORA_DEBUG_THROTTLED(interval_ms, logfmt, ...) \
     do { \
-        uint64_t now = seth::common::TimeUtils::TimestampMs(); \
+        uint64_t now = shardora::common::TimeUtils::TimestampMs(); \
         if (now - tls_last_log_time >= interval_ms) { \
             tls_last_log_time = now; \
-            SETH_DEBUG_OPT(logfmt, ##__VA_ARGS__); \
+            SHARDORA_DEBUG_OPT(logfmt, ##__VA_ARGS__); \
         } else { \
             ++tls_log_suppression_count; \
         } \
     } while(0)
 
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

@@ -21,7 +21,7 @@ if (!msg_ptr->address_info) {
 ```cpp
 if (!msg_ptr->address_info) {
     // Auto-create address info for Ethereum-style transactions
-    SETH_WARN("Auto-registering sender from raw transaction: %s", 
+    SHARDORA_WARN("Auto-registering sender from raw transaction: %s", 
               common::Encode::HexEncode(sender_addr).c_str());
     
     auto new_addr_info = std::make_shared<block::protobuf::AddressInfo>();
@@ -45,23 +45,23 @@ if (!msg_ptr->address_info) {
 ### Step 1: Recompile
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 ```
 
 ### Step 2: Restart Node
 
 ```bash
-pkill -f seth
+pkill -f shardora
 sleep 2
-cd /root/seth
+cd /root/shardora
 ./start_node.sh
 ```
 
 ### Step 3: Run Tests
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 test_eip1559.py
 ```
 
@@ -79,17 +79,17 @@ TX Hash: 0x...
 ### Possible New Errors
 
 1. **Insufficient balance**: The auto-registered address has 0 balance
-   - Solution: Fund the address first using Seth's native methods
+   - Solution: Fund the address first using Shardora's native methods
 
 2. **Nonce mismatch**: The nonce tracking might be different
    - Solution: Query the correct nonce before sending
 
-3. **Other validation errors**: Depending on Seth's transaction validation logic
+3. **Other validation errors**: Depending on Shardora's transaction validation logic
 
 ## Verification in Logs
 
 ```bash
-tail -f /root/seth/logs/seth.log | grep -E "Auto-registering|EIP-1559|recovery"
+tail -f /root/shardora/logs/shardora.log | grep -E "Auto-registering|EIP-1559|recovery"
 ```
 
 Look for:

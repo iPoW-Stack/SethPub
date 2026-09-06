@@ -9,8 +9,8 @@ TEST_TX_TPS=5000
 TEST_TX_MAX_POOL_INDEX=1
 
 echo "new node: $public_ip $start_pos $node_count $start_shard $end_shard"
-rm -rf /root/seths/
-mkdir -p /root/seths/
+rm -rf /root/shardoras/
+mkdir -p /root/shardoras/
 
 local_ip=`hostname -I | awk '{print $1}'`
 
@@ -19,10 +19,10 @@ local_ip=`hostname -I | awk '{print $1}'`
 # 应用层延迟注入通过环境变量配置，在 Transport 层实现
 # 
 # 使用方式:
-#   export SETH_NETWORK_ENABLED=1
-#   export SETH_NETWORK_DELAY_MS=25
-#   export SETH_NETWORK_JITTER_MS=10
-#   export SETH_NETWORK_LOSS_RATE=0.0001
+#   export SHARDORA_NETWORK_ENABLED=1
+#   export SHARDORA_NETWORK_DELAY_MS=25
+#   export SHARDORA_NETWORK_JITTER_MS=10
+#   export SHARDORA_NETWORK_LOSS_RATE=0.0001
 #   ./temp_cmd.sh <params>
 # ========== 网络模拟配置结束 ==========
 deploy_nodes() {
@@ -40,13 +40,13 @@ deploy_nodes() {
             pubkey=`sed -n "$i""p" /root/pkg/shards$shard_id | awk -F'\t' '{print $2}'`
 
             # 支持重复执行：如果目录已存在，先删除
-            if [ -d "/root/seths/s$shard_id'_'$i" ]; then
+            if [ -d "/root/shardoras/s$shard_id'_'$i" ]; then
                 echo "节点 s$shard_id'_'$i 已存在，删除旧配置..."
-                rm -rf "/root/seths/s$shard_id'_'$i"
+                rm -rf "/root/shardoras/s$shard_id'_'$i"
             fi
 
-            cp -rf /root/pkg/temp /root/seths/s$shard_id'_'$i
-            conf=/root/seths/s$shard_id'_'$i/conf/seth.conf
+            cp -rf /root/pkg/temp /root/shardoras/s$shard_id'_'$i
+            conf=/root/shardoras/s$shard_id'_'$i/conf/shardora.conf
             sed -i 's/PRIVATE_KEY/'$prikey'/g' "$conf"
             sed -i 's/PUBLIC_IP/'$public_ip'/g' "$conf"
             sed -i 's/LOCAL_IP/'$local_ip'/g' "$conf"
@@ -98,59 +98,59 @@ deploy_nodes() {
                 exit 1
             fi
 
-            echo /root/seths/s$shard_id'_'$i/seth
+            echo /root/shardoras/s$shard_id'_'$i/shardora
 
             # 支持重复执行：删除旧的符号链接
-            rm -f /root/seths/s$shard_id'_'$i/seth
-            rm -f /root/seths/s$shard_id'_'$i/txcli
-            rm -f /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
-            rm -f /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
+            rm -f /root/shardoras/s$shard_id'_'$i/shardora
+            rm -f /root/shardoras/s$shard_id'_'$i/txcli
+            rm -f /root/shardoras/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
+            rm -f /root/shardoras/s$shard_id'_'$i/conf/log4cpp.properties
 
-            ln /root/pkg/seth /root/seths/s$shard_id'_'$i/seth
+            ln /root/pkg/shardora /root/shardoras/s$shard_id'_'$i/shardora
             if [[ -f /root/pkg/txcli ]]; then
-                ln /root/pkg/txcli /root/seths/s$shard_id'_'$i/txcli
+                ln /root/pkg/txcli /root/shardoras/s$shard_id'_'$i/txcli
             fi
-            cp -rf /root/pkg/init_accounts* /root/seths/s$shard_id'_'$i/
+            cp -rf /root/pkg/init_accounts* /root/shardoras/s$shard_id'_'$i/
             if [[ -f /root/pkg/GeoLite2-City.mmdb ]]; then
-                ln /root/pkg/GeoLite2-City.mmdb /root/seths/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
+                ln /root/pkg/GeoLite2-City.mmdb /root/shardoras/s$shard_id'_'$i/conf/GeoLite2-City.mmdb
             fi
             if [[ -f /root/pkg/log4cpp.properties ]]; then
-                ln /root/pkg/log4cpp.properties /root/seths/s$shard_id'_'$i/conf/log4cpp.properties
+                ln /root/pkg/log4cpp.properties /root/shardoras/s$shard_id'_'$i/conf/log4cpp.properties
             fi
-            mkdir -p /root/seths/s$shard_id'_'$i/log
+            mkdir -p /root/shardoras/s$shard_id'_'$i/log
 
             # 支持重复执行：删除旧的数据库
-            rm -rf /root/seths/s$shard_id'_'$i/db
-            cp -rf /root/pkg/shard_db_$shard_id /root/seths/s$shard_id'_'$i/db
+            rm -rf /root/shardoras/s$shard_id'_'$i/db
+            cp -rf /root/pkg/shard_db_$shard_id /root/shardoras/s$shard_id'_'$i/db
 
             # Generate self-signed SSL certificate for HTTPS server
             echo "Generating SSL certificate for node s$shard_id'_'$i"
             # 删除旧证书
-            rm -f /root/seths/s$shard_id'_'$i/server-key.pem
-            rm -f /root/seths/s$shard_id'_'$i/server-cert.pem
+            rm -f /root/shardoras/s$shard_id'_'$i/server-key.pem
+            rm -f /root/shardoras/s$shard_id'_'$i/server-cert.pem
 
             openssl req -x509 -newkey rsa:2048 -nodes \
-                -keyout /root/seths/s$shard_id'_'$i/server-key.pem \
-                -out /root/seths/s$shard_id'_'$i/server-cert.pem \
+                -keyout /root/shardoras/s$shard_id'_'$i/server-key.pem \
+                -out /root/shardoras/s$shard_id'_'$i/server-cert.pem \
                 -days 365 \
-                -subj "/C=CN/ST=State/L=City/O=Seth/OU=Node/CN=$local_ip" \
+                -subj "/C=CN/ST=State/L=City/O=Shardora/OU=Node/CN=$local_ip" \
                 2>/dev/null
-            chmod 600 /root/seths/s$shard_id'_'$i/server-key.pem
-            chmod 644 /root/seths/s$shard_id'_'$i/server-cert.pem
+            chmod 600 /root/shardoras/s$shard_id'_'$i/server-key.pem
+            chmod 644 /root/shardoras/s$shard_id'_'$i/server-cert.pem
         done
     done
 }
 
-killall -9 seth
+killall -9 shardora
 
 rm -rf /tmp/asan*
-# core 文件落在实例工作目录（/root/seths/<instance>/）
+# core 文件落在实例工作目录（/root/shardoras/<instance>/）
 if [ -w /proc/sys/kernel/core_pattern ] 2>/dev/null; then
-    cat > /etc/sysctl.d/99-seth-coredump.conf <<'EOF'
+    cat > /etc/sysctl.d/99-shardora-coredump.conf <<'EOF'
 fs.suid_dumpable = 1
 kernel.core_pattern = core.%e.%p
 EOF
-    sysctl -p /etc/sysctl.d/99-seth-coredump.conf 2>/dev/null || true
+    sysctl -p /etc/sysctl.d/99-shardora-coredump.conf 2>/dev/null || true
 fi
 ulimit -c unlimited
 

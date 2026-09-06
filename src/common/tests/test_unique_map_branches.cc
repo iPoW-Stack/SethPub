@@ -4,7 +4,7 @@
 
 #include "common/unique_map.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -61,4 +61,4 @@ TEST(UniqueMapBranches, ExistsFalseForUnknownKey) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

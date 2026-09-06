@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * Minimal callee for Seth call{value} diagnostics.
+ * Minimal callee for Shardora call{value} diagnostics.
  */
 contract ProbeCallee {
     uint256 public totalHits;

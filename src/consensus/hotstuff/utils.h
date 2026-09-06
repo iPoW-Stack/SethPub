@@ -12,7 +12,7 @@
 #include "protos/block.pb.h"
 #include "protos/view_block.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace protos {
     class PrefixDb;
@@ -83,7 +83,7 @@ bool ViewBlockIsCheckedParentHash(
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora
 /**
  * @brief Universal Deterministic Serialization Function
  * @param message The Protobuf message object to be serialized
@@ -128,8 +128,8 @@ std::string SerializeDeterministic(const T& message) {
 
 namespace std {
     template <>
-    struct hash<seth::hotstuff::BlockViewKey> {
-        std::size_t operator()(const seth::hotstuff::BlockViewKey& k) const {
+    struct hash<shardora::hotstuff::BlockViewKey> {
+        std::size_t operator()(const shardora::hotstuff::BlockViewKey& k) const {
             std::size_t seed = 0;
             auto hash_combine = [&seed](auto value) {
                 seed ^= std::hash<decltype(value)>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);

@@ -4,7 +4,7 @@
 
 编译后运行 txcli 时出现崩溃：
 ```
-txcli: /root/SethPub/third_party/libuv/src/unix/core.c:160: uv_close: Assertion `!uv__is_closing(handle)' failed.
+txcli: /root/ShardoraPub/third_party/libuv/src/unix/core.c:160: uv_close: Assertion `!uv__is_closing(handle)' failed.
 Aborted (core dumped)
 ```
 
@@ -132,7 +132,7 @@ void on_read(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
 ## 验证方法
 
-1. 编译项目：`./build.sh seth`
+1. 编译项目：`./build.sh shardora`
 2. 运行 txcli：`./txcli 0 3 0 <ip> <port>`
 3. 观察：
    - 不应该再出现 "uv_close: Assertion" 错误

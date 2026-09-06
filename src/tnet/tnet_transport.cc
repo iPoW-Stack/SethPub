@@ -8,7 +8,7 @@
 #include "tnet/tcp_connection.h"
 #include "tnet/socket/socket_factory.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -39,33 +39,33 @@ std::shared_ptr<TcpConnection> TnetTransport::CreateConnection(
         uint32_t timeout) {
     auto socket = SocketFactory::CreateTcpClientSocket(peer_spec, local_spec);
     if (socket == NULL) {
-        SETH_ERROR("create tcp client socket failed");
+        SHARDORA_ERROR("create tcp client socket failed");
         return NULL;
     }
 
     // 1. Set non-blocking
     if (!socket->SetNonBlocking(true)) {
-        SETH_ERROR("set non-blocking failed");
+        SHARDORA_ERROR("set non-blocking failed");
         socket->Free();
         return NULL;
     }
 
     // 2. Set CloseExec
     if (!socket->SetCloseExec(true)) {
-        SETH_ERROR("set close-exec failed");
+        SHARDORA_ERROR("set close-exec failed");
     }
 
     // 3. [New] Enable KeepAlive to maintain long connection activity
     int keep_alive = 1;
     if (setsockopt(socket->GetFd(), SOL_SOCKET, SO_KEEPALIVE, &keep_alive, sizeof(keep_alive)) < 0) {
-        SETH_WARN("set SO_KEEPALIVE failed, errno: %d", errno);
+        SHARDORA_WARN("set SO_KEEPALIVE failed, errno: %d", errno);
     }
 
     // 3b. Enable TCP_NODELAY for low-latency consensus messages.
     // Without this, Nagle's algorithm can buffer small consensus messages
     // (votes, proposals) for up to 200ms, causing consensus timeouts.
     if (!socket->SetTcpNoDelay(true)) {
-        SETH_WARN("set TCP_NODELAY failed");
+        SHARDORA_WARN("set TCP_NODELAY failed");
     }
 
     // 4. [Critical Fix] Set Linger option for graceful shutdown
@@ -76,20 +76,20 @@ std::shared_ptr<TcpConnection> TnetTransport::CreateConnection(
     so_linger.l_onoff = 1;
     so_linger.l_linger = 1; 
     if (setsockopt(socket->GetFd(), SOL_SOCKET, SO_LINGER, &so_linger, sizeof(so_linger)) < 0) {
-        SETH_WARN("set SO_LINGER failed, errno: %d", errno);
+        SHARDORA_WARN("set SO_LINGER failed, errno: %d", errno);
     }
 
     // 5. Set buffer size
     if (recv_buff_size_ != 0  && !socket->SetSoRcvBuf(recv_buff_size_)) {
-        SETH_ERROR("set recv buf failed");
+        SHARDORA_ERROR("set recv buf failed");
     }
     if (send_buff_size_ != 0 && !socket->SetSoSndBuf(send_buff_size_)) {
-        SETH_ERROR("set send buf failed");
+        SHARDORA_ERROR("set send buf failed");
     }
 
     auto conn = CreateTcpConnection(GetNextEventLoop(), socket);
     if (conn == nullptr) {
-        SETH_ERROR("create tcp connection failed");
+        SHARDORA_ERROR("create tcp connection failed");
         return nullptr;
     }
 
@@ -100,7 +100,7 @@ std::shared_ptr<TcpConnection> TnetTransport::CreateConnection(
     // 6. Connect
     // Update: Connect failure is common (network jitter, target down), use WARN instead of ERROR.
     if (!conn->Connect(timeout)) {
-        SETH_WARN("connect peer [%s] failed: %s (%d)",
+        SHARDORA_WARN("connect peer [%s] failed: %s (%d)",
                 peer_spec.c_str(), strerror(errno), errno);
         
         // Use Destroy(true) to close socket immediately since connection failed.
@@ -127,7 +127,7 @@ bool TnetTransport::Init() {
     if (acceptor_isolate_thread_) {
         EventLoop* acceptor_event_loop = new EventLoop;
         if (!acceptor_event_loop->Init()) {
-            SETH_ERROR("init acceptor event loop failed");
+            SHARDORA_ERROR("init acceptor event loop failed");
             delete acceptor_event_loop;
             acceptor_event_loop = nullptr;
             return false;
@@ -140,14 +140,14 @@ bool TnetTransport::Init() {
     for (i = 0; i < thread_count_; ++i) {
         EventLoop* event_loop = new EventLoop;
         if (!event_loop->Init()) {
-            SETH_ERROR("init event loop failed");
+            SHARDORA_ERROR("init event loop failed");
             delete event_loop;
             event_loop = nullptr;
             break;
         }
 
         event_loop_vec_.push_back(event_loop);
-        SETH_DEBUG("success add event loop: %d", i);
+        SHARDORA_DEBUG("success add event loop: %d", i);
     }
 
     if (i == thread_count_) {
@@ -209,53 +209,53 @@ void TnetTransport::Dispatch() {
 
 bool TnetTransport::Start() {
     if (!stoped_) {
-        SETH_ERROR("already start");
+        SHARDORA_ERROR("already start");
         return false;
     }
 
-    SETH_DEBUG("waiting for work_thread.");
+    SHARDORA_DEBUG("waiting for work_thread.");
     for (size_t i = 0; i < event_loop_vec_.size(); i++) {
         waiting_success_ = false;
         std::thread* tmp_thread = new std::thread(std::bind(
                 &TnetTransport::ThreadProc,
                 this,
                 event_loop_vec_[i]));
-        SETH_DEBUG("waiting for work_thread now.");
+        SHARDORA_DEBUG("waiting for work_thread now.");
         std::unique_lock<std::mutex> lock(mutex_);
         con_.wait_for(lock, std::chrono::milliseconds(3000), [&] { 
             return waiting_success_.load();
         });
 
         if (!waiting_success_) {
-            SETH_ERROR("waiting for work_thread failed.");
+            SHARDORA_ERROR("waiting for work_thread failed.");
             return false;
         }
         thread_vec_.push_back(tmp_thread);
     }
 
-    SETH_DEBUG("waiting for work_thread success.");
+    SHARDORA_DEBUG("waiting for work_thread success.");
     stoped_ = false;
     if (acceptor_event_loop_ == NULL) {
         return true;
     }
 
-    SETH_DEBUG("waiting for accept_thread.");
+    SHARDORA_DEBUG("waiting for accept_thread.");
     waiting_success_ = false;
     acceptor_thread_ = new std::thread(std::bind(
             &TnetTransport::ThreadProc,
             this,
             acceptor_event_loop_));
-    SETH_DEBUG("waiting for work_thread now.");
+    SHARDORA_DEBUG("waiting for work_thread now.");
     std::unique_lock<std::mutex> lock(mutex_);
     con_.wait_for(lock, std::chrono::milliseconds(3000), [&] { 
         return waiting_success_.load(); 
     });
 
     if (!waiting_success_) {
-        SETH_ERROR("waiting for accept_thread failed.");
+        SHARDORA_ERROR("waiting for accept_thread failed.");
         return false;
     }
-    SETH_DEBUG("waiting for accept_thread success.");
+    SHARDORA_DEBUG("waiting for accept_thread success.");
     return true;
 }
 
@@ -266,7 +266,7 @@ bool TnetTransport::Stop() {
 
     if (acceptor_event_loop_ != NULL) {
         if (!acceptor_event_loop_->Shutdown()) {
-            SETH_ERROR("accept event loop shutdown failed");
+            SHARDORA_ERROR("accept event loop shutdown failed");
             return false;
         }
     }
@@ -274,7 +274,7 @@ bool TnetTransport::Stop() {
     for (size_t i = 0; i < event_loop_vec_.size(); i++) {
         EventLoop* event_loop = event_loop_vec_[i];
         if (!event_loop->Shutdown()) {
-            SETH_ERROR("event loop shutdown failed");
+            SHARDORA_ERROR("event loop shutdown failed");
             return false;
         }
     }
@@ -349,4 +349,4 @@ void TnetTransport::ThreadProc(EventLoop* event_loop) {
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

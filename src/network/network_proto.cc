@@ -9,7 +9,7 @@
 #include "dht/dht_key.h"
 #include "protos/network.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace network {
 
@@ -54,4 +54,4 @@ void NetworkProto::CreateGetNetworkNodesResponse(
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

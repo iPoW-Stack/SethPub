@@ -11,13 +11,13 @@ Removed the following:
 - **Line 52-54**: Removed `[SYNC_OPT]` comment about reduced initial interval from 10s to 1s
 - **Line 237-245**: Removed `[SYNC_OPT]` comment about reduced interval from 15s to 3s for synced_res_map_ consumption
 - **Line 251-256**: Removed `[SYNC_OPT]` comment about reduced base interval from 10s to 1s
-- **Line 378-380**: Removed `SETH_WARN("[SYNC_PERF]")` logging for PopItems
+- **Line 378-380**: Removed `SHARDORA_WARN("[SYNC_PERF]")` logging for PopItems
 - **Line 796-800**: Removed `[SYNC_OPT]` comment about inline drain optimization
-- **Line 875-877**: Removed `SETH_DEBUG("[SYNC_PERF]")` logging for inline drain
+- **Line 875-877**: Removed `SHARDORA_DEBUG("[SYNC_PERF]")` logging for inline drain
 
 ### 2. src/consensus/hotstuff/view_block_chain.cc
 Removed the following:
-- **Line 1398-1405**: Removed `SETH_WARN("[SYNC_GAP]")` logging when advancing high_view despite missing block
+- **Line 1398-1405**: Removed `SHARDORA_WARN("[SYNC_GAP]")` logging when advancing high_view despite missing block
 
 ### 3. src/bls/bls_manager.cc
 Removed all `[SyncFinish]` related logging from `SyncFinishMessageToNeighbors()` function:
@@ -39,8 +39,8 @@ Removed all `[SyncFinish]` related logging from `SyncFinishMessageToNeighbors()`
 ## Summary of Changes
 
 ### Logging Removed
-- **[SYNC_PERF]**: 2 logging statements (SETH_WARN and SETH_DEBUG)
-- **[SYNC_GAP]**: 1 logging statement (SETH_WARN)
+- **[SYNC_PERF]**: 2 logging statements (SHARDORA_WARN and SHARDORA_DEBUG)
+- **[SYNC_GAP]**: 1 logging statement (SHARDORA_WARN)
 - **[SyncFinish]**: 13 logging statements (BLS_DEBUG and BLS_INFO)
 - **Total logging statements removed**: 16
 

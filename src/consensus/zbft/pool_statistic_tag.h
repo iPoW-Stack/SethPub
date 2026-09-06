@@ -4,7 +4,7 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -22,7 +22,7 @@ public:
     virtual int TxToBlockTx(
             const pools::protobuf::TxMessage& tx_info,
             block::protobuf::BlockTx* block_tx) {
-        SETH_DEBUG("pools statistic tag tx consensus coming: %s, nonce: %lu, val: %s", 
+        SHARDORA_DEBUG("pools statistic tag tx consensus coming: %s, nonce: %lu, val: %s", 
             common::Encode::HexEncode(tx_info.to()).c_str(), 
             tx_info.nonce(),
             common::Encode::HexEncode(tx_info.value()).c_str());
@@ -36,18 +36,18 @@ public:
     virtual int HandleTx(
             uint32_t tx_index,
             view_block::protobuf::ViewBlockItem& view_block,
-            sethvm::SethhainHost& seth_host,
+            shardoravm::ShardorahainHost& shardora_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         uint64_t to_balance = 0;
         uint64_t to_nonce = 0;
         if (GetTempAccountBalance(
-                seth_host, 
+                shardora_host, 
                 block_tx.to(), 
                 acc_balance_map, 
                 &to_balance, 
                 &to_nonce) != consensus::kConsensusSuccess) {
-            SETH_DEBUG("get account balance failed, addr: %s, unique hash: %s", 
+            SHARDORA_DEBUG("get account balance failed, addr: %s, unique hash: %s", 
                 common::Encode::HexEncode(block_tx.to()).c_str(), 
                 common::Encode::HexEncode(tx_info->key()).c_str());
             // return consensus::kConsensusError;
@@ -55,21 +55,21 @@ public:
         }
 
         std::string val;
-        if (seth_host.GetKeyValue(block_tx.to(), tx_info->key(), &val) == sethvm::kSethvmSuccess) {
-            SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
+        if (shardora_host.GetKeyValue(block_tx.to(), tx_info->key(), &val) == shardoravm::kShardoravmSuccess) {
+            SHARDORA_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(tx_info->key()).c_str());
             return consensus::kConsensusError;
         }
 
-        InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+        InitHost(shardora_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
        block::protobuf::TxHashStatus tx_hash_status;
         tx_hash_status.set_status(block_tx.status());
         auto status_val = tx_hash_status.SerializeAsString();
-        seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-        seth_host.SaveKeyValue(block_tx.to(), tx_info->key(), tx_info->value());
+        shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+        shardora_host.SaveKeyValue(block_tx.to(), tx_info->key(), tx_info->value());
         block_tx.set_unique_hash(tx_info->key());
         uint64_t* udata = (uint64_t*)tx_info->value().c_str();
         uint64_t statistic_height = udata[0];
-        SETH_WARN("success call pool statistic height: %lu, pool: %d, view: %lu, "
+        SHARDORA_WARN("success call pool statistic height: %lu, pool: %d, view: %lu, "
             "to_nonce: %lu. tx nonce: %lu, to: %s, unique hash: %s, parent hash: %s", 
             statistic_height,
             view_block.qc().pool_index(), view_block.qc().view(),
@@ -81,7 +81,7 @@ public:
         acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
         acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
         acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-        SETH_DEBUG("success add addr: %s, value: %s, unique hash: %s", 
+        SHARDORA_DEBUG("success add addr: %s, value: %s, unique hash: %s", 
             common::Encode::HexEncode(block_tx.to()).c_str(), 
             ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
             common::Encode::HexEncode(tx_info->key()).c_str());
@@ -97,4 +97,4 @@ private:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

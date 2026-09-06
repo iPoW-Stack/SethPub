@@ -25,7 +25,7 @@
 #include "protos/view_block.pb.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 namespace consensus {
 namespace test {
 
@@ -280,4 +280,4 @@ TEST(ConsensusFunctionBranches, ViewDurationZeroStartAfterSuccessStillReturnsAtL
 
 }  // namespace test
 }  // namespace consensus
-}  // namespace seth
+}  // namespace shardora

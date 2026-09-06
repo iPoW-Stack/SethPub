@@ -194,7 +194,7 @@ shard_id = data.get('shardingId') or data.get('sharding_id') or data.get('shard_
 ### 测试命令
 ```bash
 # 启动区块链
-./build/seth --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
+./build/shardora --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
 
 # 运行 demo
 cd clipy

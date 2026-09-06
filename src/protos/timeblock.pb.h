@@ -45,7 +45,7 @@ struct TableStruct {
 };
 void AddDescriptors();
 }  // namespace protobuf_protos_2ftimeblock_2eproto
-namespace seth {
+namespace shardora {
 namespace timeblock {
 namespace protobuf {
 class TimeBlock;
@@ -53,19 +53,19 @@ class TimeBlockDefaultTypeInternal;
 extern TimeBlockDefaultTypeInternal _TimeBlock_default_instance_;
 }  // namespace protobuf
 }  // namespace timeblock
-}  // namespace seth
+}  // namespace shardora
 namespace google {
 namespace protobuf {
-template<> ::seth::timeblock::protobuf::TimeBlock* Arena::CreateMaybeMessage<::seth::timeblock::protobuf::TimeBlock>(Arena*);
+template<> ::shardora::timeblock::protobuf::TimeBlock* Arena::CreateMaybeMessage<::shardora::timeblock::protobuf::TimeBlock>(Arena*);
 }  // namespace protobuf
 }  // namespace google
-namespace seth {
+namespace shardora {
 namespace timeblock {
 namespace protobuf {
 
 // ===================================================================
 
-class TimeBlock : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.timeblock.protobuf.TimeBlock) */ {
+class TimeBlock : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.timeblock.protobuf.TimeBlock) */ {
  public:
   TimeBlock();
   virtual ~TimeBlock();
@@ -187,7 +187,7 @@ class TimeBlock : public ::google::protobuf::Message /* @@protoc_insertion_point
   ::google::protobuf::uint64 nonce() const;
   void set_nonce(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.timeblock.protobuf.TimeBlock)
+  // @@protoc_insertion_point(class_scope:shardora.timeblock.protobuf.TimeBlock)
  private:
   void set_has_height();
   void clear_has_height();
@@ -233,13 +233,13 @@ inline void TimeBlock::clear_height() {
   clear_has_height();
 }
 inline ::google::protobuf::uint64 TimeBlock::height() const {
-  // @@protoc_insertion_point(field_get:seth.timeblock.protobuf.TimeBlock.height)
+  // @@protoc_insertion_point(field_get:shardora.timeblock.protobuf.TimeBlock.height)
   return height_;
 }
 inline void TimeBlock::set_height(::google::protobuf::uint64 value) {
   set_has_height();
   height_ = value;
-  // @@protoc_insertion_point(field_set:seth.timeblock.protobuf.TimeBlock.height)
+  // @@protoc_insertion_point(field_set:shardora.timeblock.protobuf.TimeBlock.height)
 }
 
 // optional uint64 timestamp = 2;
@@ -257,13 +257,13 @@ inline void TimeBlock::clear_timestamp() {
   clear_has_timestamp();
 }
 inline ::google::protobuf::uint64 TimeBlock::timestamp() const {
-  // @@protoc_insertion_point(field_get:seth.timeblock.protobuf.TimeBlock.timestamp)
+  // @@protoc_insertion_point(field_get:shardora.timeblock.protobuf.TimeBlock.timestamp)
   return timestamp_;
 }
 inline void TimeBlock::set_timestamp(::google::protobuf::uint64 value) {
   set_has_timestamp();
   timestamp_ = value;
-  // @@protoc_insertion_point(field_set:seth.timeblock.protobuf.TimeBlock.timestamp)
+  // @@protoc_insertion_point(field_set:shardora.timeblock.protobuf.TimeBlock.timestamp)
 }
 
 // optional uint64 vss_random = 3;
@@ -281,13 +281,13 @@ inline void TimeBlock::clear_vss_random() {
   clear_has_vss_random();
 }
 inline ::google::protobuf::uint64 TimeBlock::vss_random() const {
-  // @@protoc_insertion_point(field_get:seth.timeblock.protobuf.TimeBlock.vss_random)
+  // @@protoc_insertion_point(field_get:shardora.timeblock.protobuf.TimeBlock.vss_random)
   return vss_random_;
 }
 inline void TimeBlock::set_vss_random(::google::protobuf::uint64 value) {
   set_has_vss_random();
   vss_random_ = value;
-  // @@protoc_insertion_point(field_set:seth.timeblock.protobuf.TimeBlock.vss_random)
+  // @@protoc_insertion_point(field_set:shardora.timeblock.protobuf.TimeBlock.vss_random)
 }
 
 // optional uint64 nonce = 4;
@@ -305,13 +305,13 @@ inline void TimeBlock::clear_nonce() {
   clear_has_nonce();
 }
 inline ::google::protobuf::uint64 TimeBlock::nonce() const {
-  // @@protoc_insertion_point(field_get:seth.timeblock.protobuf.TimeBlock.nonce)
+  // @@protoc_insertion_point(field_get:shardora.timeblock.protobuf.TimeBlock.nonce)
   return nonce_;
 }
 inline void TimeBlock::set_nonce(::google::protobuf::uint64 value) {
   set_has_nonce();
   nonce_ = value;
-  // @@protoc_insertion_point(field_set:seth.timeblock.protobuf.TimeBlock.nonce)
+  // @@protoc_insertion_point(field_set:shardora.timeblock.protobuf.TimeBlock.nonce)
 }
 
 #ifdef __GNUC__
@@ -322,7 +322,7 @@ inline void TimeBlock::set_nonce(::google::protobuf::uint64 value) {
 
 }  // namespace protobuf
 }  // namespace timeblock
-}  // namespace seth
+}  // namespace shardora
 
 // @@protoc_insertion_point(global_scope)
 

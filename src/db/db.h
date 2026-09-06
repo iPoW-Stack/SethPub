@@ -27,7 +27,7 @@
 #include "rocksdb/write_batch.h"
 #endif
 
-namespace seth {
+namespace shardora {
 
 namespace db {
 
@@ -197,14 +197,14 @@ public:
             return db::DbStatus();
         }
 
-        SETH_DEBUG("write to db datasize: %u", db_batch.ApproximateSize());
+        SHARDORA_DEBUG("write to db datasize: %u", db_batch.ApproximateSize());
         DbWriteOptions write_opt;
 #ifndef LEVELDB
         // write_opt.disableWAL = true;
 #endif
         auto st = db_->Write(write_opt, &db_batch.db_batch_);
         if (!st.ok()) {
-            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+            SHARDORA_ERROR("write to db failed: %s", st.ToString().c_str());
         }
         db_batch.Clear();
         return st;
@@ -214,7 +214,7 @@ public:
         DbWriteOptions write_opt;
         auto st = db_->Put(write_opt, DbSlice(key), DbSlice(value));
         if (!st.ok()) {
-            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+            SHARDORA_ERROR("write to db failed: %s", st.ToString().c_str());
         }
         return st;
     }
@@ -223,7 +223,7 @@ public:
         DbWriteOptions write_opt;
         auto st = db_->Put(write_opt, DbSlice(key), DbSlice(value, len));
         if (!st.ok()) {
-            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+            SHARDORA_ERROR("write to db failed: %s", st.ToString().c_str());
         }
         return st;
     }
@@ -243,7 +243,7 @@ public:
         DbWriteOptions write_opt;
         auto st = db_->Delete(write_opt, DbSlice(key));
         if (!st.ok()) {
-            SETH_ERROR("write to db failed: %s", st.ToString().c_str());
+            SHARDORA_ERROR("write to db failed: %s", st.ToString().c_str());
         }
         return st;
     }
@@ -303,4 +303,4 @@ private:
 
 }  // db
 
-}  // seth
+}  // shardora

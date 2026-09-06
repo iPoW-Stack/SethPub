@@ -8,7 +8,7 @@
 #include "security/ecdsa/public_key.h"
 #include "security/ecdsa/secp256k1.h"
 
-namespace seth {
+namespace shardora {
 namespace security {
 namespace test {
 
@@ -72,4 +72,4 @@ TEST(TestSecp256k1Direct, Sha3MatchesCommonHash) {
 
 }  // namespace test
 }  // namespace security
-}  // namespace seth
+}  // namespace shardora

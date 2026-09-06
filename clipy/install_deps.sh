@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install dependencies for seth3.py (offline-friendly)
+# Install dependencies for shardora3.py (offline-friendly)
 # Run: bash install_deps.sh
 
 PYTHON=/root/tools/python3.10/bin/python3

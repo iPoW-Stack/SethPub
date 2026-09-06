@@ -20,7 +20,7 @@
 #include "common/global_info.h"
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 class VssManager;
@@ -118,12 +118,12 @@ public:
         update_latest_view_tm_ = true;
         if (latest_qc_item_ptr_ == nullptr || latest_elect_height_ > latest_qc_item_ptr_->elect_height()) {
             last_stable_leader_member_index_ = GetEpochLeaderIndex();
-            SETH_DEBUG("pool: %u, new elect block, elect height: %lu, last_stable_leader_member_index_: %u",
+            SHARDORA_DEBUG("pool: %u, new elect block, elect height: %lu, last_stable_leader_member_index_: %u",
                 pool_idx_, latest_elect_height_, last_stable_leader_member_index_.load());
         }
 
         if (latest_qc_item_ptr_ == nullptr) {
-            SETH_WARN("pool: %u, OnNewElectBlock skipping GetLeader: latest_qc_item_ptr_ is null, "
+            SHARDORA_WARN("pool: %u, OnNewElectBlock skipping GetLeader: latest_qc_item_ptr_ is null, "
                 "elect_height: %lu", pool_idx_, elect_height);
             return;
         }
@@ -163,7 +163,7 @@ public:
     void StopVoting(const View& view) {
         if (last_vote_view_ < view) {
             last_vote_view_ = view;
-            SETH_DEBUG("pool: %u, set last vote view: %lu", pool_idx_, view);
+            SHARDORA_DEBUG("pool: %u, set last vote view: %lu", pool_idx_, view);
         }
     }
 
@@ -247,7 +247,7 @@ public:
                     if ((*iter)->id == leader->id) {
                         leader->public_ip = common::IpToUint32((*iter)->public_ip.c_str());
                         leader->public_port = (*iter)->public_port;
-                        SETH_DEBUG("succes query GetLeader set member %s ip port %s:%d, pool: %d",
+                        SHARDORA_DEBUG("succes query GetLeader set member %s ip port %s:%d, pool: %d",
                             common::Encode::HexEncode((*iter)->id).c_str(),
                             (*iter)->public_ip.c_str(),
                             (*iter)->public_port,
@@ -285,7 +285,7 @@ private:
     void UpdateLatestQcItemPtr(std::shared_ptr<view_block::protobuf::QcItem> qc_ptr) {
         if (qc_ptr->elect_height() >= latest_elect_height_ && qc_ptr->leader_idx() != common::kInvalidUint32) {
             last_stable_leader_member_index_ = qc_ptr->leader_idx();
-            SETH_DEBUG("pool: %u, update latest qc item ptr, elect height: %lu, last_stable_leader_member_index_: %u, "
+            SHARDORA_DEBUG("pool: %u, update latest qc item ptr, elect height: %lu, last_stable_leader_member_index_: %u, "
                 "old last_vote_view_: %lu,  new last_vote_view_: %lu",
                 pool_idx_, qc_ptr->elect_height(), last_stable_leader_member_index_.load(),
                 last_vote_view_,
@@ -298,9 +298,9 @@ private:
         if (latest_leader_propose_message_ && high_view_block != nullptr && 
                 high_view_block->qc().view() < qc_ptr->view() && 
                 latest_leader_propose_message_->header.hotstuff().pro_msg().tc().view() < qc_ptr->view()) {
-            SETH_DEBUG("pool: %u, update latest qc item ptr view: %lu is higher than high view block view: %lu",
+            SHARDORA_DEBUG("pool: %u, update latest qc item ptr view: %lu is higher than high view block view: %lu",
                 pool_idx_, qc_ptr->view(), high_view_block->qc().view());
-            SETH_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
+            SHARDORA_DEBUG("pool: %d, set latest_leader_propose_message_ = nullptr", pool_idx_);
             latest_leader_propose_message_ = nullptr;
         }
     }
@@ -410,7 +410,7 @@ private:
         // auto members = elect_item->valid_leaders();
         auto members = Members(common::GlobalInfo::Instance()->network_id());
         if (members == nullptr || members->empty()) {
-            SETH_WARN("pool: %u, get leader failed, members is null or empty, sharding_id: %u", 
+            SHARDORA_WARN("pool: %u, get leader failed, members is null or empty, sharding_id: %u", 
                 pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
         }
@@ -426,7 +426,7 @@ private:
 
         auto high_view_block = view_block_chain_->HighViewBlock();
         if (!high_view_block) {
-            SETH_WARN("pool: %u, get leader failed, high_view_block is null", pool_idx_);
+            SHARDORA_WARN("pool: %u, get leader failed, high_view_block is null", pool_idx_);
             return nullptr;
         }
 
@@ -447,7 +447,7 @@ private:
             // *out_view += 1;
             
             if (debug)
-            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
+            SHARDORA_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                 "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                 "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
                 pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
@@ -464,7 +464,7 @@ private:
             do {
                 if (leader_latest_qc.view() != high_view_block->qc().view()) {
                     if (debug)
-                    SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
+                    SHARDORA_DEBUG("pool: %u, leader_latest_qc view: %lu is not equal with high view block qc view: %lu",
                         pool_idx_, leader_latest_qc.view(), high_view_block->qc().view());
                     break;
                 }
@@ -481,7 +481,7 @@ private:
 
                 // *out_view += 1;
                 if (debug)
-                SETH_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
+                SHARDORA_DEBUG("pool: %u, leader_latest_qc view: %lu is equal with high view block qc view: %lu, "
                     "high_view_block->qc().elect_height(): %lu, latest_elect_height_: %lu, out view: %lu, "
                     "last_stable_leader_member_index_: %u, new_leader_idx: %u, leader_latest_qc.leader_idx(): %u",
                     pool_idx_, leader_latest_qc.view(), high_view_block->qc().view(),
@@ -498,7 +498,7 @@ private:
         auto high_view_block_info = view_block_chain_->Get(leader_latest_qc.view_block_hash());
         if (high_view_block_info == nullptr || high_view_block_info->view_block == nullptr) {
             if (debug)
-            SETH_DEBUG("pool: %u, leader_latest_qc view: %lu, view_block_hash: %s "
+            SHARDORA_DEBUG("pool: %u, leader_latest_qc view: %lu, view_block_hash: %s "
                 "not found in view block chain", 
                 pool_idx_, leader_latest_qc.view(), leader_latest_qc.view_block_hash().c_str());
             return nullptr;
@@ -524,7 +524,7 @@ private:
         int64_t elapsed = now - prev_qc_timestamp_sec;
         if (elapsed < timeout) {
             if (debug)
-            SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
+            SHARDORA_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, consecutive_failures: %d, now: %u, block tm: %lu, "
                 "last_stable_leader_member_index: %d, get leader index: %u, latest_elect_height: %lu, out view: %lu", 
                 pool_idx_, high_view_block->qc().view(), elapsed, timeout, consecutive_failures_,
                 now, high_view_block->block_info().timestamp(),
@@ -539,7 +539,7 @@ private:
 
         if (elect_item == nullptr) {
             // //assert(false);
-            SETH_WARN("pool: %u, get leader failed, elect item is null, sharding_id: %u", 
+            SHARDORA_WARN("pool: %u, get leader failed, elect item is null, sharding_id: %u", 
                 pool_idx_, common::GlobalInfo::Instance()->network_id());
             return nullptr;
         }
@@ -561,7 +561,7 @@ private:
         }
 
         if (debug)
-        SETH_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
+        SHARDORA_DEBUG("pool: %u, high_view: %lu, elapsed: %lu, timeout: %lu, k: %lu, "
             "consecutive_failures: %d, now: %u, block tm: %lu, "
             "last_stable_leader_member_index: %d, get leader index: %u, "
             "latest_elect_height: %lu, out view: %lu, "
@@ -636,14 +636,14 @@ private:
         auto elect_item = elect_info_->GetElectItemWithShardingId(sharding_id);
         if (elect_item == nullptr) {
             // //assert(false);
-            SETH_DEBUG("get local member index failed, elect item is null, sharding_id: %u", sharding_id);
+            SHARDORA_DEBUG("get local member index failed, elect item is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
         auto local_mem_ptr = elect_item->LocalMember();
         if (local_mem_ptr == nullptr) {
             // //assert(false);
-            SETH_DEBUG("get local member index failed, local member is null, sharding_id: %u", sharding_id);
+            SHARDORA_DEBUG("get local member index failed, local member is null, sharding_id: %u", sharding_id);
             return common::kInvalidUint32;
         }
 
@@ -732,4 +732,4 @@ private:
 
 } // namespace consensus
 
-} // namespace seth
+} // namespace shardora

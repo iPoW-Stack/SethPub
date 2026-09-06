@@ -2,7 +2,7 @@
 
 ## 功能概述
 
-当本地 `seth.conf` 配置文件中的 `privatekey` 为空或不存在时，程序将不会立即退出，而是启动 HTTP 服务器并等待通过 `/update_private_key` 接口接收私钥，然后继续完成初始化。
+当本地 `shardora.conf` 配置文件中的 `privatekey` 为空或不存在时，程序将不会立即退出，而是启动 HTTP 服务器并等待通过 `/update_private_key` 接口接收私钥，然后继续完成初始化。
 
 ## 实现细节
 
@@ -42,7 +42,7 @@ InitSecurity() - 尝试加载私钥
 ```cpp
 int NetworkInit::InitSecurity() {
     std::string prikey;
-    if (!conf_.Get("seth", "prikey", prikey) || prikey.empty()) {
+    if (!conf_.Get("shardora", "prikey", prikey) || prikey.empty()) {
         INIT_WARN("Private key is empty or not found in config, waiting for UpdatePrivateKey...");
         return kInitWaitingForPrivateKey;  // 返回特殊状态码
     }
@@ -100,15 +100,15 @@ std::atomic<bool> private_key_received_{false};
 
 ### 场景1：配置文件中没有私钥
 
-1. 编辑 `conf/seth.conf`，将 `prikey` 设置为空或删除该配置项：
+1. 编辑 `conf/shardora.conf`，将 `prikey` 设置为空或删除该配置项：
 ```ini
-[seth]
+[shardora]
 prikey=
 ```
 
 2. 启动程序：
 ```bash
-./seth -c conf/seth.conf
+./shardora -c conf/shardora.conf
 ```
 
 3. 程序会输出类似以下信息：
@@ -152,12 +152,12 @@ curl -X POST http://localhost:8080/update_private_key \
 
 1. 备份原配置文件：
 ```bash
-cp conf/seth.conf conf/seth.conf.bak
+cp conf/shardora.conf conf/shardora.conf.bak
 ```
 
 2. 清空私钥配置：
 ```bash
-sed -i 's/^prikey=.*/prikey=/' conf/seth.conf
+sed -i 's/^prikey=.*/prikey=/' conf/shardora.conf
 ```
 
 3. 启动程序并观察日志

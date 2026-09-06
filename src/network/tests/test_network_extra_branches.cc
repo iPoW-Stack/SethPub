@@ -12,7 +12,7 @@
 #include "dht/dht_utils.h"
 #include "protos/transport.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace network {
 namespace test {
 
@@ -179,4 +179,4 @@ TEST(NetworkUtilsExtraTest, OneValidOneTooHigh) {
 
 }  // namespace test
 }  // namespace network
-}  // namespace seth
+}  // namespace shardora

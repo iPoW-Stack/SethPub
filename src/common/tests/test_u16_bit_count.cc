@@ -2,7 +2,7 @@
 
 #include "common/u16_bit_count.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -26,4 +26,4 @@ TEST(TestU16BitCount, AlternatingPatternsPopcountEight) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

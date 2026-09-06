@@ -17,7 +17,7 @@
 #include "block/block_utils.h"
 #include "block/account_lru_map.h"
 
-namespace seth {
+namespace shardora {
 
 namespace block {
 
@@ -279,4 +279,4 @@ TEST_F(TestBlock, IsContractCreateWithoutLibraryBytes) {
 
 }  // namespace block
 
-}  // namespace seth
+}  // namespace shardora

@@ -10,7 +10,7 @@
 #include "network/universal.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace block {
     class AccountManager;
@@ -62,4 +62,4 @@ private:
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

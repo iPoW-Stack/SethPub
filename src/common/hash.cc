@@ -10,7 +10,7 @@
 #include "xxHash/xxhash.h"
 #include "ethash/keccak.hpp"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -498,4 +498,4 @@ std::string Hash::keccak256(const std::string& str) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

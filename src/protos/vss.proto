@@ -1,6 +1,6 @@
 syntax = "proto2";
 
-package seth.vss.protobuf;
+package shardora.vss.protobuf;
 
 message VssMessage {
 	optional uint64 random_hash = 1;

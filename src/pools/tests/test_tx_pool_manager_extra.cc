@@ -29,7 +29,7 @@
 #include "common/utils.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -41,7 +41,7 @@ struct SimpleTxForPmExtra : public TxItem {
     SimpleTxForPmExtra(transport::MessagePtr msg, protos::AddressInfoPtr ai)
         : TxItem(msg, -1, ai) {}
     int HandleTx(uint32_t, view_block::protobuf::ViewBlockItem&,
-                 sethvm::SethhainHost&, hotstuff::BalanceAndNonceMap&,
+                 shardoravm::ShardorahainHost&, hotstuff::BalanceAndNonceMap&,
                  block::protobuf::BlockTx&) override { return 0; }
     int TxToBlockTx(const pools::protobuf::TxMessage&,
                     block::protobuf::BlockTx*) override { return 0; }
@@ -226,4 +226,4 @@ TEST_F(TestTxPoolManagerExtra, PoolTimerMessage_WithSyncMessage_DrainQueue) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

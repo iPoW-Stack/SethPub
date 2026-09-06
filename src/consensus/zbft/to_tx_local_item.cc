@@ -2,25 +2,25 @@
 
 #include "common/encode.h"
 #include "common/hash.h"
-#include "sethvm/execution.h"
-#include "sethvm/host_journal_stack.h"
-#include "sethvm/reversible_feistel_address.h"
-#include "sethvm/sethvm_utils.h"
+#include "shardoravm/execution.h"
+#include "shardoravm/host_journal_stack.h"
+#include "shardoravm/reversible_feistel_address.h"
+#include "shardoravm/shardoravm_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
 int ToTxLocalItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     pools::protobuf::ToTxMessageItem to_tx_item;
     if (!to_tx_item.ParseFromString(tx_info->value())) {
         block_tx.set_status(kConsensusError);
-        SETH_WARN("local get to txs info failed: %s, unique: %s",
+        SHARDORA_WARN("local get to txs info failed: %s, unique: %s",
             common::Encode::HexEncode(tx_info->value()).c_str(),
             common::Encode::HexEncode(tx_info->key()).c_str());
         return consensus::kConsensusSuccess;
@@ -28,11 +28,11 @@ int ToTxLocalItem::HandleTx(
 
     uint64_t src_to_balance = 0;
     uint64_t src_to_nonce = 0;
-    GetTempAccountBalance(seth_host, block_tx.to(), acc_balance_map, &src_to_balance, &src_to_nonce);
+    GetTempAccountBalance(shardora_host, block_tx.to(), acc_balance_map, &src_to_balance, &src_to_nonce);
     auto& unique_hash = tx_info->key();
     std::string val;
-    if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
-        SETH_DEBUG("unique hash has consensus: %s, %s, %lu", 
+    if (shardora_host.GetKeyValue(block_tx.to(), unique_hash, &val) == shardoravm::kShardoravmSuccess) {
+        SHARDORA_DEBUG("unique hash has consensus: %s, %s, %lu", 
             common::Encode::HexEncode(unique_hash).c_str(),
             common::Encode::HexEncode(to_tx_item.des()).c_str(),
             to_tx_item.amount());
@@ -43,27 +43,27 @@ int ToTxLocalItem::HandleTx(
         return consensus::kConsensusError;
     }
 
-    InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+    InitHost(shardora_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-    seth_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
+    shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    shardora_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
     block_tx.set_unique_hash(unique_hash);
     block_tx.set_nonce(0);
     auto& block_to_txs = *view_block.mutable_block_info()->mutable_local_to();
-    CreateLocalToTx(tx_index, view_block, seth_host, acc_balance_map, to_tx_item, block_to_txs);
-    SETH_DEBUG("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu, %s, %lu", 
+    CreateLocalToTx(tx_index, view_block, shardora_host, acc_balance_map, to_tx_item, block_to_txs);
+    SHARDORA_DEBUG("success call to tx local block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu, %s, %lu", 
         view_block.qc().pool_index(), view_block.qc().view(), src_to_nonce, block_tx.nonce(),
         common::Encode::HexEncode(to_tx_item.des()).c_str(), to_tx_item.amount());
     acc_balance_map[block_tx.to()]->set_balance(src_to_balance);
     acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s", 
+    SHARDORA_DEBUG("success add addr: %s, value: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str());
-    SETH_DEBUG("success consensus local transfer to unique hash: %s, %s",
+    SHARDORA_DEBUG("success consensus local transfer to unique hash: %s, %s",
         common::Encode::HexEncode(unique_hash).c_str(), 
         ProtobufToJson(block_to_txs).c_str());
     view_block.mutable_block_info()->add_unique_hashs(block_tx.unique_hash());
@@ -73,18 +73,18 @@ int ToTxLocalItem::HandleTx(
 void ToTxLocalItem::CreateLocalToTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         const pools::protobuf::ToTxMessageItem& to_tx_item,
         block::protobuf::ConsensusToTxs& block_to_txs) {
     if (to_tx_item.has_base_root_address()) {
-        HandleCrossShardBase(tx_index, view_block, seth_host, acc_balance_map, to_tx_item);
+        HandleCrossShardBase(tx_index, view_block, shardora_host, acc_balance_map, to_tx_item);
         return;
     }
 
     if (to_tx_item.des().size() != common::kUnicastAddressLength &&
             to_tx_item.des().size() != common::kPreypamentAddressLength) {
-        SETH_ERROR("invalid to tx item: %s", ProtobufToJson(to_tx_item).c_str());
+        SHARDORA_ERROR("invalid to tx item: %s", ProtobufToJson(to_tx_item).c_str());
         //assert(false);
         return;
     }
@@ -93,13 +93,13 @@ void ToTxLocalItem::CreateLocalToTx(
         uint64_t to_balance = 0;
         uint64_t nonce = 0;
         int balance_status = GetTempAccountBalance(
-            seth_host,
+            shardora_host,
             addr, 
             acc_balance_map, 
             &to_balance, 
             &nonce);
         if (balance_status != kConsensusSuccess) {
-            SETH_DEBUG("create new address: %s, balance: %lu",
+            SHARDORA_DEBUG("create new address: %s, balance: %lu",
                 common::Encode::HexEncode(addr).c_str(),
                 amount);
             to_balance = 0;
@@ -111,13 +111,13 @@ void ToTxLocalItem::CreateLocalToTx(
             addr_info->set_latest_height(view_block.block_info().height());
             acc_balance_map[addr] = addr_info;
         } else {
-            SETH_DEBUG("success get to balance: %s, %lu",
+            SHARDORA_DEBUG("success get to balance: %s, %lu",
                 common::Encode::HexEncode(addr).c_str(), 
                 to_balance);
         }
 
         if (amount <= 0) {
-            SETH_DEBUG("failed just contract set prefund add addr: %s, to item: %s",
+            SHARDORA_DEBUG("failed just contract set prefund add addr: %s, to item: %s",
                 common::Encode::HexEncode(addr).c_str(),
                 ProtobufToJson(to_tx_item).c_str());
             return;
@@ -128,11 +128,11 @@ void ToTxLocalItem::CreateLocalToTx(
         acc_balance_map[addr]->set_nonce(nonce);
         acc_balance_map[addr]->set_latest_height(view_block.block_info().height());
         acc_balance_map[addr]->set_tx_index(tx_index);
-        SETH_DEBUG("success add addr: %s, value: %s, to item: %s", 
+        SHARDORA_DEBUG("success add addr: %s, value: %s, to item: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             ProtobufToJson(*(acc_balance_map[addr])).c_str(),
             ProtobufToJson(to_tx_item).c_str());
-        SETH_DEBUG("add local to: %s, balance: %lu, amount: %lu",
+        SHARDORA_DEBUG("add local to: %s, balance: %lu, amount: %lu",
             common::Encode::HexEncode(addr).c_str(),
             to_balance,
             amount);
@@ -150,7 +150,7 @@ void ToTxLocalItem::CreateLocalToTx(
 void ToTxLocalItem::HandleCrossShardBase(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         const pools::protobuf::ToTxMessageItem& to_tx) {
     const std::string& base_raw = to_tx.base_root_address();  // 20-byte raw
@@ -162,7 +162,7 @@ void ToTxLocalItem::HandleCrossShardBase(
                               : view_block.qc().pool_index();
 
     if (base_raw.size() != 20) {
-        SETH_ERROR("CrossShardBase: invalid base_root_address length %zu", base_raw.size());
+        SHARDORA_ERROR("CrossShardBase: invalid base_root_address length %zu", base_raw.size());
         return;
     }
 
@@ -170,29 +170,29 @@ void ToTxLocalItem::HandleCrossShardBase(
     std::string bytecode;
     {
         const std::string sys_str(reinterpret_cast<const char*>(
-            sethvm::kCrossShardSystemExecutor.bytes), 20);
-        seth_host.GetKeyValue(sys_str, "xsb:" + base_raw, &bytecode);
+            shardoravm::kCrossShardSystemExecutor.bytes), 20);
+        shardora_host.GetKeyValue(sys_str, "xsb:" + base_raw, &bytecode);
     }
     if (bytecode.empty()) {
-        SETH_ERROR("CrossShardBase: bytecode not in registry for base=%s "
+        SHARDORA_ERROR("CrossShardBase: bytecode not in registry for base=%s "
                    "(contract not yet broadcast to this shard)",
             common::Encode::HexEncode(base_raw).c_str());
         return;
     }
 
     // ── 1. 计算分身合约地址 ──────────────────────────────────────────────────
-    evmc::address base_evmc = sethvm::StrToEvmcAddr(base_raw);
-    evmc::address derived_evmc = sethvm::DeriveShardAddress(base_evmc, shard_id, pool_index);
+    evmc::address base_evmc = shardoravm::StrToEvmcAddr(base_raw);
+    evmc::address derived_evmc = shardoravm::DeriveShardAddress(base_evmc, shard_id, pool_index);
     std::string derived_str(reinterpret_cast<const char*>(derived_evmc.bytes), 20);
-    std::string sys_exec_str(reinterpret_cast<const char*>(sethvm::kCrossShardSystemExecutor.bytes), 20);
+    std::string sys_exec_str(reinterpret_cast<const char*>(shardoravm::kCrossShardSystemExecutor.bytes), 20);
 
     // ── 2. 懒部署：若分身合约不存在，写入 bytecode + 必要存储槽 ─────────────
     bool needs_deploy = false;
     auto it = acc_balance_map.find(derived_str);
     if (it == acc_balance_map.end() || it->second->bytes_code().empty()) {
         // 检查链上是否已有
-        if (seth_host.view_block_chain_) {
-            auto chain_info = seth_host.view_block_chain_->ChainGetAccountInfo(derived_str);
+        if (shardora_host.view_block_chain_) {
+            auto chain_info = shardora_host.view_block_chain_->ChainGetAccountInfo(derived_str);
             if (!chain_info || chain_info->bytes_code().empty()) {
                 needs_deploy = true;
             }
@@ -216,15 +216,15 @@ void ToTxLocalItem::HandleCrossShardBase(
         evmc::bytes32 slot1_key{};  // bytes32(1)
         slot1_key.bytes[31] = 1;
         evmc::bytes32 slot1_val{};  // SYSTEM_EXECUTOR
-        memcpy(&slot1_val.bytes[12], sethvm::kCrossShardSystemExecutor.bytes, 20);
+        memcpy(&slot1_val.bytes[12], shardoravm::kCrossShardSystemExecutor.bytes, 20);
 
         evmc::bytes32 marker_val{};
         marker_val.bytes[31] = 1;
 
-        seth_host.set_storage(derived_evmc, slot0_key, slot0_val);
-        seth_host.set_storage(derived_evmc, slot1_key, slot1_val);
-        seth_host.set_storage(derived_evmc, sethvm::kIsCrossShardBaseSlot, marker_val);
-        seth_host.accounts_[derived_evmc].code =
+        shardora_host.set_storage(derived_evmc, slot0_key, slot0_val);
+        shardora_host.set_storage(derived_evmc, slot1_key, slot1_val);
+        shardora_host.set_storage(derived_evmc, shardoravm::kIsCrossShardBaseSlot, marker_val);
+        shardora_host.accounts_[derived_evmc].code =
             evmc::bytes(bytecode.begin(), bytecode.end());
 
         auto derived_info = std::make_shared<address::protobuf::AddressInfo>();
@@ -242,7 +242,7 @@ void ToTxLocalItem::HandleCrossShardBase(
         derived_info->set_nonce(0);
         acc_balance_map[derived_str] = derived_info;
 
-        SETH_INFO("CrossShardBase lazy-deploy: base=%s derived=%s shard=%u pool=%u",
+        SHARDORA_INFO("CrossShardBase lazy-deploy: base=%s derived=%s shard=%u pool=%u",
             common::Encode::HexEncode(base_raw).c_str(),
             common::Encode::HexEncode(derived_str).c_str(),
             shard_id, pool_index);
@@ -330,10 +330,10 @@ void ToTxLocalItem::HandleCrossShardBase(
     block::protobuf::BlockTx sys_tx;
     sys_tx.set_to(derived_str);
     sys_tx.set_from(sys_exec_str);
-    InitHost(seth_host, sys_tx, 200000, 0, view_block);
+    InitHost(shardora_host, sys_tx, 200000, 0, view_block);
 
     evmc::Result exec_res{ evmc_result{} };
-    int exec_status = sethvm::Execution::Instance()->execute(
+    int exec_status = shardoravm::Execution::Instance()->execute(
         bytecode,
         calldata,
         sys_exec_str,    // msg.sender = SYSTEM_EXECUTOR
@@ -342,20 +342,20 @@ void ToTxLocalItem::HandleCrossShardBase(
         0,               // value
         200000,
         0,
-        sethvm::kJustCall,
-        seth_host,
+        shardoravm::kJustCall,
+        shardora_host,
         &exec_res);
 
-    if (exec_status != sethvm::kSethvmSuccess ||
+    if (exec_status != shardoravm::kShardoravmSuccess ||
             exec_res.status_code != EVMC_SUCCESS) {
-        SETH_ERROR("CrossShardBase system call failed: exec=%d evmc=%d, base=%s derived=%s",
+        SHARDORA_ERROR("CrossShardBase system call failed: exec=%d evmc=%d, base=%s derived=%s",
             exec_status, (int)exec_res.status_code,
             common::Encode::HexEncode(base_raw).c_str(),
             common::Encode::HexEncode(derived_str).c_str());
         return;
     }
 
-    SETH_INFO("CrossShardBase system call OK: base=%s derived=%s nonce=%lu",
+    SHARDORA_INFO("CrossShardBase system call OK: base=%s derived=%s nonce=%lu",
         common::Encode::HexEncode(base_raw).c_str(),
         common::Encode::HexEncode(derived_str).c_str(),
         to_tx.cross_nonce());
@@ -373,7 +373,7 @@ int ToTxLocalItem::TxToBlockTx(
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora
 
 
 

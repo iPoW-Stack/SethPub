@@ -2,7 +2,7 @@
 
 # Script to generate SSL certificates for existing nodes
 
-NODES_DIR="/root/seths"
+NODES_DIR="/root/shardoras"
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 
 if [ -z "$LOCAL_IP" ]; then
@@ -41,7 +41,7 @@ for node_dir in $NODES_DIR/s*; do
             -keyout "$node_dir/server-key.pem" \
             -out "$node_dir/server-cert.pem" \
             -days 365 \
-            -subj "/C=CN/ST=State/L=City/O=Seth/OU=Node/CN=$LOCAL_IP" \
+            -subj "/C=CN/ST=State/L=City/O=Shardora/OU=Node/CN=$LOCAL_IP" \
             2>/dev/null
         
         if [ $? -eq 0 ]; then
@@ -69,8 +69,8 @@ echo "  - Validity: 365 days"
 echo "  - Common Name: $LOCAL_IP"
 echo ""
 echo "To verify a certificate:"
-echo "  openssl x509 -in /root/seths/s3_1/server-cert.pem -text -noout"
+echo "  openssl x509 -in /root/shardoras/s3_1/server-cert.pem -text -noout"
 echo ""
 echo "To restart nodes with HTTPS:"
-echo "  killall -9 seth"
+echo "  killall -9 shardora"
 echo "  # Then start your nodes normally"

@@ -19,7 +19,7 @@
         TypeName& operator=(const TypeName&)
 #endif  // !DISALLOW_COPY_AND_ASSIGN
 
-#ifdef SETH_TRACE_MESSAGE
+#ifdef SHARDORA_TRACE_MESSAGE
 struct Construct {
     uint32_t net_id;
     uint8_t country;
@@ -29,12 +29,12 @@ struct Construct {
     char hash[24];
 };
 
-#define SETH_NETWORK_DEBUG_FOR_PROTOMESSAGE(message, append) \
+#define SHARDORA_NETWORK_DEBUG_FOR_PROTOMESSAGE(message, append) \
     do { \
         if ((message).has_debug()) { \
             Construct* src_cons_key = (Construct*)((message).src_dht_key().c_str()); \
             Construct* des_cons_key = (Construct*)((message).des_dht_key().c_str()); \
-            SETH_ERROR("[%s][handled: %d] [hash: %llu][hop: %d][src_net: %u][des_net: %u][id:%u]" \
+            SHARDORA_ERROR("[%s][handled: %d] [hash: %llu][hop: %d][src_net: %u][des_net: %u][id:%u]" \
                 "[broad: %d][universal: %d][type: %d] %s", \
                 (message).debug().c_str(), \
                 (message).handled(), \
@@ -50,7 +50,7 @@ struct Construct {
         } \
     } while (0)
 #else
-#define SETH_NETWORK_DEBUG_FOR_PROTOMESSAGE(message, append)
+#define SHARDORA_NETWORK_DEBUG_FOR_PROTOMESSAGE(message, append)
 #endif
 
 #ifndef NDEBUG
@@ -61,8 +61,8 @@ struct Construct {
     if (msg_ptr) { \
         auto btime = common::TimeUtils::TimestampUs(); \
         uint64_t diff_time = 0; \
-        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
-        msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
+        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SHARDORA_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
+        msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SHARDORA_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
         msg_ptr->times[msg_ptr->times_idx] = btime; \
         msg_ptr->times_idx++; \
     } \
@@ -75,7 +75,7 @@ struct Construct {
 //         auto now_thread_id = std::this_thread::get_id(); \
 //         uint32_t now_id_val = (uint32_t)std::hash<std::thread::id>{}(now_thread_id); \
 //         uint32_t init_id_val = (uint32_t)std::hash<std::thread::id>{}(local_thread_id_); \
-//         SETH_DEBUG("now handle thread id: %u, old: %u, count: %d", now_id_val, init_id_val, (int32_t)local_thread_id_count_); \
+//         SHARDORA_DEBUG("now handle thread id: %u, old: %u, count: %d", now_id_val, init_id_val, (int32_t)local_thread_id_count_); \
 //         if (local_thread_id_count_ > 3) { \
 //             //assert(local_thread_id_ == now_thread_id); \
 //         } else { \
@@ -89,8 +89,8 @@ struct Construct {
 //         //assert(msg_ptr->times_idx < (sizeof(msg_ptr->times) / sizeof(msg_ptr->times[0]))); \
 //         auto btime = common::TimeUtils::TimestampUs(); \
 //         uint64_t diff_time = 0; \
-//         if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 10000lu)SETH_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
-//         msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
+//         if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 10000lu)SHARDORA_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
+//         msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SHARDORA_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
 //         msg_ptr->times[msg_ptr->times_idx] = btime; \
 //         msg_ptr->times_idx++; \
 //     } \
@@ -100,8 +100,8 @@ struct Construct {
     if (msg_ptr) { \
         auto btime = common::TimeUtils::TimestampUs(); \
         uint64_t diff_time = 0; \
-        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SETH_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
-        msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SETH_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
+        if (msg_ptr->times_idx > 0) { diff_time = btime - msg_ptr->times[msg_ptr->times_idx - 1]; if (diff_time > 200000lu)SHARDORA_DEBUG("over handle message debug use time: %lu, type: %d", diff_time, msg_ptr->header.type());} \
+        msg_ptr->debug_str[msg_ptr->times_idx] = std::string(SHARDORA_LOG_FILE_NAME) + ":" + std::to_string(__LINE__); \
         msg_ptr->times[msg_ptr->times_idx] = btime; \
         msg_ptr->times_idx++; \
     } \
@@ -116,13 +116,13 @@ struct Construct {
 // #define ADD_TX_DEBUG_INFO(tx_proto) { \
 //     auto* tx_debug = tx_proto->add_tx_debug(); \
 //     tx_debug->set_tx_debug_tm_ms(common::TimeUtils::TimestampMs()); \
-//     tx_debug->set_tx_debug_info(std::string(SETH_LOG_FILE_NAME) + ":" +  std::string(__FUNCTION__) + ":" + std::to_string(__LINE__)); \
+//     tx_debug->set_tx_debug_info(std::string(SHARDORA_LOG_FILE_NAME) + ":" +  std::string(__FUNCTION__) + ":" + std::to_string(__LINE__)); \
 // }
 #else
 #define ADD_TX_DEBUG_INFO(tx_proto)
 #endif
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -248,16 +248,16 @@ static const double kMiningTokenMultiplicationFactor = 1.0;
 static const int32_t kLeaderRoatationBaseTimeoutSec = 30;
 
 // Economic Model Parameters (Dynamic Sharding Reward System)
-// kSethMiniTransportUnit must be defined before use (= 10^8, smallest SETH unit)
-static const uint64_t kSethMiniTransportUnit = 100000000llu;
-static const uint64_t kInitialTotalReward = 10000llu * kSethMiniTransportUnit;  // 10,000 SETH total per epoch
+// kShardoraMiniTransportUnit must be defined before use (= 10^8, smallest SHARDORA unit)
+static const uint64_t kShardoraMiniTransportUnit = 100000000llu;
+static const uint64_t kInitialTotalReward = 10000llu * kShardoraMiniTransportUnit;  // 10,000 SHARDORA total per epoch
 // Halving period: 4 years with 600s epoch period
 // 4 years = 365.25 * 24 * 3600 / 600 * 4 = 210,240 epochs
 static const uint32_t kHalvingPeriodEpochs = 210240u;  // 4 years (with 600s epoch period)
 static const double kTxBonusMultiplier = 0.2;  // Transaction bonus up to 20% of shard reward
 static const double kStakingRewardRatio = 0.0;  // Staking rewards (reserved for future)
 static const double kBurnRatio = 0.5;  // Burn 50% of gas fees
-static const uint64_t kMinBlockReward = 1llu * kSethMiniTransportUnit;  // Minimum reward 1 SETH
+static const uint64_t kMinBlockReward = 1llu * kShardoraMiniTransportUnit;  // Minimum reward 1 SHARDORA
 static const uint32_t kMaxHalvingCount = 64u;  // Maximum halving iterations (prevent overflow)
 
 // Dynamic Sharding Parameters
@@ -315,15 +315,15 @@ static const uint32_t kSingleBlockMaxMBytes = 2u;
 static const int kMaxProposeMsgBytes = 1 * 1024 * 1024;  // 1M
 static const uint32_t kVpnShareStakingPrice = 1u;
 
-static const uint64_t kSethMaxAmount = 1000000000000000llu * 100000000llu * kSethMiniTransportUnit;
+static const uint64_t kShardoraMaxAmount = 1000000000000000llu * 100000000llu * kShardoraMiniTransportUnit;
 static const uint32_t kTransactionNoVersion = 0u;
 static const uint32_t kTransactionVersion = 1u;
 // 10%
-static const uint64_t kGenesisShardingNodesMaxSeth = kSethMaxAmount / 100llu * 10llu;
+static const uint64_t kGenesisShardingNodesMaxShardora = kShardoraMaxAmount / 100llu * 10llu;
 static const uint32_t kElectNodeMinMemberIndex = 1024u;
 
-static const uint64_t kVpnVipMinPayfor = 66llu * kSethMiniTransportUnit;
-static const uint64_t kVpnVipMaxPayfor = 2000u * kSethMiniTransportUnit;
+static const uint64_t kVpnVipMinPayfor = 66llu * kShardoraMiniTransportUnit;
+static const uint64_t kVpnVipMaxPayfor = 2000u * kShardoraMiniTransportUnit;
 
 static const uint32_t kDefaultBroadcastIgnBloomfilterHop = 1u;
 static const uint32_t kDefaultBroadcastStopTimes = 2u;
@@ -507,5 +507,5 @@ ValidationStatus IsContractBytescodeValid(const std::string& hex);
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora
 

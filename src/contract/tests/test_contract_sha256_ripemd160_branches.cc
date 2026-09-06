@@ -10,7 +10,7 @@
 #include "contract/contract_sha256.h"
 #include "contract/contract_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -141,4 +141,4 @@ TEST(Ripemd160Branches, SuccessWithNonEmptyInput) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora

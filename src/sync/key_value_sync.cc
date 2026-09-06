@@ -21,7 +21,7 @@
 #include "sync/sync_utils.h"
 #include "transport/processor.h"
 
-namespace seth {
+namespace shardora {
 
 namespace sync {
 
@@ -66,31 +66,31 @@ void KeyValueSync::Init(
         std::shared_ptr<pools::TxPoolManager> tx_pool_mgr,
         const std::shared_ptr<db::Db>& db,
         ViewBlockSyncedCallback view_block_synced_callback) {
-    SETH_DEBUG("init key value sync 0");
+    SHARDORA_DEBUG("init key value sync 0");
     hotstuff_mgr_ = hotstuff_mgr;
-    SETH_DEBUG("init key value sync 1");
+    SHARDORA_DEBUG("init key value sync 1");
     view_block_synced_callback_ = view_block_synced_callback;
     tx_pool_mgr_ = tx_pool_mgr;
-    SETH_DEBUG("init key value sync 2");
+    SHARDORA_DEBUG("init key value sync 2");
     network::Route::Instance()->RegisterMessage(
         common::kSyncMessage,
         std::bind(&KeyValueSync::HandleMessage, this, std::placeholders::_1));
-    SETH_DEBUG("init key value sync 3");
+    SHARDORA_DEBUG("init key value sync 3");
     kv_tick_.CutOff(
         1000lu,
         std::bind(&KeyValueSync::ConsensusTimerMessage, this));
-    SETH_DEBUG("init key value sync 4");
+    SHARDORA_DEBUG("init key value sync 4");
     transport::Processor::Instance()->RegisterProcessor(
         common::kHotstuffSyncTimerMessage,
         std::bind(&KeyValueSync::HotstuffConsensusTimerMessage, this, std::placeholders::_1));    
-    SETH_DEBUG("init key value sync 5");
+    SHARDORA_DEBUG("init key value sync 5");
     // Start dedicated consumer thread for kv_msg_queue_ to avoid backlog
     kv_consumer_thread_ = std::make_shared<std::thread>(&KeyValueSync::KvConsumerLoop, this);
     for (uint32_t i = 0; i < kVerifyThreadCount; ++i) {
         verify_threads_.push_back(std::make_shared<std::thread>(
             &KeyValueSync::VerifyConsumerLoop, this));
     }
-    SETH_DEBUG("init key value sync 6: consumer and verify threads started");
+    SHARDORA_DEBUG("init key value sync 6: consumer and verify threads started");
 }
 
 int KeyValueSync::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
@@ -107,7 +107,7 @@ void KeyValueSync::AddSyncHeight(
     auto item = std::make_shared<SyncItem>(network_id, pool_idx, height, priority, kBlockHeight);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
-    SETH_DEBUG("block height add new sync item key: %s, priority: %u, %u_%u_%lu",
+    SHARDORA_DEBUG("block height add new sync item key: %s, priority: %u, %u_%u_%lu",
         item->key.c_str(), item->priority, network_id, pool_idx, height);
 }
 
@@ -121,19 +121,19 @@ void KeyValueSync::AddSyncView(
     auto item = std::make_shared<SyncItem>(network_id, pool_idx, height, priority, kBlockView);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
-    SETH_DEBUG("block height add new sync item key: %s, priority: %u, %u_%u_%lu",
+    SHARDORA_DEBUG("block height add new sync item key: %s, priority: %u, %u_%u_%lu",
         item->key.c_str(), item->priority, network_id, pool_idx, height);
 }
 
 void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& msg_ptr) {
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     std::shared_ptr<view_block::protobuf::ViewBlockItem> pb_vblock = nullptr;
-    // SETH_DEBUG("now call ConsensusTimerMessage thread_idx: %d", thread_idx);
+    // SHARDORA_DEBUG("now call ConsensusTimerMessage thread_idx: %d", thread_idx);
     uint32_t handled = 0;
     static const uint32_t kMaxSyncBlocksPerTick = 32u;
     while (handled < kMaxSyncBlocksPerTick && vblock_queues_[thread_idx].pop(&pb_vblock)) {
         if (pb_vblock) {
-            SETH_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
+            SHARDORA_DEBUG("hotstuff consensus timer message handle view block: %u_%u_%lu_%lu, timeblock_height: %lu",
                 pb_vblock->qc().network_id(), 
                 pb_vblock->qc().pool_index(), 
                 pb_vblock->block_info().height(),
@@ -154,7 +154,7 @@ void KeyValueSync::HotstuffConsensusTimerMessage(const transport::MessagePtr& ms
     }
 
     if (handled > 0) {
-        SETH_DEBUG("HotstuffConsensusTimerMessage handled synced blocks: %u, "
+        SHARDORA_DEBUG("HotstuffConsensusTimerMessage handled synced blocks: %u, "
             "thread_idx: %u, remaining queue: %lu",
             handled,
             thread_idx,
@@ -182,14 +182,14 @@ void KeyValueSync::BroadcastGlobalBlock() {
             res->set_key("");
             res->set_tag(kBlockHeight);
             add_size += 16 + res->value().size();
-            SETH_DEBUG("handle sync value view add add_size: %u  "
+            SHARDORA_DEBUG("handle sync value view add add_size: %u  "
                 "net: %u, pool: %u, height: %lu",
                 add_size,
                 res->network_id(),
                 res->pool_idx(),
                 res->height());
             if (add_size >= kSyncPacketMaxSize) {
-                SETH_DEBUG("handle sync value view add_size failed "
+                SHARDORA_DEBUG("handle sync value view add_size failed "
                     "net: %u, pool: %u, height: %lu",
                     res->network_id(),
                     res->pool_idx(),
@@ -211,7 +211,7 @@ void KeyValueSync::BroadcastGlobalBlock() {
     broadcast::SetDefaultBroadcastParam(broadcast);
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     network::Route::Instance()->Send(msg_ptr);
-    SETH_DEBUG("sync global block ok des: %u, des hash64: %lu,",
+    SHARDORA_DEBUG("sync global block ok des: %u, des hash64: %lu,",
         network::kNodeNetworkId, msg.hash64());
 }
 
@@ -231,7 +231,7 @@ void KeyValueSync::AddSyncViewHash(
         network_id, key, priority);
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     item_queues_[thread_idx].push(item);
-    SETH_DEBUG("block height add new sync item key: %s, priority: %u, item size: %u",
+    SHARDORA_DEBUG("block height add new sync item key: %s, priority: %u, item size: %u",
         common::Encode::HexEncode(item->key).c_str(), 
         item->priority, 
         item_queues_[thread_idx].size());
@@ -278,7 +278,7 @@ void KeyValueSync::ConsensusTimerMessage() {
     auto now_tm_ms3 = common::TimeUtils::TimestampMs();
     auto etime = common::TimeUtils::TimestampMs();
     if (etime - now_tm_ms >= 1000000lu) {
-        SETH_ERROR("KeyValueSync handle message use time: %lu, "
+        SHARDORA_ERROR("KeyValueSync handle message use time: %lu, "
             "PopKvMessage: %lu, PopItems: %lu, CheckSyncItem: %lu", 
             (etime - now_tm_ms), 
             (now_tm_ms1 - now_tm_ms),
@@ -288,7 +288,7 @@ void KeyValueSync::ConsensusTimerMessage() {
     }
 
     if (prev_sync_tm_ms_ + 500lu < now_tm_ms3) {
-        SETH_DEBUG("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
+        SHARDORA_DEBUG("SyncAllLatestBlocks triggered, prev_sync_tm_ms: %lu, now: %lu",
             prev_sync_tm_ms_, now_tm_ms3);
         SyncAllLatestBlocks();
         prev_sync_tm_ms_ = now_tm_ms3;
@@ -313,7 +313,7 @@ void KeyValueSync::ConsensusTimerMessage() {
         next_interval = 200lu;
     }
     if (ready_size > 0 || verify_pending > 0 || verified_pending > 0) {
-        SETH_DEBUG("kv sync backlog ready_res: %u, ready_req: %u, verify_pending: %u, "
+        SHARDORA_DEBUG("kv sync backlog ready_res: %u, ready_req: %u, verify_pending: %u, "
             "verified_pending: %u, next interval: %lu",
             ready_res_size,
             ready_req_size,
@@ -361,18 +361,18 @@ void KeyValueSync::PopItems() {
 
             if (synced_map_.get(item->key, &item)) {
                 if (item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm) {
-                    SETH_DEBUG("item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm: %s", item->key.c_str());
+                    SHARDORA_DEBUG("item->sync_tm_us + kSyncTimeoutPeriodUs >= now_tm: %s", item->key.c_str());
                     continue;
                 }
 
                 // if (item->sync_times >= kSyncCount) {
-                //     SETH_DEBUG("item->sync_times >= kSyncCount: %s", item->key.c_str());
+                //     SHARDORA_DEBUG("item->sync_times >= kSyncCount: %s", item->key.c_str());
                 //     continue;
                 // }
             }
 
             if (responsed_keys_.exists(item->key)) {
-                SETH_DEBUG("responsed_keys_.exists(item->key): %s", item->key.c_str());
+                SHARDORA_DEBUG("responsed_keys_.exists(item->key): %s", item->key.c_str());
                 continue;
             }
 
@@ -388,11 +388,11 @@ void KeyValueSync::PopItems() {
                 height_item->set_pool_idx(item->pool_idx);
                 height_item->set_height(item->height);
                 height_item->set_tag(item->tag);
-                SETH_DEBUG("try to sync normal block: %u_%u_%lu, tag: %d",
+                SHARDORA_DEBUG("try to sync normal block: %u_%u_%lu, tag: %d",
                     item->network_id, item->pool_idx, item->height, item->tag);
             } else {
                 sync_req->add_keys(item->key);
-                SETH_DEBUG("success add to sync key: %s", 
+                SHARDORA_DEBUG("success add to sync key: %s", 
                     common::Encode::HexEncode(item->key).c_str());
             }
 
@@ -451,7 +451,7 @@ uint64_t KeyValueSync::SendSyncRequest(
         const sync::protobuf::SyncMessage& sync_msg,
         const std::set<uint64_t>& sended_neigbors) {
     std::vector<dht::NodePtr> nodes;
-    SETH_DEBUG("now get universal dht: %u", network_id);
+    SHARDORA_DEBUG("now get universal dht: %u", network_id);
     auto dht_ptr = network::UniversalManager::Instance()->GetUniversal(network::kUniversalNetworkId);
     auto dht = *dht_ptr->readonly_hash_sort_dht();
     dht::DhtFunction::GetNetworkNodes(dht, network_id, nodes);
@@ -472,7 +472,7 @@ uint64_t KeyValueSync::SendSyncRequest(
         }
 
         if (nodes.empty()) {
-            SETH_ERROR("network id[%d] not exists.", network_id);
+            SHARDORA_ERROR("network id[%d] not exists.", network_id);
             return 0;
         }
     }
@@ -511,7 +511,7 @@ uint64_t KeyValueSync::SendSyncRequest(
     *msg.mutable_sync_proto() = sync_msg;
     transport::TcpTransport::Instance()->SetMessageHash(msg);
     transport::TcpTransport::Instance()->Send(node->public_ip, node->public_port, msg);
-    SETH_DEBUG("sync new from %s:%d, hash64: %lu, key size: %u, height size: %u, sync_msg: %s",
+    SHARDORA_DEBUG("sync new from %s:%d, hash64: %lu, key size: %u, height size: %u, sync_msg: %s",
         node->public_ip.c_str(), node->public_port, msg.hash64(),
         sync_msg.sync_value_req().keys_size(),
         sync_msg.sync_value_req().heights_size(),
@@ -523,7 +523,7 @@ void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
     ADD_DEBUG_PROCESS_TIMESTAMP();
     auto& header = msg_ptr->header;
     //assert(header.type() == common::kSyncMessage);
-//     SETH_DEBUG("key value sync message coming req: %d, res: %d",
+//     SHARDORA_DEBUG("key value sync message coming req: %d, res: %d",
 //         header.sync_proto().has_sync_value_req(),
 //         header.sync_proto().has_sync_value_res());
     uint32_t queue_size = 0;
@@ -532,7 +532,7 @@ void KeyValueSync::HandleMessage(const transport::MessagePtr& msg_ptr) {
         kv_msg_queue_.push(msg_ptr);
         queue_size = static_cast<uint32_t>(kv_msg_queue_.size());
     }
-    SETH_DEBUG("queue size kv_msg_queue_: %d, hash: %lu",
+    SHARDORA_DEBUG("queue size kv_msg_queue_: %d, hash: %lu",
         queue_size, msg_ptr->header.hash64());
     wait_con_.notify_one();
     ADD_DEBUG_PROCESS_TIMESTAMP();
@@ -582,7 +582,7 @@ void KeyValueSync::KvConsumerLoop() {
             } else {
                 kv_ready_req_queue_.push(msg_ptr);
             }
-            SETH_DEBUG("KvConsumerLoop relayed message hash: %lu, kv_msg_queue_ size: %u, "
+            SHARDORA_DEBUG("KvConsumerLoop relayed message hash: %lu, kv_msg_queue_ size: %u, "
                 "ready_res size: %u, ready_req size: %u, is_res: %d",
                 msg_ptr->header.hash64(),
                 kv_msg_size,
@@ -598,7 +598,7 @@ void KeyValueSync::KvConsumerLoop() {
                 std::lock_guard<std::mutex> lock(kv_msg_mutex_);
                 kv_msg_size = static_cast<uint32_t>(kv_msg_queue_.size());
             }
-            SETH_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, "
+            SHARDORA_DEBUG("KvConsumerLoop relayed %u messages, kv_msg remaining: %u, "
                 "ready_res: %u, ready_req: %u",
                 drained,
                 kv_msg_size,
@@ -618,7 +618,7 @@ void KeyValueSync::KvConsumerLoop() {
 
 void KeyValueSync::HandleKvMessage(const transport::MessagePtr& msg_ptr) {
     auto& header = msg_ptr->header;
-    SETH_DEBUG("handle kv message hash: %lu, sync_req: %d, sync_res: %d",
+    SHARDORA_DEBUG("handle kv message hash: %lu, sync_req: %d, sync_res: %d",
         header.hash64(),
         header.sync_proto().has_sync_value_req(),
         header.sync_proto().has_sync_value_res());
@@ -661,7 +661,7 @@ void KeyValueSync::EnqueueVerifyBlock(
         verify_queue_size = static_cast<uint32_t>(verify_block_queue_.size());
     }
 
-    SETH_DEBUG("enqueue verify block: %u_%u_%lu, height: %lu, key: %s, "
+    SHARDORA_DEBUG("enqueue verify block: %u_%u_%lu, height: %lu, key: %s, "
         "hash64: %lu, verify queue: %u, verifying: %u",
         pb_vblock->qc().network_id(),
         pb_vblock->qc().pool_index(),
@@ -721,7 +721,7 @@ void KeyValueSync::VerifyConsumerLoop() {
         auto wait_cost_ms = verify_begin_ms >= item.enqueue_tm_ms ?
             verify_begin_ms - item.enqueue_tm_ms : 0;
         if (item.pb_vblock) {
-            SETH_DEBUG("verify synced view block done: %u_%u_%lu, height: %lu, "
+            SHARDORA_DEBUG("verify synced view block done: %u_%u_%lu, height: %lu, "
                 "res: %d, wait: %lu ms, verify: %lu ms, hash64: %lu, verified queue: %u",
                 item.pb_vblock->qc().network_id(),
                 item.pb_vblock->qc().pool_index(),
@@ -761,7 +761,7 @@ void KeyValueSync::DrainVerifiedBlocks() {
             verify_queue_size = static_cast<uint32_t>(verify_block_queue_.size());
             verified_queue_size = static_cast<uint32_t>(verified_block_queue_.size());
         }
-        SETH_DEBUG("DrainVerifiedBlocks drained: %u, verify queue: %u, "
+        SHARDORA_DEBUG("DrainVerifiedBlocks drained: %u, verify queue: %u, "
             "verified queue: %u, verifying: %u",
             drained,
             verify_queue_size,
@@ -781,7 +781,7 @@ void KeyValueSync::ApplyVerifiedBlockResult(const VerifyBlockResult& result) {
     }
 
     if (result.verify_res == -1) {
-        SETH_DEBUG("failed verify synced view block: %u_%u_%lu, height: %lu, "
+        SHARDORA_DEBUG("failed verify synced view block: %u_%u_%lu, height: %lu, "
             "key: %s, is broadcast: %d, verify: %lu ms, hash64: %lu",
             pb_vblock->qc().network_id(),
             pb_vblock->qc().pool_index(),
@@ -810,7 +810,7 @@ void KeyValueSync::ApplyVerifiedBlockResult(const VerifyBlockResult& result) {
     }
 
     if (result.verify_res != 0) {
-        SETH_DEBUG("failed check viewblock handle network new view "
+        SHARDORA_DEBUG("failed check viewblock handle network new view "
             "block: %u_%u_%lu, height: %lu key: %s, is broadcast: %d, "
             "verify: %lu ms, hash64: %lu",
             pb_vblock->qc().network_id(),
@@ -824,7 +824,7 @@ void KeyValueSync::ApplyVerifiedBlockResult(const VerifyBlockResult& result) {
         return;
     }
 
-    SETH_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, "
+    SHARDORA_DEBUG("0 success handle network new view block: %u_%u_%lu, height: %lu key: %s, "
         "is broadcast: %d, not_root_synced_res_map_count_: %lu, verify: %lu ms, hash64: %lu",
         pb_vblock->qc().network_id(),
         pb_vblock->qc().pool_index(),
@@ -860,7 +860,7 @@ void KeyValueSync::EnqueueVerifiedBlock(const ViewBlockPtr& pb_vblock) {
 
     vblock_queues_[thread_idx].push(pb_vblock);
     auto queue_size = vblock_queues_[thread_idx].size();
-    SETH_DEBUG("enqueue verified block to hotstuff: %u_%u_%lu, height: %lu, "
+    SHARDORA_DEBUG("enqueue verified block to hotstuff: %u_%u_%lu, height: %lu, "
         "thread_idx: %u, vblock queue: %lu",
         pb_vblock->qc().network_id(),
         pb_vblock->qc().pool_index(),
@@ -886,12 +886,12 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
     protobuf::SyncMessage& res_sync_msg = *msg.mutable_sync_proto();
     auto sync_res = res_sync_msg.mutable_sync_value_res();
     uint32_t add_size = 0;
-    SETH_DEBUG("handle sync value request hash: %lu, key size: %u, height size: %u", 
+    SHARDORA_DEBUG("handle sync value request hash: %lu, key size: %u, height size: %u", 
         msg_ptr->header.hash64(), 
         sync_msg.sync_value_req().keys_size(),
         sync_msg.sync_value_req().heights_size());
     defer({
-        SETH_DEBUG("over handle sync value request hash: %lu, key size: %u, height size: %u", 
+        SHARDORA_DEBUG("over handle sync value request hash: %lu, key size: %u, height size: %u", 
             msg_ptr->header.hash64(), 
             sync_msg.sync_value_req().keys_size(),
             sync_msg.sync_value_req().heights_size());
@@ -899,7 +899,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
 
     for (int32_t i = 0; i < sync_msg.sync_value_req().keys_size() && add_size < kSyncPacketMaxSize; ++i) {
         const std::string& key = sync_msg.sync_value_req().keys(i);
-        SETH_DEBUG("now handle sync view bock hash key: %s", 
+        SHARDORA_DEBUG("now handle sync view bock hash key: %s", 
             common::Encode::HexEncode(key).c_str());
         if (key.size() != 34) {
             continue;
@@ -919,7 +919,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         
         auto view_block_ptr= view_block_ptr_info->view_block;
         if (view_block_ptr != nullptr && !view_block_ptr->qc().sign_x().empty()) {
-            SETH_DEBUG("success get view block request coming: %u_%u view block hash: %s, hash: %lu",
+            SHARDORA_DEBUG("success get view block request coming: %u_%u view block hash: %s, hash: %lu",
                 common::GlobalInfo::Instance()->network_id(),
                 pool_index_arr[0],
                 common::Encode::HexEncode(std::string(key.c_str() + 2, 32)).c_str(),
@@ -933,7 +933,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             res->set_tag(kViewHash);
             add_size += 16 + res->value().size();
         } else {
-            SETH_DEBUG("failed get view block request coming: %u_%u view block hash: %s, hash: %lu",
+            SHARDORA_DEBUG("failed get view block request coming: %u_%u view block hash: %s, hash: %lu",
                 common::GlobalInfo::Instance()->network_id(),
                 pool_index_arr[0],
                 common::Encode::HexEncode(std::string(key.c_str() + 2, 32)).c_str(),
@@ -949,7 +949,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             view_block_ptr = hotstuff_mgr_->chain(req_height.pool_idx())->GetViewBlockWithHeight(
                 network_id, req_height.height());
             if (!view_block_ptr) {
-                SETH_DEBUG("sync key value %u_%u_%lu, handle sync value failed request "
+                SHARDORA_DEBUG("sync key value %u_%u_%lu, handle sync value failed request "
                     "net: %u, pool: %u, height: %lu, hash: %lu",
                     network_id, 
                     req_height.pool_idx(),
@@ -966,7 +966,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
             view_block_ptr = hotstuff_mgr_->chain(req_height.pool_idx())->GetViewBlockWithView(
                 network_id, req_height.height());
             if (!view_block_ptr) {
-                SETH_DEBUG("sync key value %u_%u_%lu, handle sync value failed request "
+                SHARDORA_DEBUG("sync key value %u_%u_%lu, handle sync value failed request "
                     "net: %u, pool: %u, height: %lu, hash: %lu",
                     network_id, 
                     req_height.pool_idx(),
@@ -984,7 +984,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         }
 
         if (view_block_ptr->qc().sign_x().empty()) {
-            SETH_DEBUG("empty sign sync key value %u_%u_%lu, handle sync value failed request "
+            SHARDORA_DEBUG("empty sign sync key value %u_%u_%lu, handle sync value failed request "
                 "net: %u, pool: %u, height: %lu, hash: %lu",
                 network_id, 
                 req_height.pool_idx(),
@@ -1008,7 +1008,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
 
     if (sync_msg.sync_value_req().has_latest_sync_item() && add_size < kSyncPacketMaxSize) {
         auto& latest_sync_item = sync_msg.sync_value_req().latest_sync_item();
-        SETH_DEBUG("handle sync value latest_sync_item request hash: %lu, net: %u, "
+        SHARDORA_DEBUG("handle sync value latest_sync_item request hash: %lu, net: %u, "
             "globl_pool_height: %lu, pool_latest_heights size: %u, des net: %u, info: %s",
             msg_ptr->header.hash64(),
             network_id,
@@ -1105,7 +1105,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         if (msg_size <= kMaxSendBytes) {
             break;
         }
-        SETH_WARN("sync response too large: %zu bytes > %u limit, trimming last entry (remaining: %d)",
+        SHARDORA_WARN("sync response too large: %zu bytes > %u limit, trimming last entry (remaining: %d)",
             msg_size, kMaxSendBytes, sync_res->res_size() - 1);
         sync_res->mutable_res()->RemoveLast();
     }
@@ -1114,7 +1114,7 @@ void KeyValueSync::ProcessSyncValueRequest(const transport::MessagePtr& msg_ptr)
         return;
     }
 
-    SETH_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu, size: %u, msg size: %lu",
+    SHARDORA_DEBUG("sync response ok des: %u, src hash64: %lu, des hash64: %lu, size: %u, msg size: %lu",
         msg_ptr->header.src_sharding_id(), msg_ptr->header.hash64(), 
         msg.hash64(), add_size, msg.ByteSizeLong());
     transport::TcpTransport::Instance()->Send(msg_ptr->conn->PeerIp(), msg_ptr->conn->PeerPort(), msg);
@@ -1124,7 +1124,7 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
     auto& sync_msg = msg_ptr->header.sync_proto();
     //assert(sync_msg.has_sync_value_res());
     auto& res_arr = sync_msg.sync_value_res().res();
-    SETH_DEBUG("now handle kv response hash64: %lu", msg_ptr->header.hash64());
+    SHARDORA_DEBUG("now handle kv response hash64: %lu", msg_ptr->header.hash64());
     for (auto iter = res_arr.begin(); iter != res_arr.end(); ++iter) {
         std::string key = iter->key();
         if (iter->tag() == kBlockHeight || iter->tag() == kBlockView) {
@@ -1135,25 +1135,25 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
         }
 
         do {
-            SETH_DEBUG("now handle kv response hash64: %lu, key: %s, tag: %d",
+            SHARDORA_DEBUG("now handle kv response hash64: %lu, key: %s, tag: %d",
                 msg_ptr->header.hash64(), 
                 (iter->tag() != kViewHash ? key.c_str() : common::Encode::HexEncode(key).c_str()), 
                 iter->tag());
             auto pb_vblock = std::make_shared<view_block::protobuf::ViewBlockItem>();
             if (!pb_vblock->ParseFromString(iter->value())) {
-                SETH_ERROR("pb vblock parse failed: %s", key.c_str());
+                SHARDORA_ERROR("pb vblock parse failed: %s", key.c_str());
                 // //assert(false);
                 break;
             }
     
             if (!pb_vblock->has_qc() || pb_vblock->qc().sign_x().empty()) {
-                SETH_ERROR("pb vblock has no qc");
+                SHARDORA_ERROR("pb vblock has no qc");
                 //assert(false);
                 break;
             }
          
             if (pb_vblock->block_info().chain_id() != hotstuff::kGlobalChainId) {
-                SETH_ERROR("pb vblock parse failed chain id invalid: %lu, %lu",
+                SHARDORA_ERROR("pb vblock parse failed chain id invalid: %lu, %lu",
                     pb_vblock->block_info().chain_id(), hotstuff::kGlobalChainId);
                 break;
             }
@@ -1167,7 +1167,7 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                     auto pool_iter = net_iter->second.find(pb_vblock->qc().pool_index());
                     if (pool_iter != net_iter->second.end() &&
                             pool_iter->second.find(pb_vblock->block_info().height()) != pool_iter->second.end()) {
-                        SETH_DEBUG("skip re-verify already synced block: %u_%u_%lu height: %lu",
+                        SHARDORA_DEBUG("skip re-verify already synced block: %u_%u_%lu height: %lu",
                             pb_vblock->qc().network_id(), pb_vblock->qc().pool_index(),
                             pb_vblock->qc().view(), pb_vblock->block_info().height());
                         break;
@@ -1183,7 +1183,7 @@ void KeyValueSync::ProcessSyncValueResponse(const transport::MessagePtr& msg_ptr
                 msg_ptr->header.hash64());
         } while (0);
 
-        SETH_DEBUG("block response coming: %s, sync map size: %u, hash64: %lu",
+        SHARDORA_DEBUG("block response coming: %s, sync map size: %u, hash64: %lu",
             key.c_str(), synced_map_.size(), msg_ptr->header.hash64());
     }
 
@@ -1242,7 +1242,7 @@ void KeyValueSync::HandlerVerifiedBlock(const std::map<uint32_t, std::map<uint32
             for (auto iter2 = pool_iter->second.begin(); iter2 != pool_iter->second.end(); ++iter2) {
                 auto pb_vblock = iter2->second;
                 EnqueueVerifiedBlock(pb_vblock);
-                SETH_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu",
+                SHARDORA_DEBUG("1 success handle network new view block: %u_%u_%lu, height: %lu",
                     pb_vblock->qc().network_id(),
                     pb_vblock->qc().pool_index(),
                     pb_vblock->qc().view(),
@@ -1305,7 +1305,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
     // return;
     auto local_net_id = common::GlobalInfo::Instance()->network_id();
     auto end_shard = common::GlobalInfo::Instance()->now_valid_end_shard();
-    SETH_DEBUG("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
+    SHARDORA_DEBUG("SyncAllLatestBlocks enter: local_net=%u, end_shard=%u, "
         "synced_res_map size=%lu, not_root_count=%u",
         local_net_id, end_shard,
         synced_res_map_.size(), not_root_synced_res_map_count_);
@@ -1315,7 +1315,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             if (!height_map.empty()) {
                 auto first_h = height_map.begin()->first;
                 auto last_h = height_map.rbegin()->first;
-                SETH_DEBUG("  synced_res_map[net=%u][pool=%u]: %lu entries, "
+                SHARDORA_DEBUG("  synced_res_map[net=%u][pool=%u]: %lu entries, "
                     "heights=[%lu..%lu]",
                     net, pool, height_map.size(), first_h, last_h);
             }
@@ -1350,7 +1350,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             sync_latest_req->set_globl_pool_height(height);
         }
 
-        SETH_DEBUG("add sync item: %u_%u_%u", network, pool_index, height);
+        SHARDORA_DEBUG("add sync item: %u_%u_%u", network, pool_index, height);
     };
 
     for (uint32_t i = 0; i < common::kInvalidPoolIndex; ++i) {
@@ -1397,7 +1397,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
                 continue;
             }
 
-            SETH_DEBUG("  pool %u net %u: latest_height=%lu, synced entries=%lu",
+            SHARDORA_DEBUG("  pool %u net %u: latest_height=%lu, synced entries=%lu",
                 i, network_id, latest_height, pool_iter->second.size());
 
             // Always erase all entries with height <= latest_height, regardless
@@ -1481,7 +1481,7 @@ void KeyValueSync::SyncAllLatestBlocks() {
             }
 
             uint64_t latest_height = latest_height_base;
-            SETH_DEBUG("  cross pool %u net %u: latest_height=%lu, synced entries=%lu",
+            SHARDORA_DEBUG("  cross pool %u net %u: latest_height=%lu, synced entries=%lu",
                 pool_key, network_id, latest_height, pool_iter->second.size());
 
             {
@@ -1544,11 +1544,11 @@ void KeyValueSync::SyncAllLatestBlocks() {
             ++sent_count;
         }
     }
-    SETH_DEBUG("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
+    SHARDORA_DEBUG("SyncAllLatestBlocks done: sync_dht_map size=%lu, sent=%u, "
         "res_map size=%lu, fanout max=%u",
         sync_dht_map.size(), sent_count, res_map.size(), kLatestSyncPeerFanout);
 }
 
 }  // namespace sync
 
-}  // namespace seth
+}  // namespace shardora

@@ -10,7 +10,7 @@
 #include "contract/contract_alt_bn128_pairing_product.h"
 #include "contract/contract_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -442,4 +442,4 @@ TEST(AltBn128PairingBranches, SuccessVectorWorksAtExactGasBoundary) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora

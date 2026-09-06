@@ -1,5 +1,5 @@
 // ShardStatistic::Init with an empty DB: only succeeds when libpools is built
-// with SETH_UNITTEST (see src/pools/CMakeLists.txt under XENABLE_CODE_COVERAGE),
+// with SHARDORA_UNITTEST (see src/pools/CMakeLists.txt under XENABLE_CODE_COVERAGE),
 // which enables a synthetic PoolStatisticTxInfo when PrefixDb has no tag yet.
 
 #include <gtest/gtest.h>
@@ -11,7 +11,7 @@
 #include "network/network_utils.h"
 #include "pools/shard_statistic.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -28,7 +28,7 @@ protected:
 
 std::shared_ptr<db::Db> ShardStatisticInitTest::db_ = nullptr;
 
-#ifndef SETH_UNITTEST
+#ifndef SHARDORA_UNITTEST
 TEST_F(ShardStatisticInitTest, InitWithoutTagRequiresCoverageBuild) {
     GTEST_SKIP() << "Rebuild with -DXENABLE_CODE_COVERAGE=ON (e.g. bash build.sh pools_test Debug coverage)";
 }
@@ -159,4 +159,4 @@ TEST_F(ShardStatisticInitTest, InitWithEdgeCaseNetworkIds) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

@@ -4,7 +4,7 @@
 
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -18,4 +18,4 @@ TEST(UtilsTxDbKeyBranches, ToBranchPrefixesTxTo) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

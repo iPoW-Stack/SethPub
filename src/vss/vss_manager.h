@@ -12,7 +12,7 @@
 #include "transport/transport_utils.h"
 #include "vss/random_num.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 
@@ -38,4 +38,4 @@ private:
 
 }  // namespace vss
 
-}  // namespace seth
+}  // namespace shardora

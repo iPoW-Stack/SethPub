@@ -31,7 +31,7 @@
 #include "transport/transport_utils.h"
 #include "bls/dkg_cache.h"
 
-namespace seth {
+namespace shardora {
 
 class DkgCache;
 
@@ -125,11 +125,11 @@ private:
     void HandleBlsMessage(const transport::MessagePtr msg_ptr);
 
     bool IsVerifyBrdPeriod() {
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
         return true;
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
-        SETH_DEBUG("IsVerifyBrdPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+        SHARDORA_DEBUG("IsVerifyBrdPeriod begin_time_us_: %lu, now_tm_us: %lu, "
             "kDkgPeriodUs: %lu, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 4): %d",
             begin_time_us_,
             now_tm_us,
@@ -143,11 +143,11 @@ private:
     }
 
     bool IsSwapKeyPeriod() {
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
         return true;
 #endif
         auto now_tm_us = common::TimeUtils::TimestampUs();
-       SETH_DEBUG("IsSwapKeyPeriod begin_time_us_: %lu, now_tm_us: %lu, "
+       SHARDORA_DEBUG("IsSwapKeyPeriod begin_time_us_: %lu, now_tm_us: %lu, "
             "kDkgPeriodUs: %lu, now_tm_us > 0: %d, now_tm_us < (begin_time_us_ + kDkgPeriodUs * 5): %d",
             begin_time_us_,
             now_tm_us,
@@ -203,7 +203,7 @@ private:
     bool should_change_verfication_g2_ = false;
     uint64_t prev_elect_height_ = 0;
 
-#ifdef SETH_UNITTEST
+#ifdef SHARDORA_UNITTEST
     transport::MessagePtr ver_brd_msg_;
     transport::MessagePtr sec_swap_msgs_;
     std::vector<libff::alt_bn128_G2> g2_vec_;
@@ -226,4 +226,4 @@ private:
 
 };  // namespace bls
 
-};  // namespace seth
+};  // namespace shardora

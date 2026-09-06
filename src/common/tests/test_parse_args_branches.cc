@@ -4,7 +4,7 @@
 #define protected public
 #include "common/parse_args.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -245,5 +245,5 @@ TEST_F(TestParserArgsBranches, BareWordHitsParseDefaultWhenNoActiveFlag) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora
 

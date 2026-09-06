@@ -5,7 +5,7 @@
 #include "contract/call_parameters.h"
 #include "pki/def.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pki {
 
@@ -34,11 +34,11 @@ class PkiIbAgka {
   // Stage2: PKI Extrect
   void PkiExtract(const int& n = kPKIn);
   int PkiExtract(
-        const seth::contract::CallParameters& param, 
+        const shardora::contract::CallParameters& param, 
         const std::string& key, 
         const std::string& value);
   int IbExtract(
-        const seth::contract::CallParameters& param, 
+        const shardora::contract::CallParameters& param, 
         const std::string& key, 
         const std::string& value);
   // Stage3: IB Extrect
@@ -46,11 +46,11 @@ class PkiIbAgka {
   // Stage4: PKI IB Agreement
   void PkiIbAgreement();
   int EncKeyGen(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   int DecKeyGen(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   // Stage5: Encode Key Gen
@@ -58,11 +58,11 @@ class PkiIbAgka {
   // Stage6: Encode Key Gen
   std::map<int, DecodeKey> DecKeyGen();
   int Enc(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   int Dec(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   // Stage7: Encode

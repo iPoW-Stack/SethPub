@@ -7,11 +7,11 @@
 #include "common/encode.h"
 #include "common/global_info.h"
 #include "common/time_utils.h"
-#include "sethvm/execution.h"
-#include "sethvm/seth_host.h"
-#include "sethvm/sethvm_utils.h"
+#include "shardoravm/execution.h"
+#include "shardoravm/shardora_host.h"
+#include "shardoravm/shardoravm_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace ck {
 
@@ -39,7 +39,7 @@ bool ClickHouseClient::AddNewBlock(const std::shared_ptr<hotstuff::ViewBlock>& v
     block_queues_[thread_idx].push(view_block_item);
 #ifndef NDEBUG
     auto* block_item = &view_block_item->block_info();
-    SETH_DEBUG("ck new block coming sharding id: %u_%d_%lu, "
+    SHARDORA_DEBUG("ck new block coming sharding id: %u_%d_%lu, "
             "tx size: %u, hash: %s, elect height: %lu, "
             "tm height: %lu",
             view_block_item->qc().network_id(),
@@ -51,7 +51,7 @@ bool ClickHouseClient::AddNewBlock(const std::shared_ptr<hotstuff::ViewBlock>& v
             block_item->timeblock_height());
     const auto& tx_list = block_item->tx_list();
     for (int32_t i = 0; i < tx_list.size(); ++i) {
-        SETH_DEBUG("ck new block coming sharding id: %u_%d_%lu, "
+        SHARDORA_DEBUG("ck new block coming sharding id: %u_%d_%lu, "
             "tx size: %u, hash: %s, elect height: %lu, "
             "tm height: %lu, nonce: %lu, status: %d, step: %d",
             view_block_item->qc().network_id(),
@@ -172,7 +172,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
         //     for (int32_t st_idx = 0; st_idx < tx.storages_size(); ++st_idx) {
         //         if (tx.storages(st_idx).key().find(std::string("ars_create_agg_sign")) != std::string::npos && tx.storages(st_idx).value().size() < 2048) {
         //             storage_str += "," + tx.storages(st_idx).value();
-        //             SETH_DEBUG("success get key: %s, value: %s",
+        //             SHARDORA_DEBUG("success get key: %s, value: %s",
         //                 tx.storages(st_idx).key().c_str(), 
         //                 tx.storages(st_idx).value().c_str());
         //         }
@@ -201,7 +201,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
         //     std::string val;
         //     attr_key->Append(common::Encode::HexEncode(tx.storages(j).key()));
         //     attr_value->Append(common::Encode::HexEncode(tx.storages(j).value()));
-        //     SETH_DEBUG("hash to ck add key: %s, val: %s", 
+        //     SHARDORA_DEBUG("hash to ck add key: %s, val: %s", 
         //         tx.storages(j).key().c_str(), 
         //         "common::Encode::HexEncode(tx.storages(j).value()).c_str()");
         // }
@@ -214,7 +214,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                 prefund_user->Append(common::Encode::HexEncode(user));
                 prefund_height->Append(block_item->height());
                 prefund_amount->Append(tx.balance());
-                SETH_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
+                SHARDORA_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
                     common::Encode::HexEncode(contract).c_str(), 
                     common::Encode::HexEncode(user).c_str(), 
                     tx.nonce(), 
@@ -222,7 +222,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
             }
             
             nlohmann::json res;
-            SETH_DEBUG("now handle contract: %s", ProtobufToJson(tx).c_str());
+            SHARDORA_DEBUG("now handle contract: %s", ProtobufToJson(tx).c_str());
             bool ret = false;//QueryContract(tx.from(), tx.to(), &res);
             if (ret) {
                 for (auto iter = res.begin(); iter != res.end(); ++iter) {
@@ -233,11 +233,11 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     auto all = common::Encode::HexDecode(item["m"].get<std::string>());
                     evmc_bytes32 bytes32;
                     memcpy(bytes32.bytes, all.c_str(), 32);
-                    uint64_t a = sethvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t a = shardoravm::EvmcBytes32ToUint64(bytes32);
                     c2c_all->Append(a);
                     auto price = common::Encode::HexDecode(item["p"].get<std::string>());
                     memcpy(bytes32.bytes, price.c_str(), 32);
-                    uint64_t p = sethvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t p = shardoravm::EvmcBytes32ToUint64(bytes32);
                     c2c_now->Append(p);
                     uint32_t mr = item["mr"].get<bool>();
                     c2c_mc->Append(mr);
@@ -247,15 +247,15 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     c2c_report->Append(rp);
                     auto order = common::Encode::HexDecode(item["o"].get<std::string>());
                     memcpy(bytes32.bytes, order.c_str(), 32);
-                    uint64_t o = sethvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t o = shardoravm::EvmcBytes32ToUint64(bytes32);
                     c2c_order_id->Append(o);
                     auto tmp_height = common::Encode::HexDecode(item["h"].get<std::string>());
                     memcpy(bytes32.bytes, tmp_height.c_str(), 32);
-                    uint64_t h = sethvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t h = shardoravm::EvmcBytes32ToUint64(bytes32);
                     c2c_height->Append(h);
                     auto amount = common::Encode::HexDecode(item["bm"].get<std::string>());
                     memcpy(bytes32.bytes, amount.c_str(), 32);
-                    uint64_t am = sethvm::EvmcBytes32ToUint64(bytes32);
+                    uint64_t am = shardoravm::EvmcBytes32ToUint64(bytes32);
                     c2c_amount->Append(am);
                     c2c_contract_addr->Append(common::Encode::HexEncode(tx.to()));
                 }
@@ -263,11 +263,11 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
         }
 
         while (tx.step() == pools::protobuf::kConsensusLocalTos) {
-            SETH_DEBUG("now handle local to txs.");
+            SHARDORA_DEBUG("now handle local to txs.");
             auto& to_txs = block_item->local_to();
-            SETH_DEBUG("now handle local to txs: %d", to_txs.tos_size());
+            SHARDORA_DEBUG("now handle local to txs: %d", to_txs.tos_size());
             for (int32_t to_tx_idx = 0; to_tx_idx < to_txs.tos_size(); ++to_tx_idx) {
-                SETH_DEBUG("0 now handle local to idx: %d", to_tx_idx);
+                SHARDORA_DEBUG("0 now handle local to idx: %d", to_tx_idx);
                 if (to_txs.tos(to_tx_idx).to().size() == common::kUnicastAddressLength * 2) {
                     auto contract = to_txs.tos(to_tx_idx).to().substr(0, common::kUnicastAddressLength);
                     auto user = to_txs.tos(to_tx_idx).to().substr(common::kUnicastAddressLength, common::kUnicastAddressLength);
@@ -275,7 +275,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     prefund_user->Append(common::Encode::HexEncode(user));
                     prefund_height->Append(block_item->height());
                     prefund_amount->Append(to_txs.tos(to_tx_idx).balance());
-                    SETH_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
+                    SHARDORA_DEBUG("success add prefund contract: %s, address: %s, nonce: %lu, balance: %lu",
                         common::Encode::HexEncode(contract).c_str(), 
                         common::Encode::HexEncode(user).c_str(), 
                         tx.nonce(), 
@@ -287,42 +287,42 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                     continue;
                 }
                 
-                SETH_DEBUG("1 now handle local to idx: %d", i);
-                SETH_DEBUG("now handle local to txs: %s", common::Encode::HexEncode(to_txs.tos(to_tx_idx).to()).c_str());
+                SHARDORA_DEBUG("1 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("now handle local to txs: %s", common::Encode::HexEncode(to_txs.tos(to_tx_idx).to()).c_str());
                 shard_id->Append(view_block_item->qc().network_id());
                 pool_index->Append(view_block_item->qc().pool_index());
                 height->Append(block_item->height());
                 prehash->Append(common::Encode::HexEncode(view_block_item->parent_hash()));
                 hash->Append(common::Encode::HexEncode(view_block_item->qc().view_block_hash()));
                 version->Append(block_item->version());
-                SETH_DEBUG("1 0 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 0 now handle local to idx: %d", i);
                 vss->Append(block_item->consistency_random());
                 elect_height->Append(view_block_item->qc().elect_height());
                 bitmap->Append(common::Encode::HexEncode(bitmap_str));
                 commit_bitmap->Append(common::Encode::HexEncode(commit_bitmap_str));
                 timestamp->Append(block_item->timestamp());
                 timeblock_height->Append(block_item->timeblock_height());
-                SETH_DEBUG("1 1 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 1 now handle local to idx: %d", i);
                 bls_agg_sign_x->Append(common::Encode::HexEncode(view_block_item->qc().sign_x()));
                 bls_agg_sign_y->Append(common::Encode::HexEncode(view_block_item->qc().sign_y()));
-                SETH_DEBUG("1 2 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 2 now handle local to idx: %d", i);
                 date->Append(common::MicTimestampToDate(block_item->timestamp()));
-                SETH_DEBUG("1 2 0 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 2 0 now handle local to idx: %d", i);
                 gid->Append(std::to_string(tx.nonce()));
-                SETH_DEBUG("1 2 1 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 2 1 now handle local to idx: %d", i);
                 from->Append("");
                 from_pubkey->Append("");
                 from_sign->Append("");
-                SETH_DEBUG("1 2 2 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 2 2 now handle local to idx: %d", i);
                 to->Append(common::Encode::HexEncode(to_txs.tos(to_tx_idx).to()));
-                SETH_DEBUG("1 3 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 3 now handle local to idx: %d", i);
                 amount->Append(0);
                 gas_limit->Append(0);
                 gas_used->Append(0);
                 gas_price->Append(0);
                 type->Append(tx.step());
                 balance->Append(to_txs.tos(to_tx_idx).balance());
-                SETH_DEBUG("1 4 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("1 4 now handle local to idx: %d", i);
                 to_add->Append(true);
                 attrs->Append("");
                 status->Append(tx.status());
@@ -331,12 +331,12 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
                 storages->Append("");
                 transfers->Append("");
 
-                SETH_DEBUG("2 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("2 now handle local to idx: %d", i);
                 acc_account->Append(common::Encode::HexEncode(to_txs.tos(to_tx_idx).to()));
                 acc_shard_id->Append(view_block_item->qc().network_id());
                 acc_pool_index->Append(view_block_item->qc().pool_index());
                 acc_balance->Append(to_txs.tos(to_tx_idx).balance());
-                SETH_DEBUG("3 now handle local to idx: %d", i);
+                SHARDORA_DEBUG("3 now handle local to idx: %d", i);
             }
 
             break;
@@ -344,9 +344,9 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
     }
 
     ++batch_count_;
-    // SETH_DEBUG("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
+    // SHARDORA_DEBUG("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseTransTableName + " FINAL");
-    // SETH_DEBUG("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
+    // SHARDORA_DEBUG("%u, add new ck block %u_%u_%lu", idx++, view_block_item->qc().network_id(), view_block_item->qc().pool_index(), block_item->height());
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseBlockTableName + " FINAL");
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseAccountTableName + " FINAL");
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhouseAccountKvTableName + " FINAL");
@@ -354,7 +354,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
     // ck_client.Execute(std::string("optimize TABLE ") + kClickhousePrefundTableName + " FINAL");
 #ifndef NDEBUG
     for (int32_t i = 0; i < tx_list.size(); ++i) {
-        SETH_DEBUG("ck success new block coming sharding id: %u_%d_%lu, "
+        SHARDORA_DEBUG("ck success new block coming sharding id: %u_%d_%lu, "
             "tx size: %u, hash: %s, elect height: %lu, "
             "tm height: %lu, nonce: %lu, status: %d, step: %d",
             view_block_item->qc().network_id(),
@@ -372,7 +372,7 @@ bool ClickHouseClient::HandleNewBlock(const std::shared_ptr<hotstuff::ViewBlock>
     return true;
 }
 // catch (std::exception& e) {
-//     SETH_ERROR("add new block failed[%s]", e.what());
+//     SHARDORA_ERROR("add new block failed[%s]", e.what());
 //     return false;
 // }
 
@@ -483,45 +483,45 @@ void ClickHouseClient::FlushToCkWithData() try {
         }
 
         HandleBlsMessage();
-        SETH_DEBUG("success flush to db: %u", batch_count_);
+        SHARDORA_DEBUG("success flush to db: %u", batch_count_);
         batch_count_ = 0;
         pre_time_out_ = now_tm_ms;
         ResetColumns();
     }
 } catch (std::exception& e) {
-    SETH_ERROR("add new block failed[%s]", e.what());
+    SHARDORA_ERROR("add new block failed[%s]", e.what());
 }
 
 bool ClickHouseClient::QueryContract(const std::string& from, const std::string& contract_addr, nlohmann::json* res) {
-    sethvm::SethhainHost seth_host;
-    seth_host.tx_context_.tx_origin = evmc::address{};
-    seth_host.tx_context_.block_coinbase = evmc::address{};
-    seth_host.tx_context_.block_number = 0;
-    seth_host.tx_context_.block_timestamp = 0;
+    shardoravm::ShardorahainHost shardora_host;
+    shardora_host.tx_context_.tx_origin = evmc::address{};
+    shardora_host.tx_context_.block_coinbase = evmc::address{};
+    shardora_host.tx_context_.block_number = 0;
+    shardora_host.tx_context_.block_timestamp = 0;
     uint64_t chanin_id = hotstuff::kGlobalChainId;
-    sethvm::Uint64ToEvmcBytes32(
-        seth_host.tx_context_.chain_id,
+    shardoravm::Uint64ToEvmcBytes32(
+        shardora_host.tx_context_.chain_id,
         chanin_id);
-    seth_host.contract_mgr_ = contract_mgr_;
-    seth_host.my_address_ = contract_addr;
-    seth_host.tx_context_.block_gas_limit = 10000000000lu;
+    shardora_host.contract_mgr_ = contract_mgr_;
+    shardora_host.my_address_ = contract_addr;
+    shardora_host.tx_context_.block_gas_limit = 10000000000lu;
     // user caller prefund 's gas
     uint64_t from_balance = 10000000000lu;
     auto contract_addr_info = prefix_db_->GetAddressInfo(contract_addr);
     if (contract_addr_info == nullptr) {
-        SETH_DEBUG("failed get contract.");
+        SHARDORA_DEBUG("failed get contract.");
         return false;
     }
     uint64_t to_balance = contract_addr_info->balance();
-    seth_host.AddTmpAccountBalance(
+    shardora_host.AddTmpAccountBalance(
         from,
         from_balance);
-    seth_host.AddTmpAccountBalance(
+    shardora_host.AddTmpAccountBalance(
         contract_addr,
         to_balance);
     evmc_result evmc_res = {};
     evmc::Result result{ evmc_res };
-    int exec_res = sethvm::Execution::Instance()->execute(
+    int exec_res = shardoravm::Execution::Instance()->execute(
         contract_addr_info->bytes_code(),
         common::Encode::HexDecode("cdfd45bb"),
         from,
@@ -530,22 +530,22 @@ bool ClickHouseClient::QueryContract(const std::string& from, const std::string&
         0,
         10000000000lu,
         0,
-        sethvm::kJustCall,
-        seth_host,
+        shardoravm::kJustCall,
+        shardora_host,
         &result);
-    if (exec_res != sethvm::kSethvmSuccess || result.status_code != EVMC_SUCCESS) {
+    if (exec_res != shardoravm::kShardoravmSuccess || result.status_code != EVMC_SUCCESS) {
         std::string res = "query contract failed: " + std::to_string(result.status_code);
-        SETH_DEBUG("query contract error: %s.", res.c_str());
+        SHARDORA_DEBUG("query contract error: %s.", res.c_str());
         return false;
     }
 
     std::string qdata((char*)result.output_data, result.output_size);
     evmc_bytes32 len_bytes;
     memcpy(len_bytes.bytes, qdata.c_str() + 32, 32);
-    uint64_t len = sethvm::EvmcBytes32ToUint64(len_bytes);
+    uint64_t len = shardoravm::EvmcBytes32ToUint64(len_bytes);
     std::string http_res(qdata.c_str() + 64, len);
     *res = nlohmann::json::parse(http_res);
-    SETH_DEBUG("success query contract: %s", res->dump().c_str());
+    SHARDORA_DEBUG("success query contract: %s", res->dump().c_str());
     return true;
 }
 
@@ -590,7 +590,7 @@ bool ClickHouseClient::CreateTransactionTable() {
         "PARTITION BY(shard_id, date) "
         "ORDER BY(pool_index,height,type,from,to) "
         "SETTINGS index_granularity = 8192;";
-    SETH_DEBUG("create table now [%s][%u][%s][%s]\n",
+    SHARDORA_DEBUG("create table now [%s][%u][%s][%s]\n",
         common::GlobalInfo::Instance()->ck_host().c_str(),
         common::GlobalInfo::Instance()->ck_port(),
         common::GlobalInfo::Instance()->ck_user().c_str(),
@@ -684,7 +684,7 @@ bool ClickHouseClient::CreateStatisticTable() {
     std::string create_cmd = std::string("CREATE TABLE if not exists ") + kClickhouseStatisticTableName + " ( "
         "`id` UInt64 COMMENT 'id' CODEC(T64, LZ4), "
         "`time` UInt64 COMMENT 'time' CODEC(LZ4), "
-        "`all_seth` UInt64 COMMENT 'seth' CODEC(LZ4), "
+        "`all_shardora` UInt64 COMMENT 'shardora' CODEC(LZ4), "
         "`all_address` UInt32 COMMENT 'address' CODEC(T64, LZ4), "
         "`all_contracts` UInt32 COMMENT 'contracts' CODEC(T64, LZ4), "
         "`all_transactions` UInt32 COMMENT 'transactions' CODEC(LZ4), "
@@ -889,10 +889,10 @@ bool ClickHouseClient::CreateBlsElectInfoTable() {
 bool ClickHouseClient::InsertBlsElectInfo(const BlsElectInfo& info) try {
     return true;
     bls_elect_queue_.push(std::make_shared<BlsElectInfo>(info));
-    SETH_DEBUG("insert elect bls success: %d", bls_elect_queue_.size());
+    SHARDORA_DEBUG("insert elect bls success: %d", bls_elect_queue_.size());
     return true;
 } catch (std::exception& e) {
-    SETH_ERROR("add new block failed[%s]", e.what());
+    SHARDORA_ERROR("add new block failed[%s]", e.what());
     return false;
 }
 
@@ -924,16 +924,16 @@ bool ClickHouseClient::CreateBlsBlockInfoTable() {
 }
 
 void ClickHouseClient::HandleBlsMessage() {
-    SETH_DEBUG("call elect bls success.");
+    SHARDORA_DEBUG("call elect bls success.");
     std::shared_ptr<BlsBlockInfo> bls_block;
     while (bls_block_queue_.pop(&bls_block)) {
         HandleBlsBlockMessage(*bls_block);
     }
 
-    SETH_DEBUG("call elect bls success: %d", bls_elect_queue_.size());
+    SHARDORA_DEBUG("call elect bls success: %d", bls_elect_queue_.size());
     std::shared_ptr<BlsElectInfo> elect_block;
     while (bls_elect_queue_.pop(&elect_block)) {
-        SETH_DEBUG("success pop elect bls success.");
+        SHARDORA_DEBUG("success pop elect bls success.");
         HandleBlsElectMessage(*elect_block);
     }
 }
@@ -979,7 +979,7 @@ void ClickHouseClient::HandleBlsBlockMessage(const BlsBlockInfo& info) {
 }
 
 void ClickHouseClient::HandleBlsElectMessage(const BlsElectInfo& info) try {
-    SETH_DEBUG("success handle elect bls success.");
+    SHARDORA_DEBUG("success handle elect bls success.");
     auto elect_height = std::make_shared<clickhouse::ColumnUInt64>();
     auto member_idx = std::make_shared<clickhouse::ColumnUInt32>();
     auto shard_id = std::make_shared<clickhouse::ColumnUInt32>();
@@ -1008,7 +1008,7 @@ void ClickHouseClient::HandleBlsElectMessage(const BlsElectInfo& info) try {
     item.AppendColumn("local_sk", local_sk);
     item.AppendColumn("common_pk", common_pk);
 
-    SETH_DEBUG("success insert bls elect info elect_hegiht_: %lu, "
+    SHARDORA_DEBUG("success insert bls elect info elect_hegiht_: %lu, "
         "local_member_index_: %u, shard_id: %u, local_pri_keys: %s, "
         "local_pub_keys: %s, local_sk: %s, common_pk: %s, swaped_sec_keys: %s", 
         info.elect_height, info.member_idx, info.shard_id, 
@@ -1022,7 +1022,7 @@ void ClickHouseClient::HandleBlsElectMessage(const BlsElectInfo& info) try {
         SetPassword(common::GlobalInfo::Instance()->ck_pass()));
     ck_client.Insert(kClickhouseBlsElectInfo, item);
 } catch (std::exception& e) {
-    SETH_ERROR("add new block failed[%s]", e.what());
+    SHARDORA_ERROR("add new block failed[%s]", e.what());
 }
 
 bool ClickHouseClient::InsertBlsBlockInfo(const BlsBlockInfo& info) try {
@@ -1030,7 +1030,7 @@ bool ClickHouseClient::InsertBlsBlockInfo(const BlsBlockInfo& info) try {
     bls_block_queue_.push(std::make_shared<BlsBlockInfo>(info));
     return true;
 } catch (std::exception& e) {
-    SETH_ERROR("add new block failed[%s]", e.what());
+    SHARDORA_ERROR("add new block failed[%s]", e.what());
     return false;
 }
 
@@ -1051,7 +1051,7 @@ bool ClickHouseClient::CreateTable(bool statistic, std::shared_ptr<db::Db> db_pt
     }
     return true;
 } catch (std::exception& e) {
-    SETH_ERROR("add new block failed[%s]", e.what());
+    SHARDORA_ERROR("add new block failed[%s]", e.what());
     printf("add new block failed[%s]", e.what());
     return false;
 }
@@ -1062,7 +1062,7 @@ void ClickHouseClient::TickStatistic() {
 }
 
 void ClickHouseClient::Statistic() try {
-    std::string cmd = "select count(*) as cnt from seth_ck_transaction_table;";
+    std::string cmd = "select count(*) as cnt from shardora_ck_transaction_table;";
     uint32_t all_transactions = 0;
     clickhouse::Client ck_client0(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1075,7 +1075,7 @@ void ClickHouseClient::Statistic() try {
         }
     });
 
-    cmd = "select count(*) from seth_ck_account_table;";
+    cmd = "select count(*) from shardora_ck_account_table;";
     uint32_t all_address = 0;
     clickhouse::Client ck_client1(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1088,7 +1088,7 @@ void ClickHouseClient::Statistic() try {
         }
     });
 
-    cmd = "select sum(balance) from seth_ck_account_table;";
+    cmd = "select sum(balance) from shardora_ck_account_table;";
     uint64_t sum_balance = 0;
     clickhouse::Client ck_client2(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1101,7 +1101,7 @@ void ClickHouseClient::Statistic() try {
         }
     });
 
-    cmd = "select count(*) from seth_ck_account_key_value_table where type = 4 and key = '5f5f636279746573636f6465'";
+    cmd = "select count(*) from shardora_ck_account_key_value_table where type = 4 and key = '5f5f636279746573636f6465'";
     uint32_t all_contracts = 0;
     clickhouse::Client ck_client3(clickhouse::ClientOptions().
         SetHost(common::GlobalInfo::Instance()->ck_host()).
@@ -1115,7 +1115,7 @@ void ClickHouseClient::Statistic() try {
     });
 
     auto st_time = std::make_shared<clickhouse::ColumnUInt64>();
-    auto st_seth = std::make_shared<clickhouse::ColumnUInt64>();
+    auto st_shardora = std::make_shared<clickhouse::ColumnUInt64>();
     auto st_address = std::make_shared<clickhouse::ColumnUInt32>();
     auto st_contracts = std::make_shared<clickhouse::ColumnUInt32>();
     auto st_transactions = std::make_shared<clickhouse::ColumnUInt32>();
@@ -1124,7 +1124,7 @@ void ClickHouseClient::Statistic() try {
     auto st_date = std::make_shared<clickhouse::ColumnUInt32>();
     st_time->Append(common::TimeUtils::TimestampSeconds());
     st_date->Append(common::TimeUtils::TimestampDays());
-    st_seth->Append(sum_balance);
+    st_shardora->Append(sum_balance);
     st_address->Append(all_address);
     st_contracts->Append(all_contracts);
     st_transactions->Append(all_transactions);
@@ -1132,7 +1132,7 @@ void ClickHouseClient::Statistic() try {
     st_wnodes->Append(0);
     clickhouse::Block statistics;
     statistics.AppendColumn("time", st_time);
-    statistics.AppendColumn("all_seth", st_seth);
+    statistics.AppendColumn("all_shardora", st_shardora);
     statistics.AppendColumn("all_address", st_address);
     statistics.AppendColumn("all_contracts", st_contracts);
     statistics.AppendColumn("all_transactions", st_transactions);
@@ -1146,9 +1146,9 @@ void ClickHouseClient::Statistic() try {
         SetPassword(common::GlobalInfo::Instance()->ck_pass()));
     ck_client4.Insert(kClickhouseStatisticTableName, statistics);
 } catch (std::exception& e) {
-    SETH_ERROR("add new block failed[%s]", e.what());
+    SHARDORA_ERROR("add new block failed[%s]", e.what());
 }
 
 };  // namespace ck
 
-};  // namespace seth
+};  // namespace shardora

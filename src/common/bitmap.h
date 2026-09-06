@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -61,4 +61,4 @@ private:
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

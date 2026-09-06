@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import sys, time, secrets
-sys.path.insert(0, '/root/seth/clipy')
+sys.path.insert(0, '/root/shardora/clipy')
 from test_exchange_contract import (
     fund_account, gen_key_for_shard, calc_shard_id, w3_for_shard,
     CONTRACT_PREFUND, ITEM_PRICE, HOST,
 )
-from seth_sdk import compile_and_link, StepType
+from shardora_sdk import compile_and_link, StepType
 
 FUNDER_KEY = open('/root/nodes/s3_1/init_accounts3').readline().split()[0]
 
@@ -16,9 +16,9 @@ fund_account(a)
 bal = w3_for_shard(shard).client.get_balance(a)
 print('balance', bal)
 
-src = open('/root/seth/src/contract/tests/contracts/exchange.sol', encoding='utf-8').read()
+src = open('/root/shardora/src/contract/tests/contracts/exchange.sol', encoding='utf-8').read()
 bc, abi = compile_and_link(src, 'Exchange')
-ex = w3_for_shard(shard).seth.contract(abi=abi, bytecode=bc)
+ex = w3_for_shard(shard).shardora.contract(abi=abi, bytecode=bc)
 salt = secrets.token_hex(31) + '00'
 ex.deploy({'from': a, 'salt': salt, 'args': [], 'amount': 0}, k)
 print('deploy status', ex.deploy_receipt.get('status'), 'addr', ex.address)

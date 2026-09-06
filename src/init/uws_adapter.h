@@ -6,7 +6,7 @@
 #include <sstream>
 #include <nlohmann/json.hpp>
 
-namespace seth {
+namespace shardora {
 namespace init {
 
 // Adapter to make uWebSockets compatible with httplib-style code
@@ -127,4 +127,4 @@ private:
 };
 
 } // namespace init
-} // namespace seth
+} // namespace shardora

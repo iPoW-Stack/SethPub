@@ -7,7 +7,7 @@
 #include "tnet/socket/listen_socket.h"
 #include "tnet/socket/server_socket.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -19,13 +19,13 @@ public:
         uint16_t port = 0;
 
         if (!ParseSpec(spec, &addr, &port)) {
-            SETH_ERROR("parse spec [%s] failed", spec.c_str());
+            SHARDORA_ERROR("parse spec [%s] failed", spec.c_str());
             return NULL;
         }
 
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) {
-            SETH_ERROR("create socket failed [%s], spec [%s]",
+            SHARDORA_ERROR("create socket failed [%s], spec [%s]",
                     strerror(errno), spec.c_str());
             return NULL;
         }
@@ -33,7 +33,7 @@ public:
         ListenSocket* socket = new ListenSocket(addr, port);
         socket->SetFd(fd);
         if (!socket->Bind()) {
-            SETH_ERROR("bind failed, spec [%s]", spec.c_str());
+            SHARDORA_ERROR("bind failed, spec [%s]", spec.c_str());
             // Bug fix #19: On bind failure, the old code called socket->Free()
             // (which is a no-op) then created a new ListenSocket with the SAME fd.
             // This meant the fd was shared between the freed and new socket objects.
@@ -43,13 +43,13 @@ public:
             
             fd = ::socket(AF_INET, SOCK_STREAM, 0);
             if (fd < 0) {
-                SETH_ERROR("create retry socket failed [%s]", strerror(errno));
+                SHARDORA_ERROR("create retry socket failed [%s]", strerror(errno));
                 return NULL;
             }
             socket = new ListenSocket(addr, 0);
             socket->SetFd(fd);
             if (!socket->Bind()) {
-                SETH_ERROR("retry bind also failed, spec [%s]", spec.c_str());
+                SHARDORA_ERROR("retry bind also failed, spec [%s]", spec.c_str());
                 delete socket;
                 close(fd);
                 return NULL;
@@ -70,18 +70,18 @@ public:
         in_addr_t local_addr = 0;
         uint16_t local_port = 0;
         if (!ParseSpec(peer, &peer_addr, &peer_port)) {
-            SETH_ERROR("parse spec [%s] failed", peer.c_str());
+            SHARDORA_ERROR("parse spec [%s] failed", peer.c_str());
             return NULL;
         }
 
         if (!local.empty() && !ParseSpec(local, &local_addr, &local_port)) {
-            SETH_ERROR("parse spec [%s] failed", local.c_str());
+            SHARDORA_ERROR("parse spec [%s] failed", local.c_str());
             return NULL;
         }
 
         int fd = socket(AF_INET, SOCK_STREAM, 0);
         if (fd < 0) {
-            SETH_ERROR("create socket failed [%s]", strerror(errno));
+            SHARDORA_ERROR("create socket failed [%s]", strerror(errno));
             return NULL;
         }
 
@@ -93,7 +93,7 @@ public:
         client_socket->SetFd(fd);
 
         if (!local.empty() && !client_socket->Bind()) {
-            SETH_ERROR("bind failed, spec [%s]", local.c_str());
+            SHARDORA_ERROR("bind failed, spec [%s]", local.c_str());
             client_socket->Free();
             return NULL;
         }
@@ -115,4 +115,4 @@ public:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

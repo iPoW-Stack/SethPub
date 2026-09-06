@@ -20,12 +20,12 @@
 #include "tnet/tcp_interface.h"
 #include "tnet/tcp_connection.h"
 
-#define TRANSPORT_DEBUG(fmt, ...) SETH_DEBUG("[transport]" fmt, ## __VA_ARGS__)
-#define TRANSPORT_INFO(fmt, ...) SETH_DEBUG("[transport]" fmt, ## __VA_ARGS__)
-#define TRANSPORT_WARN(fmt, ...) SETH_WARN("[transport]" fmt, ## __VA_ARGS__)
-#define TRANSPORT_ERROR(fmt, ...) SETH_ERROR("[transport]" fmt, ## __VA_ARGS__)
+#define TRANSPORT_DEBUG(fmt, ...) SHARDORA_DEBUG("[transport]" fmt, ## __VA_ARGS__)
+#define TRANSPORT_INFO(fmt, ...) SHARDORA_DEBUG("[transport]" fmt, ## __VA_ARGS__)
+#define TRANSPORT_WARN(fmt, ...) SHARDORA_WARN("[transport]" fmt, ## __VA_ARGS__)
+#define TRANSPORT_ERROR(fmt, ...) SHARDORA_ERROR("[transport]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -264,13 +264,13 @@ public:
         times_idx = 0;
         thread_index = -1;
         // auto now_count = testTransportMessageCount.fetch_add(1);
-        // SETH_DEBUG("memory check create new transport message: %d", now_count);
+        // SHARDORA_DEBUG("memory check create new transport message: %d", now_count);
         common::GlobalInfo::Instance()->AddSharedObj(11);
     }
 
     ~TransportMessage() {
         // auto now_count = testTransportMessageCount.fetch_sub(1);
-        // SETH_DEBUG("memory check remove transport message: %d", now_count);
+        // SHARDORA_DEBUG("memory check remove transport message: %d", now_count);
         common::GlobalInfo::Instance()->DecSharedObj(11);
     }
 
@@ -304,7 +304,7 @@ public:
     void set_status(MessageHandleStatus s) {
         handle_status = s;
         if (s == kMessageHandle || s == kTxAccept) return;
-        SETH_DEBUG("set_status: %s, hash: %s", MessageStatusToString(s).c_str(), common::Encode::HexEncode(msg_hash).c_str());
+        SHARDORA_DEBUG("set_status: %s, hash: %s", MessageStatusToString(s).c_str(), common::Encode::HexEncode(msg_hash).c_str());
         if (status_notify_cb && !msg_hash.empty()) {
             status_notify_cb(msg_hash, s);
         }
@@ -356,4 +356,4 @@ inline void CloseSocket(int sock) {
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora

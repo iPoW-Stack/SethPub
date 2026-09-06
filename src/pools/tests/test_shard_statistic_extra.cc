@@ -21,7 +21,7 @@
 #include "common/global_info.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -61,7 +61,7 @@ std::shared_ptr<db::Db> ShardStatisticExtraTest::db_ = nullptr;
 // ============================================================
 // OnNewBlock: !inited_ path — Init() called, fails if bad network_id
 
-#ifndef SETH_UNITTEST
+#ifndef SHARDORA_UNITTEST
 TEST_F(ShardStatisticExtraTest, OnNewBlock_NotInited_InitFails_Coverage) {
     GTEST_SKIP() << "Rebuild with -DXENABLE_CODE_COVERAGE=ON";
 }
@@ -300,8 +300,8 @@ TEST_F(ShardStatisticExtraTest, CallNewElectBlock_LowerHeight_NoOp) {
 
     common::GlobalInfo::Instance()->set_network_id(prev);
 }
-#endif  // SETH_UNITTEST
+#endif  // SHARDORA_UNITTEST
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

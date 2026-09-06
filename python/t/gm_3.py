@@ -6,31 +6,31 @@ import requests
 import binascii
 from gmssl import sm2, sm3, func
 
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link, get_sm2_public_key
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link, get_sm2_public_key
 
 # --- 5. Main Execution ---
 PROBE_POOL_SOL = """
 pragma solidity ^0.8.20;
 
 contract ProbePool {
-    uint256 public reserveSETH;
+    uint256 public reserveSHARDORA;
     uint256 public reserveUSDC;
 
-    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSETH, uint256 resUSDC);
+    event PoolSwap(address indexed sender, uint256 amountIn, uint256 amountOut, uint256 resSHARDORA, uint256 resUSDC);
 
     constructor(uint256 s, uint256 u) payable {
-        reserveSETH = s;
+        reserveSHARDORA = s;
         reserveUSDC = u;
     }
 
-    function sellSETH(uint256 m) external payable returns (uint256 out) {
-        out = (msg.value * reserveUSDC) / (reserveSETH + msg.value);
+    function sellSHARDORA(uint256 m) external payable returns (uint256 out) {
+        out = (msg.value * reserveUSDC) / (reserveSHARDORA + msg.value);
         require(out >= m, 'ProbePool: slippage');
 
-        reserveSETH += msg.value;
+        reserveSHARDORA += msg.value;
         reserveUSDC -= out;
 
-        emit PoolSwap(msg.sender, msg.value, out, reserveSETH, reserveUSDC);
+        emit PoolSwap(msg.sender, msg.value, out, reserveSHARDORA, reserveUSDC);
         return out;
     }
 }
@@ -60,9 +60,9 @@ contract ProbeTreasury {
         emit TreasuryForwarded(pool, msg.value, m);
 
         (bool ok, bytes memory ret) = pool.call{value: msg.value}(
-            abi.encodeWithSignature('sellSETH(uint256)', m)
+            abi.encodeWithSignature('sellSHARDORA(uint256)', m)
         );
-        require(ok, 'ProbeTreasury: call sellSETH failed');
+        require(ok, 'ProbeTreasury: call sellSHARDORA failed');
 
         out = abi.decode(ret, (uint256));
         totalSwaps += 1;
@@ -123,7 +123,7 @@ def test_gmssl_contract_flow(w3, GM_KEY):
     print(f"GmSSL Sender Address pk: {gm_pubkey}, GM_MY: {GM_MY}")
     # 3. Deploy contract
     print("[*] Deploying GmVault via GmSSL...")
-    gm_vault = w3.seth.contract(abi=abi, bytecode=bin_code)
+    gm_vault = w3.shardora.contract(abi=abi, bytecode=bin_code)
     gm_vault.deploy({
         'from': GM_MY,
         'salt': secrets.token_hex(31) + 'gm_auto',
@@ -153,6 +153,6 @@ def test_gmssl_contract_flow(w3, GM_KEY):
 
 if __name__ == "__main__":
     IP, PORT = "127.0.0.1", 23001
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     GM_KEY = "c4b9e7a21d5f83c0a1e4d6b9f2a1e5c8d3b7a9f0e1d2c3b4a5968778695a4b3c"
     test_gmssl_contract_flow(w3, GM_KEY)

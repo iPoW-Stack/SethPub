@@ -65,10 +65,10 @@ uv_tcp_nodelay(&ex_uv_tcp->uv_tcp, 1);
 // 改进的连接有效性检查
 if (uv_is_closing(...) || ex_uv_tcp->uv_tcp.type != UV_TCP) {
     // 连接无效，释放
-    SETH_WARN("[TCP_RECONN] stale connection detected...");
+    SHARDORA_WARN("[TCP_RECONN] stale connection detected...");
 } else {
     // 连接有效，重用
-    SETH_DEBUG("[TCP_RECONN] reusing existing connection...");
+    SHARDORA_DEBUG("[TCP_RECONN] reusing existing connection...");
 }
 ```
 
@@ -86,7 +86,7 @@ uv_write(req, ...);
 ```cpp
 // 改进的错误处理
 if (!ok) {
-    SETH_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection", ...);
+    SHARDORA_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection", ...);
     tcp_transport->FreeConnection(ex_uv_tcp);
     return;
 }

@@ -1,7 +1,7 @@
 syntax = "proto2";
 import "protos/view_block.proto";
 import "protos/pools.proto";
-package seth.hotstuff.protobuf;
+package shardora.hotstuff.protobuf;
 
 message TxPropose {
     optional pools.protobuf.StepType tx_type = 1 [default=kNormalFrom]; // 普通交易信息归为一种默认类型

@@ -4,7 +4,7 @@
 
 #include "common/random.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -34,4 +34,4 @@ TEST(RandomBranches, RandomStringSizes) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

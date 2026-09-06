@@ -13,7 +13,7 @@
 #include <consensus/hotstuff/view_duration.h>
 #include <protos/view_block.pb.h>
 
-namespace seth {
+namespace shardora {
 namespace hotstuff {
 namespace test {
 
@@ -249,4 +249,4 @@ TEST(ViewDurationTest, CountExceedsLimit) {
 
 }  // namespace test
 }  // namespace hotstuff
-}  // namespace seth
+}  // namespace shardora

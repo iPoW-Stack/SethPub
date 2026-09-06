@@ -102,7 +102,7 @@ But `eth_account` might be doing something different internally.
 Add logging to see the actual r, s, v values being used:
 
 ```cpp
-SETH_INFO("EIP-1559 signature: r=%s, s=%s, v=%u",
+SHARDORA_INFO("EIP-1559 signature: r=%s, s=%s, v=%u",
           common::Encode::HexEncode(r).c_str(),
           common::Encode::HexEncode(s).c_str(),
           v_byte);
@@ -122,8 +122,8 @@ std::string sign_v1 = r + s + std::string(1, '\x01');
 std::string pubkey_v1 = security::Secp256k1::Instance()->Recover(sign_v1, signing_hash, false);
 
 // Log both
-SETH_INFO("Recovery with v=0: pubkey=%s", common::Encode::HexEncode(pubkey_v0).c_str());
-SETH_INFO("Recovery with v=1: pubkey=%s", common::Encode::HexEncode(pubkey_v1).c_str());
+SHARDORA_INFO("Recovery with v=0: pubkey=%s", common::Encode::HexEncode(pubkey_v0).c_str());
+SHARDORA_INFO("Recovery with v=1: pubkey=%s", common::Encode::HexEncode(pubkey_v1).c_str());
 ```
 
 ### Step 3: Compare with Python
@@ -131,7 +131,7 @@ SETH_INFO("Recovery with v=1: pubkey=%s", common::Encode::HexEncode(pubkey_v1).c
 Run the Python script `clipy/check_v_value.py` to see which recovery ID Python uses:
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 check_v_value.py
 ```
 
@@ -170,7 +170,7 @@ But this is a workaround, not a proper fix. We need to understand WHY the v valu
 ## Files to Modify
 
 1. `src/init/http_handler.cc` - Add debug logging and potentially fix v value handling
-2. Recompile: `cd /root/seth/build && make -j$(nproc)`
+2. Recompile: `cd /root/shardora/build && make -j$(nproc)`
 3. Restart node
 4. Test again
 
@@ -178,18 +178,18 @@ But this is a workaround, not a proper fix. We need to understand WHY the v valu
 
 ```bash
 # Recompile
-cd /root/seth/build && make -j$(nproc)
+cd /root/shardora/build && make -j$(nproc)
 
 # Restart node
-pkill -f seth && sleep 2 && cd /root/seth && ./start_node.sh
+pkill -f shardora && sleep 2 && cd /root/shardora && ./start_node.sh
 
 # Run Python check script
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 check_v_value.py
 
 # Run test
 /root/tools/python3.10/bin/python3 test_eip1559.py
 
 # Check logs
-tail -f /root/seth/logs/seth.log | grep -E "EIP-1559|signature|pubkey"
+tail -f /root/shardora/logs/shardora.log | grep -E "EIP-1559|signature|pubkey"
 ```

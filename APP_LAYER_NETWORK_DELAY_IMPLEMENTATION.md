@@ -16,10 +16,10 @@
 
 | 变量名 | 说明 | 默认值 | 示例 |
 |--------|------|--------|------|
-| `SETH_NETWORK_ENABLED` | 是否启用网络模拟 | 0 | 1 |
-| `SETH_NETWORK_DELAY_MS` | 单向延迟 (ms) | 0 | 25 |
-| `SETH_NETWORK_JITTER_MS` | 抖动 (ms) | 0 | 10 |
-| `SETH_NETWORK_LOSS_RATE` | 丢包率 (0-1) | 0 | 0.0001 |
+| `SHARDORA_NETWORK_ENABLED` | 是否启用网络模拟 | 0 | 1 |
+| `SHARDORA_NETWORK_DELAY_MS` | 单向延迟 (ms) | 0 | 25 |
+| `SHARDORA_NETWORK_JITTER_MS` | 抖动 (ms) | 0 | 10 |
+| `SHARDORA_NETWORK_LOSS_RATE` | 丢包率 (0-1) | 0 | 0.0001 |
 
 ## 实现步骤
 
@@ -42,14 +42,14 @@ private:
     
 public:
     NetworkDelaySimulator() {
-        enabled_ = std::getenv("SETH_NETWORK_ENABLED") ? 
-                   std::atoi(std::getenv("SETH_NETWORK_ENABLED")) : 0;
-        delay_ms_ = std::getenv("SETH_NETWORK_DELAY_MS") ? 
-                    std::atoi(std::getenv("SETH_NETWORK_DELAY_MS")) : 0;
-        jitter_ms_ = std::getenv("SETH_NETWORK_JITTER_MS") ? 
-                     std::atoi(std::getenv("SETH_NETWORK_JITTER_MS")) : 0;
-        loss_rate_ = std::getenv("SETH_NETWORK_LOSS_RATE") ? 
-                     std::atof(std::getenv("SETH_NETWORK_LOSS_RATE")) : 0;
+        enabled_ = std::getenv("SHARDORA_NETWORK_ENABLED") ? 
+                   std::atoi(std::getenv("SHARDORA_NETWORK_ENABLED")) : 0;
+        delay_ms_ = std::getenv("SHARDORA_NETWORK_DELAY_MS") ? 
+                    std::atoi(std::getenv("SHARDORA_NETWORK_DELAY_MS")) : 0;
+        jitter_ms_ = std::getenv("SHARDORA_NETWORK_JITTER_MS") ? 
+                     std::atoi(std::getenv("SHARDORA_NETWORK_JITTER_MS")) : 0;
+        loss_rate_ = std::getenv("SHARDORA_NETWORK_LOSS_RATE") ? 
+                     std::atof(std::getenv("SHARDORA_NETWORK_LOSS_RATE")) : 0;
         rng_.seed(std::chrono::system_clock::now().time_since_epoch().count());
     }
     
@@ -84,7 +84,7 @@ public:
 void TcpTransport::Send(const MessagePtr& msg_ptr) {
     // 检查是否需要丢弃报文
     if (network_delay_simulator_.ShouldDropPacket()) {
-        SETH_DEBUG("Network simulation: dropping packet");
+        SHARDORA_DEBUG("Network simulation: dropping packet");
         return;
     }
     
@@ -116,20 +116,20 @@ void TcpTransport::HandleMessage(const MessagePtr& msg_ptr) {
 
 ```bash
 # 设置环境变量
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=25      # 单向 25ms
-export SETH_NETWORK_JITTER_MS=10     # 抖动 10ms
-export SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=25      # 单向 25ms
+export SHARDORA_NETWORK_JITTER_MS=10     # 抖动 10ms
+export SHARDORA_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
 
 # 启动节点
-./seth
+./shardora
 ```
 
 ### 禁用网络模拟
 
 ```bash
-export SETH_NETWORK_ENABLED=0
-./seth
+export SHARDORA_NETWORK_ENABLED=0
+./shardora
 ```
 
 ### 使用脚本启动
@@ -137,7 +137,7 @@ export SETH_NETWORK_ENABLED=0
 ```bash
 # 使用提供的脚本
 source setup_app_layer_network_delay.sh
-./seth
+./shardora
 ```
 
 ## 优势
@@ -159,28 +159,28 @@ source setup_app_layer_network_delay.sh
 ### 场景 1: 模拟公网 (50ms RTT)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=25      # 单向 25ms = 往返 50ms
-export SETH_NETWORK_JITTER_MS=10     # 抖动 10ms
-export SETH_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=25      # 单向 25ms = 往返 50ms
+export SHARDORA_NETWORK_JITTER_MS=10     # 抖动 10ms
+export SHARDORA_NETWORK_LOSS_RATE=0.0001 # 丢包率 0.01%
 ```
 
 ### 场景 2: 模拟局域网 (低延迟)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=1       # 单向 1ms
-export SETH_NETWORK_JITTER_MS=0      # 无抖动
-export SETH_NETWORK_LOSS_RATE=0      # 无丢包
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=1       # 单向 1ms
+export SHARDORA_NETWORK_JITTER_MS=0      # 无抖动
+export SHARDORA_NETWORK_LOSS_RATE=0      # 无丢包
 ```
 
 ### 场景 3: 模拟高延迟网络 (100ms RTT)
 
 ```bash
-export SETH_NETWORK_ENABLED=1
-export SETH_NETWORK_DELAY_MS=50      # 单向 50ms = 往返 100ms
-export SETH_NETWORK_JITTER_MS=20     # 抖动 20ms
-export SETH_NETWORK_LOSS_RATE=0.001  # 丢包率 0.1%
+export SHARDORA_NETWORK_ENABLED=1
+export SHARDORA_NETWORK_DELAY_MS=50      # 单向 50ms = 往返 100ms
+export SHARDORA_NETWORK_JITTER_MS=20     # 抖动 20ms
+export SHARDORA_NETWORK_LOSS_RATE=0.001  # 丢包率 0.1%
 ```
 
 ## 测试验证
@@ -189,11 +189,11 @@ export SETH_NETWORK_LOSS_RATE=0.001  # 丢包率 0.1%
 
 ```bash
 # 1. 检查环境变量是否设置
-echo $SETH_NETWORK_ENABLED
-echo $SETH_NETWORK_DELAY_MS
+echo $SHARDORA_NETWORK_ENABLED
+echo $SHARDORA_NETWORK_DELAY_MS
 
 # 2. 查看日志中的延迟信息
-grep "Network simulation" seth.log
+grep "Network simulation" shardora.log
 
 # 3. 使用 ping 测试网络延迟
 ping <remote_node_ip>

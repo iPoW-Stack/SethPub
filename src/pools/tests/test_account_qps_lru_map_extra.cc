@@ -15,7 +15,7 @@
 
 #include "common/global_info.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -153,4 +153,4 @@ TEST_F(TestAccountQpsLruMap, Check_ExistingKey_NewTimestampWindow_Created) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

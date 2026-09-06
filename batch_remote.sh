@@ -13,7 +13,7 @@ CODE_PATH=`pwd`
 node_hash=$(printf "%s%d" "$node_ips" "$each_nodes_count" "$end_shard" | md5sum | cut -d ' ' -f1)
 declare -A shard_map
 
-bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep seth@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 seth"
+bash cmd.sh $2 "systemctl list-units --state=active --no-legend | grep shardora@ | awk '{print \$1}' | xargs -r systemctl stop; killall -9 shardora"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
@@ -79,20 +79,20 @@ init() {
         TARGET=Debug
     fi
 
-    killall -9 seth
+    killall -9 shardora
     killall -9 txcli
 
     bash build.sh a $TARGET
     sudo rm -rf /root/nodes
     sudo cp -rf ./nodes_local /root/nodes
-    rm -rf /root/nodes/*/seth /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
+    rm -rf /root/nodes/*/shardora /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
 
-    cp -rf ./nodes_local/seth/conf/GeoLite2-City.mmdb /root/nodes/seth
-    cp -rf ./nodes_local/seth/conf/log4cpp.properties /root/nodes/seth/conf
-    mkdir -p /root/nodes/seth/log
+    cp -rf ./nodes_local/shardora/conf/GeoLite2-City.mmdb /root/nodes/shardora
+    cp -rf ./nodes_local/shardora/conf/log4cpp.properties /root/nodes/shardora/conf
+    mkdir -p /root/nodes/shardora/log
 
 
-    sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
+    sudo cp -rf ./cbuild_$TARGET/shardora /root/nodes/shardora
     if [[ "$each_nodes_count" -eq "" ]]; then
         each_nodes_count=4
     fi
@@ -122,51 +122,51 @@ init() {
         echo "  [Shard $shard]: ${shard_map[$shard]}"
     done
 
-    rm -rf /root/nodes/seth/latest_blocks
+    rm -rf /root/nodes/shardora/latest_blocks
 }
 
 make_package() {
-    mkdir -p /root/seth/pkgs
-    rm -rf /root/nodes/seth/pkg
-    if [ -d "/root/seth/pkgs/$node_hash" ]; then
-        cd /root/seth/ && bash build.sh a $TARGET
-        cd /root/seth/cbuild_$TARGET && make txcli
-        cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
-        cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
-        rm -rf /root/nodes/seth/pkg/temp
-        cp -rf /root/nodes/temp /root/nodes/seth/pkg
-        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
-        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
+    mkdir -p /root/shardora/pkgs
+    rm -rf /root/nodes/shardora/pkg
+    if [ -d "/root/shardora/pkgs/$node_hash" ]; then
+        cd /root/shardora/ && bash build.sh a $TARGET
+        cd /root/shardora/cbuild_$TARGET && make txcli
+        cp -rf /root/shardora/cbuild_$TARGET/shardora /root/shardora/pkgs/$node_hash/shardora
+        cp -rf /root/shardora/pkgs/$node_hash /root/nodes/shardora/pkg
+        rm -rf /root/nodes/shardora/pkg/temp
+        cp -rf /root/nodes/temp /root/nodes/shardora/pkg
+        cp /root/shardora/temp_cmd.sh /root/nodes/shardora/pkg
+        cp /root/shardora/start_cmd.sh /root/nodes/shardora/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
-            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
-            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
+            /root/shardora/cbuild_$TARGET/shardora -A /root/shardora/shards${shard_id} -D /root/nodes/shardora/pkg/shards${shard_id}
+            /root/shardora/cbuild_$TARGET/shardora -A  /root/shardora/init_accounts${shard_id} -D /root/nodes/shardora/pkg/init_accounts${shard_id}
         done
     else
         end_shard_index=$((end_shard + 1))
-        echo "./seth -U -N ${nodes_count} -E ${end_shard_index}"
-        echo "./seth -S 3 -N ${nodes_count} -E ${end_shard_index}"
-        cd /root/nodes/seth && ./seth -U -N ${nodes_count} -E ${end_shard_index}
-        cd /root/nodes/seth && ./seth -S 3 -N ${nodes_count} -E ${end_shard_index}
-        cd /root/nodes/seth && ./seth -C
-        cd /root/seth/cbuild_$TARGET && make txcli
+        echo "./shardora -U -N ${nodes_count} -E ${end_shard_index}"
+        echo "./shardora -S 3 -N ${nodes_count} -E ${end_shard_index}"
+        cd /root/nodes/shardora && ./shardora -U -N ${nodes_count} -E ${end_shard_index}
+        cd /root/nodes/shardora && ./shardora -S 3 -N ${nodes_count} -E ${end_shard_index}
+        cd /root/nodes/shardora && ./shardora -C
+        cd /root/shardora/cbuild_$TARGET && make txcli
 
-        mkdir /root/nodes/seth/pkg
-        cp /root/nodes/seth/seth /root/nodes/seth/pkg
-        cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
-        cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
+        mkdir /root/nodes/shardora/pkg
+        cp /root/nodes/shardora/shardora /root/nodes/shardora/pkg
+        cp /root/nodes/shardora/conf/GeoLite2-City.mmdb /root/nodes/shardora/pkg
+        cp /root/nodes/shardora/conf/log4cpp.properties /root/nodes/shardora/pkg
         for ((shard_id=2; shard_id<=$end_shard; shard_id++)); do
-            /root/seth/cbuild_$TARGET/seth -A /root/seth/shards${shard_id} -D /root/nodes/seth/pkg/shards${shard_id}
-            /root/seth/cbuild_$TARGET/seth -A  /root/seth/init_accounts${shard_id} -D /root/nodes/seth/pkg/init_accounts${shard_id}
+            /root/shardora/cbuild_$TARGET/shardora -A /root/shardora/shards${shard_id} -D /root/nodes/shardora/pkg/shards${shard_id}
+            /root/shardora/cbuild_$TARGET/shardora -A  /root/shardora/init_accounts${shard_id} -D /root/nodes/shardora/pkg/init_accounts${shard_id}
         done
-        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
-        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
-        cp -rf /root/nodes/seth/shard_db* /root/nodes/seth/pkg/
-        cp -rf /root/nodes/temp /root/nodes/seth/pkg
-        cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
-        cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
+        cp /root/shardora/temp_cmd.sh /root/nodes/shardora/pkg
+        cp /root/shardora/start_cmd.sh /root/nodes/shardora/pkg
+        cp -rf /root/nodes/shardora/shard_db* /root/nodes/shardora/pkg/
+        cp -rf /root/nodes/temp /root/nodes/shardora/pkg
+        cp -rf /root/shardora/gdb/* /root/nodes/shardora/pkg
+        cp -rf /root/nodes/shardora/pkg /root/shardora/pkgs/$node_hash
     fi
 
-    cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    cd /root/nodes/shardora/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 get_bootstrap() {
@@ -175,7 +175,7 @@ get_bootstrap() {
         i=1
         for ip in "${node_ips_array[@]}"; do
             for ((j=0; j<$each_nodes_count; j++)); do
-                tmppubkey=`sed -n "$i""p" /root/nodes/seth/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
+                tmppubkey=`sed -n "$i""p" /root/nodes/shardora/pkg/shards${shard_id} | awk -F'\t' '{print $2}'`
                 port=''
                 if ((i>=100)); then
                     port='1'$shard_id''$i
@@ -199,7 +199,7 @@ get_bootstrap() {
     # Write bootstrap into the conf template via Python (handles long strings safely)
     printf "%s" "$bootstrap" > /tmp/bootstrap_data.tmp
     /root/tools/python3.10/bin/python3 -c "
-conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
+conf_path = '/root/nodes/shardora/pkg/temp/conf/shardora.conf'
 with open('/tmp/bootstrap_data.tmp', 'r') as f:
     new_val = f.read()
 with open(conf_path, 'r') as f:
@@ -211,7 +211,7 @@ with open(conf_path, 'w') as f:
     echo $bootstrap
 
     # Re-pack after BOOTSTRAP has been written into the conf
-    cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    cd /root/nodes/shardora/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 check_cmd_finished() {
@@ -238,7 +238,7 @@ clear_command() {
     for ((shard_id=start_shard; shard_id<=$end_shard; shard_id++)); do
         ips=(${shard_map[$shard_id]})
         for ip in "${ips[@]}"; do
-            sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip  "cd /root && rm -rf pkg*; killall -9 seth" &
+            sshpass -p $PASSWORD ssh -o ConnectTimeout=3 -o "StrictHostKeyChecking no" -o ServerAliveInterval=5 root@$ip  "cd /root && rm -rf pkg*; killall -9 shardora" &
             run_cmd_count=$((run_cmd_count + 1))
             if (($run_cmd_count >= 250)); then
                 check_cmd_finished
@@ -259,7 +259,7 @@ scp_package() {
         echo 'run_cstart_ascp_packagell_nodesommand: ' $shard_id $ips
         for ip in "${ips[@]}"; do
             echo "scp_package: " $ip
-            sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/seth/pkg.tar.gz root@$ip:/root &
+            sshpass -p $PASSWORD scp -o ConnectTimeout=10  -o StrictHostKeyChecking=no /root/nodes/shardora/pkg.tar.gz root@$ip:/root &
             run_cmd_count=$((run_cmd_count + 1))
             if (($run_cmd_count >= 100)); then
                 check_cmd_finished

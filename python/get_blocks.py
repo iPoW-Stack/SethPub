@@ -1,7 +1,7 @@
 import requests
 import json
 
-class SethHttpClient:
+class ShardoraHttpClient:
     def __init__(self, host, port):
         self.base_url = f"http://{host}:{port}"
 
@@ -110,7 +110,7 @@ class SethHttpClient:
 # --- 使用示例 ---
 if __name__ == "__main__":
     # 配置你的服务器 IP 和端口（对应 Init 函数中的 ip, port）
-    client = SethHttpClient("104.198.109.193", 23080)
+    client = ShardoraHttpClient("104.198.109.193", 23080)
 
     # 调用接口
     res = client.get_latest_pool_info(network=3)

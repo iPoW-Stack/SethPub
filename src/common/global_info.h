@@ -16,7 +16,7 @@
 #include "common/tick.h"
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
     struct TransportMessage;
@@ -187,7 +187,7 @@ public:
     uint8_t get_thread_index();
 
     void set_global_stoped() {
-        SETH_ERROR("global stop");
+        SHARDORA_ERROR("global stop");
         global_stoped_ = true;
     }
 
@@ -325,4 +325,4 @@ private:
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

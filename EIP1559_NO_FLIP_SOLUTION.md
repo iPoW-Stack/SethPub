@@ -55,23 +55,23 @@ v_byte = static_cast<uint8_t>(v_val);
 ### Step 1: Recompile
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 ```
 
 ### Step 2: Restart Node
 
 ```bash
-pkill -f seth
+pkill -f shardora
 sleep 2
-cd /root/seth
+cd /root/shardora
 ./start_node.sh
 ```
 
 ### Step 3: Run Tests
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 test_eip1559.py
 ```
 
@@ -139,7 +139,7 @@ Both eth_account and libsecp256k1 use this simple encoding directly.
   - Line ~2321: Updated log message (removed "flipped from tx")
   - Fixed duplicate variable declaration
 
-- `clipy/seth3.py`:
+- `clipy/shardora3.py`:
   - Fixed double 0x prefix
   - Fixed EIP-1559 signing RLP debug output
 

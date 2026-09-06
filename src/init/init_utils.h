@@ -14,12 +14,12 @@
 #include "common/utils.h"
 #include "protos/bls.pb.h"
 
-#define INIT_DEBUG(fmt, ...) SETH_DEBUG("[init]" fmt, ## __VA_ARGS__)
-#define INIT_INFO(fmt, ...) SETH_DEBUG("[init]" fmt, ## __VA_ARGS__)
-#define INIT_WARN(fmt, ...) SETH_WARN("[init]" fmt, ## __VA_ARGS__)
-#define INIT_ERROR(fmt, ...) SETH_ERROR("[init]" fmt, ## __VA_ARGS__)
+#define INIT_DEBUG(fmt, ...) SHARDORA_DEBUG("[init]" fmt, ## __VA_ARGS__)
+#define INIT_INFO(fmt, ...) SHARDORA_DEBUG("[init]" fmt, ## __VA_ARGS__)
+#define INIT_WARN(fmt, ...) SHARDORA_WARN("[init]" fmt, ## __VA_ARGS__)
+#define INIT_ERROR(fmt, ...) SHARDORA_ERROR("[init]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace init {
 
@@ -75,4 +75,4 @@ typedef std::shared_ptr<GenisisNodeInfo> GenisisNodeInfoPtr;
 
 }  // namespace init
 
-}  // namespace seth
+}  // namespace shardora

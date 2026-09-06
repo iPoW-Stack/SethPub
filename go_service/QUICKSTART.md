@@ -16,8 +16,8 @@ go version
 
 ```go
 port := 8443
-sethNodeIP := "127.0.0.1"
-sethNodePort := 13001
+shardoraNodeIP := "127.0.0.1"
+shardoraNodePort := 13001
 senderPrivateKey := "your_sender_private_key_hex"  // ← 替换为实际私钥
 ```
 
@@ -25,14 +25,14 @@ senderPrivateKey := "your_sender_private_key_hex"  // ← 替换为实际私钥
 
 ```bash
 cd go_service
-go run main.go seth_client.go
+go run main.go shardora_client.go
 ```
 
 输出：
 ```
 Generated self-signed certificate
 Starting HTTPS server on port 8443...
-Seth node: 127.0.0.1:13001
+Shardora node: 127.0.0.1:13001
 Endpoint: https://localhost:8443/purchase
 ```
 
@@ -82,8 +82,8 @@ func main() {
     }
 
     // 2. 创建凭证
-    sethAddress := "your_seth_address_hex"
-    cred, err := client.CreateCredential(sethAddress)
+    shardoraAddress := "your_shardora_address_hex"
+    cred, err := client.CreateCredential(shardoraAddress)
     if err != nil {
         panic(err)
     }
@@ -105,13 +105,13 @@ func main() {
 
 ## 常见问题
 
-### Q: 如何获取 Seth 地址？
+### Q: 如何获取 Shardora 地址？
 
-A: Seth 地址是 20 字节（40 个十六进制字符）。可以从 Seth 客户端获取。
+A: Shardora 地址是 20 字节（40 个十六进制字符）。可以从 Shardora 客户端获取。
 
 ### Q: 如何生成发送者私钥？
 
-A: 使用 Seth 客户端生成账户，或使用现有账户的私钥。
+A: 使用 Shardora 客户端生成账户，或使用现有账户的私钥。
 
 ### Q: 证书错误怎么办？
 

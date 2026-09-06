@@ -6,7 +6,7 @@
 #define private public
 #include "common/lof.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -169,4 +169,4 @@ TEST_F(TestLof, GetOutliersMinimalPoints) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

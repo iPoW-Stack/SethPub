@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Uniswap V3 Core (Solidity 0.8.20) 合约部署测试脚本
-用于在 Seth 链上部署和测试升级后的 Uniswap V3 合约
+用于在 Shardora 链上部署和测试升级后的 Uniswap V3 合约
 """
 
 import struct
@@ -43,8 +43,8 @@ class MessageHandleStatus(IntEnum):
     kRequestInvalid = 10009
     kNotExists = 10010
 
-class SethClient:
-    """Seth 链客户端"""
+class ShardoraClient:
+    """Shardora 链客户端"""
     def __init__(self, host, port):
         self.base_url = f"http://{host}:{port}"
         self.tx_url = f"{self.base_url}/transaction"
@@ -471,8 +471,8 @@ if __name__ == "__main__":
     print("=" * 60)
     
     # 配置
-    SETH_HOST = os.getenv("SETH_HOST", "35.197.170.240")
-    SETH_PORT = int(os.getenv("SETH_PORT", "23001"))
+    SHARDORA_HOST = os.getenv("SHARDORA_HOST", "35.197.170.240")
+    SHARDORA_PORT = int(os.getenv("SHARDORA_PORT", "23001"))
     PRIVATE_KEY = os.getenv("PRIVATE_KEY", "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b")
     
     # 测试代币地址（需要提前部署）
@@ -480,7 +480,7 @@ if __name__ == "__main__":
     TOKEN1_ADDR = os.getenv("TOKEN1_ADDR", "").strip().lower().replace("0x", "")
     
     # 创建客户端
-    client = SethClient(SETH_HOST, SETH_PORT)
+    client = ShardoraClient(SHARDORA_HOST, SHARDORA_PORT)
     sender = client.get_address(PRIVATE_KEY)
     print(f"\n[Info] 部署者地址: {sender}")
     print(f"[Info] 余额: {client.get_balance(sender)}")

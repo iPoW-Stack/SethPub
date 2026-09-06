@@ -54,10 +54,10 @@ uv_tcp_nodelay(&ex_uv_tcp->uv_tcp, 1);        // 新增
 // uv_async_cb() 函数中
 if (uv_is_closing(...) || ex_uv_tcp->uv_tcp.type != UV_TCP) {
     // 连接无效，释放
-    SETH_WARN("[TCP_RECONN] stale connection detected...");
+    SHARDORA_WARN("[TCP_RECONN] stale connection detected...");
 } else {
     // 连接有效，重用
-    SETH_DEBUG("[TCP_RECONN] reusing existing connection...");
+    SHARDORA_DEBUG("[TCP_RECONN] reusing existing connection...");
 }
 ```
 
@@ -77,7 +77,7 @@ uv_write(req, ...);
 ```cpp
 // on_read() 函数中
 if (!ok) {
-    SETH_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection", ...);
+    SHARDORA_WARN("[TCP_RECONN] on_read: bad packet from %s:%d — freeing connection", ...);
     tcp_transport->FreeConnection(ex_uv_tcp);
     return;
 }
@@ -86,9 +86,9 @@ if (!ok) {
 #### 改动5: 日志统一
 ```cpp
 // 所有TCP重连相关日志都使用 [TCP_RECONN] 标签
-SETH_WARN("[TCP_RECONN] FreeConnection: %s:%d %p — removed from conn_map, ...", ...);
-SETH_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p", ...);
-SETH_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting", ...);
+SHARDORA_WARN("[TCP_RECONN] FreeConnection: %s:%d %p — removed from conn_map, ...", ...);
+SHARDORA_DEBUG("[TCP_RECONN] reusing existing connection: %s:%d %p", ...);
+SHARDORA_WARN("[TCP_RECONN] stale connection detected: %s:%d (closing=%d, type=%d) — reconnecting", ...);
 ```
 
 ### 预期效果

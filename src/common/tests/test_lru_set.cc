@@ -6,7 +6,7 @@
 #define private public
 #include "common/lru_set.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -121,4 +121,4 @@ TEST_F(TestLRUSet, SingleCapacity) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

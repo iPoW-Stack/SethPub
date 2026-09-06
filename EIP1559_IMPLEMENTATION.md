@@ -2,7 +2,7 @@
 
 ## 概述
 
-本文档描述了在 Seth 区块链中实现 EIP-1559 (Type 2) 交易的修改。EIP-1559 是以太坊的一个重要升级，引入了新的交易费用机制。
+本文档描述了在 Shardora 区块链中实现 EIP-1559 (Type 2) 交易的修改。EIP-1559 是以太坊的一个重要升级，引入了新的交易费用机制。
 
 ## 什么是 EIP-1559？
 
@@ -36,7 +36,7 @@ RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])
 ```cpp
 if (p[0] == 0x02) {
     // EIP-1559 (Type 2) transaction
-    SETH_INFO("DecodeEthRawTx: EIP-1559 (Type 2) transaction detected");
+    SHARDORA_INFO("DecodeEthRawTx: EIP-1559 (Type 2) transaction detected");
     p++; len--;  // Skip type byte
     
     // Decode RLP fields...
@@ -64,7 +64,7 @@ signing_hash = keccak256(0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxF
 if (is_eip1559) {
     // EIP-1559 signing hash
     std::string payload;
-    payload += rlp_encode_uint(kSethChainId);
+    payload += rlp_encode_uint(kShardoraChainId);
     payload += rlp_encode_uint(nonce);
     payload += rlp_encode_uint(gas_price);  // maxPriorityFeePerGas
     payload += rlp_encode_uint(gas_price);  // maxFeePerGas
@@ -80,7 +80,7 @@ if (is_eip1559) {
 }
 ```
 
-### 2. Python SDK 修改 (`clipy/seth3.py`)
+### 2. Python SDK 修改 (`clipy/shardora3.py`)
 
 #### 2.1 增强的交易签名函数
 
@@ -190,8 +190,8 @@ def test_eip1559_contract_call(w3, MY, KEY, contract_addr, abi):
 ### 1. 编译 C++ 代码
 
 ```bash
-# 重新编译 Seth 节点
-cd /path/to/seth
+# 重新编译 Shardora 节点
+cd /path/to/shardora
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
@@ -200,7 +200,7 @@ make -j$(nproc)
 ### 2. 运行测试
 
 ```bash
-# 确保 Seth 节点正在运行
+# 确保 Shardora 节点正在运行
 cd clipy
 
 # 运行 EIP-1559 测试
@@ -212,10 +212,10 @@ python test_eip1559.py --host 127.0.0.1 --port 23001 --key <your_private_key>
 #### Python SDK 示例
 
 ```python
-from seth_sdk import SethWeb3Mock, _eth_sign_and_send
+from shardora_sdk import ShardoraWeb3Mock, _eth_sign_and_send
 
 # 初始化客户端
-w3 = SethWeb3Mock("127.0.0.1", 23001)
+w3 = ShardoraWeb3Mock("127.0.0.1", 23001)
 MY = w3.client.get_address(private_key)
 
 # 发送 EIP-1559 交易
@@ -235,7 +235,7 @@ tx_hash = _eth_sign_and_send(
 
 #### MetaMask 兼容性
 
-由于实现了标准的 EIP-1559 RLP 编码和签名，MetaMask 和其他以太坊钱包可以直接发送 EIP-1559 交易到 Seth 节点：
+由于实现了标准的 EIP-1559 RLP 编码和签名，MetaMask 和其他以太坊钱包可以直接发送 EIP-1559 交易到 Shardora 节点：
 
 ```javascript
 // MetaMask 示例
@@ -300,7 +300,7 @@ RLP([
 
 ### Gas 费用计算
 
-在 Seth 中，我们简化了 EIP-1559 的费用机制：
+在 Shardora 中，我们简化了 EIP-1559 的费用机制：
 
 1. **maxFeePerGas** 用作实际的 gas 价格
 2. **maxPriorityFeePerGas** 目前被记录但不影响费用计算
@@ -384,7 +384,7 @@ Total: 3/3 tests passed
 **症状**: `signature recovery failed`
 
 **解决方案**: 
-1. 检查 chainId 是否正确（Seth 默认: 3355103125）
+1. 检查 chainId 是否正确（Shardora 默认: 3355103125）
 2. 验证私钥格式
 3. 确认签名哈希计算正确
 
@@ -410,10 +410,10 @@ Total: 3/3 tests passed
 
 ## 贡献者
 
-- 实现: Seth 开发团队
-- 测试: Seth QA 团队
-- 文档: Seth 技术写作团队
+- 实现: Shardora 开发团队
+- 测试: Shardora QA 团队
+- 文档: Shardora 技术写作团队
 
 ## 许可证
 
-本实现遵循 Seth 项目的开源许可证。
+本实现遵循 Shardora 项目的开源许可证。

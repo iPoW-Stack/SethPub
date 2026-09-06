@@ -24,7 +24,7 @@ import eth_abi
 import xxhash
 from Crypto.Hash import keccak
 from ecdsa import SigningKey, SECP256k1
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link
 
 # Constants matching C++ implementation
 CONSENSUS_SHARD_BEGIN_NETWORK_ID = 3
@@ -492,7 +492,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     # Deploy ContractA directly
     salt_a = secrets.token_hex(31) + 'a'
-    contract_a = w3.seth.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
+    contract_a = w3.shardora.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
         'from': user1_addr,
         'salt': salt_a,
     }, user1_key)
@@ -562,7 +562,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     # Deploy ContractB
     salt_b = secrets.token_hex(31) + 'b'
-    contract_b = w3.seth.contract(abi=b_abi, bytecode=b_bin, sender_address=user2_addr).deploy({
+    contract_b = w3.shardora.contract(abi=b_abi, bytecode=b_bin, sender_address=user2_addr).deploy({
         'from': user2_addr,
         'salt': salt_b,
         'args': [contract_a.address],
@@ -623,7 +623,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
     
     # Deploy ContractC
     salt_c = secrets.token_hex(31) + 'c'
-    contract_c = w3.seth.contract(abi=c_abi, bytecode=c_bin, sender_address=user3_addr).deploy({
+    contract_c = w3.shardora.contract(abi=c_abi, bytecode=c_bin, sender_address=user3_addr).deploy({
         'from': user3_addr,
         'salt': salt_c,
         'args': [contract_b.address],
@@ -700,7 +700,7 @@ def test_contract_chain_same_shard_pool(w3, MY, KEY):
 
 if __name__ == "__main__":
     IP, PORT, KEY = "127.0.0.1", 23001, "7c5b4ec643cfe561eba395569a41c04697920688e2daa4535e30969ffc8a4f66"
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     MY = w3.client.get_address(KEY)
     
     # Run the test

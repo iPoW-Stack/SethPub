@@ -63,7 +63,7 @@ src/pki/src/
 s21
 s22
 pkgs/
-seth
+/shardora
 setup_coredump.sh
 init_accounts*
 extract_sks.py
@@ -93,11 +93,11 @@ hashtree/
 ips
 ping.sh
 s3_1/
-seths.tar.gz
+shardoras.tar.gz
 txcli*
 src/protos/__pycache__/
 pkg.tar.gz
-seth.tar.gz
+shardora.tar.gz
 ars/
 exchange/
 mm/

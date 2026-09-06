@@ -22,7 +22,7 @@ import (
 
 // PurchaseCredential represents the purchase credential from user
 type PurchaseCredential struct {
-	Address   string `json:"address"`    // Seth address to receive coins (hex encoded)
+	Address   string `json:"address"`    // Shardora address to receive coins (hex encoded)
 	Timestamp int64  `json:"timestamp"`  // Unix timestamp
 	Nonce     string `json:"nonce"`      // Random nonce to prevent replay
 	Signature string `json:"signature"`  // ECDSA signature (hex encoded, r||s||v format)
@@ -40,14 +40,14 @@ type Response struct {
 type CredentialService struct {
 	usedCredentials map[string]bool // Map of credential hash -> used status
 	mu              sync.RWMutex
-	sethClient      *SethClient
+	shardoraClient      *ShardoraClient
 }
 
 // NewCredentialService creates a new credential service
-func NewCredentialService(sethNodeIP string, sethNodePort int, senderPrivateKey string) *CredentialService {
+func NewCredentialService(shardoraNodeIP string, shardoraNodePort int, senderPrivateKey string) *CredentialService {
 	return &CredentialService{
 		usedCredentials: make(map[string]bool),
-		sethClient:      NewSethClient(sethNodeIP, sethNodePort, senderPrivateKey),
+		shardoraClient:      NewShardoraClient(shardoraNodeIP, shardoraNodePort, senderPrivateKey),
 	}
 }
 
@@ -151,8 +151,8 @@ func (cs *CredentialService) ProcessCredential(cred *PurchaseCredential) (*Respo
 		}, nil
 	}
 
-	// 4. Transfer coins via Seth client
-	txHash, err := cs.sethClient.TransferCoins(cred.Address, 10000000000)
+	// 4. Transfer coins via Shardora client
+	txHash, err := cs.shardoraClient.TransferCoins(cred.Address, 10000000000)
 	if err != nil {
 		return &Response{
 			Success: false,
@@ -232,7 +232,7 @@ func GenerateSelfSignedCert() (tls.Certificate, error) {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"Seth Purchase Service"},
+			Organization: []string{"Shardora Purchase Service"},
 			CommonName:   "localhost",
 		},
 		NotBefore:             notBefore,
@@ -269,12 +269,12 @@ func GenerateSelfSignedCert() (tls.Certificate, error) {
 func main() {
 	// Configuration
 	port := 8443
-	sethNodeIP := "127.0.0.1"
-	sethNodePort := 13001
+	shardoraNodeIP := "127.0.0.1"
+	shardoraNodePort := 13001
 	senderPrivateKey := "your_sender_private_key_hex" // Replace with actual private key
 
 	// Create credential service
-	service := NewCredentialService(sethNodeIP, sethNodePort, senderPrivateKey)
+	service := NewCredentialService(shardoraNodeIP, shardoraNodePort, senderPrivateKey)
 
 	// Setup HTTP handlers
 	http.HandleFunc("/purchase", service.HandlePurchase)
@@ -303,7 +303,7 @@ func main() {
 	}
 
 	log.Printf("Starting HTTPS server on port %d...", port)
-	log.Printf("Seth node: %s:%d", sethNodeIP, sethNodePort)
+	log.Printf("Shardora node: %s:%d", shardoraNodeIP, shardoraNodePort)
 	log.Printf("Endpoint: https://localhost:%d/purchase", port)
 
 	// Start server

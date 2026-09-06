@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import sys, time
-sys.path.insert(0, "/root/seth/clipy")
+sys.path.insert(0, "/root/shardora/clipy")
 from test_exchange_contract import *
-from seth_sdk import StepType
+from shardora_sdk import StepType
 
 FUNDER_KEY = "f1757118b56a13dbb96c41be76b6368b95f78ad07c5d2b04a2e7e1972cd33ae5"
 HOST = "192.168.25.129"

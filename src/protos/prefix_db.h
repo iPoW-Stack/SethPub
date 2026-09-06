@@ -27,9 +27,9 @@
 #include "protos/ws.pb.h"
 #include "protos/view_block.pb.h"
 #include "security/security.h"
-#include "sethvm/sethvm_utils.h"
+#include "shardoravm/shardoravm_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace protos {
 
@@ -125,7 +125,7 @@ public:
     void AddNowElectHeight2Plege(const std::string& addr , const uint64_t height , db::DbWriteBatch& db_batch) {
         auto key = common::Encode::HexDecode(addr) + common::Encode::HexDecode("0000000000000000000000000000000000000000000000000000000000000000");
         evmc::bytes32 tmp_val{};
-        sethvm::Uint64ToEvmcBytes32(tmp_val, height);
+        shardoravm::Uint64ToEvmcBytes32(tmp_val, height);
 
         auto value =  std::string((char*)tmp_val.bytes, sizeof(tmp_val.bytes));
         SaveTemporaryKv(key, value, db_batch);
@@ -135,17 +135,17 @@ public:
         std::string val;
         auto st = db_->Get(kAddressPrefix + addr, &val);
         if (!st.ok()) {
-            SETH_DEBUG("failed get addr: %s", common::Encode::HexEncode(addr).c_str());
+            SHARDORA_DEBUG("failed get addr: %s", common::Encode::HexEncode(addr).c_str());
             return nullptr;
         }
 
         auto addr_info = std::make_shared<address::protobuf::AddressInfo>();
         if (!addr_info->ParseFromString(val)) {
-            SETH_DEBUG("failed parse addr: %s", common::Encode::HexEncode(addr).c_str());
+            SHARDORA_DEBUG("failed parse addr: %s", common::Encode::HexEncode(addr).c_str());
             return nullptr;
         }
 
-        SETH_DEBUG("success get addr: %s", common::Encode::HexEncode(addr).c_str());
+        SHARDORA_DEBUG("success get addr: %s", common::Encode::HexEncode(addr).c_str());
         return addr_info;
     }
 
@@ -179,11 +179,11 @@ public:
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
         key.append(id);
         key.append((char*)&peer_idx, sizeof(peer_idx));
-        SETH_DEBUG("save ttttt swap key: %u, id: %s, %u",
+        SHARDORA_DEBUG("save ttttt swap key: %u, id: %s, %u",
             local_member_idx, common::Encode::HexEncode(id).c_str(), peer_idx);
         auto st = db_->Put(key, seckey);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -200,7 +200,7 @@ public:
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
         key.append(id);
         key.append((char*)&peer_idx, sizeof(peer_idx));
-        SETH_DEBUG("get ttttt swap key: %u, %s, %u",
+        SHARDORA_DEBUG("get ttttt swap key: %u, %s, %u",
             local_member_idx, common::Encode::HexEncode(id).c_str(), peer_idx);
         auto st = db_->Get(key, seckey);
         if (!st.ok()) {
@@ -260,7 +260,7 @@ public:
             db_batch.Put(key, elect_block.SerializeAsString());
         }
 
-        SETH_DEBUG("save elect block sharding id: %u, height: %lu",
+        SHARDORA_DEBUG("save elect block sharding id: %u, height: %lu",
             sharding_id, elect_block.elect_height());
     }
 
@@ -272,7 +272,7 @@ public:
         key.append(kSaveHavePrevLatestElectHeightPrefix);
         key.append((char*)&sharding_id, sizeof(sharding_id));
         std::string val;
-        SETH_DEBUG("get elect block sharding id: %u",
+        SHARDORA_DEBUG("get elect block sharding id: %u",
             sharding_id);
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
@@ -283,7 +283,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("success get elect block sharding id: %u, height: %lu",
+        SHARDORA_DEBUG("success get elect block sharding id: %u, height: %lu",
             sharding_id, elect_block->elect_height());
         return true;
     }
@@ -295,7 +295,7 @@ public:
         key.append(kLatestElectBlockPrefix);
         key.append((char*)&sharding_id, sizeof(sharding_id));
         std::string val;
-        SETH_DEBUG("get elect block sharding id: %u",
+        SHARDORA_DEBUG("get elect block sharding id: %u",
             sharding_id);
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
@@ -306,7 +306,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("success get elect block sharding id: %u, height: %lu",
+        SHARDORA_DEBUG("success get elect block sharding id: %u, height: %lu",
             sharding_id, elect_block->elect_height());
         return true;
     }
@@ -324,7 +324,7 @@ public:
     void SaveLatestTimeBlock(const timeblock::protobuf::TimeBlock& tmblock, db::DbWriteBatch& db_batch) {
         std::string key(kLatestTimeBlockPrefix);
         db_batch.Put(key, tmblock.SerializeAsString());
-        SETH_DEBUG("dddddd success latest time block: %lu, %s", 
+        SHARDORA_DEBUG("dddddd success latest time block: %lu, %s", 
             tmblock.height(), 
             ProtobufToJson(tmblock).c_str());
     }
@@ -341,7 +341,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("dddddd success get latest time block: %lu", tmblock->height());
+        SHARDORA_DEBUG("dddddd success get latest time block: %lu", tmblock->height());
         return true;
     }
 
@@ -358,7 +358,7 @@ public:
         key.append((char*)&pool_index, sizeof(pool_index));
         key.append((char*)&height, sizeof(height));
         batch.Put(key, block_hash);
-        SETH_DEBUG("save sync key value %u_%u_%lu, success save block with height: %u, %u, %lu",
+        SHARDORA_DEBUG("save sync key value %u_%u_%lu, success save block with height: %u, %u, %lu",
             sharding_id, pool_index, height, sharding_id, pool_index, height);
     }
 
@@ -380,12 +380,12 @@ public:
         key.append((char*)&height, sizeof(height));
         auto st = db_->Get(key, block_hash);
         if (!st.ok()) {
-            SETH_DEBUG("failed get sync key value %u_%u_%lu",
+            SHARDORA_DEBUG("failed get sync key value %u_%u_%lu",
                 sharding_id, pool_index, height);
             return false;
         }
 
-        SETH_DEBUG("get sync key value %u_%u_%lu, success get block with height: %u, %u, %lu",
+        SHARDORA_DEBUG("get sync key value %u_%u_%lu, success get block with height: %u, %u, %lu",
             sharding_id, pool_index, height, sharding_id, pool_index, height);
         return true;
     }
@@ -394,7 +394,7 @@ public:
         //assert(!view_block.qc().view_block_hash().empty());
         // if (BlockExists(view_block.qc().view_block_hash())) {
         //     auto* block_item = &view_block.block_info();
-        //     SETH_DEBUG("view_block.qc().view_block_hash() exists: %s, "
+        //     SHARDORA_DEBUG("view_block.qc().view_block_hash() exists: %s, "
         //         "new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
         //         "tx size: %u, hash: %s, elect height: %lu, tm height: %lu",
         //         common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
@@ -462,7 +462,7 @@ public:
         std::string block_str;
         auto st = db_->Get(key, &block_str);
         if (!st.ok()) {
-            SETH_DEBUG("failed get view block: %s", common::Encode::HexEncode(block_hash).c_str());
+            SHARDORA_DEBUG("failed get view block: %s", common::Encode::HexEncode(block_hash).c_str());
             return false;
         }
 
@@ -513,7 +513,7 @@ public:
             uint64_t height,
             view_block::protobuf::ViewBlockItem* block) {
         std::string block_hash;
-        SETH_DEBUG("GetBlockWithHeight: %u_%u_%lu", sharding_id, pool_index, height);
+        SHARDORA_DEBUG("GetBlockWithHeight: %u_%u_%lu", sharding_id, pool_index, height);
         if (!GetBlockHashWithBlockHeight(sharding_id, pool_index, height, &block_hash)) {
             return false;
         }
@@ -527,7 +527,7 @@ public:
             uint64_t height,
             std::string* block_str) {
         std::string block_hash;
-        SETH_DEBUG("GetBlockStringWithHeight.");
+        SHARDORA_DEBUG("GetBlockStringWithHeight.");
         if (!GetBlockHashWithBlockHeight(sharding_id, pool_index, height, &block_hash)) {
             return false;
         }
@@ -678,7 +678,7 @@ public:
         std::string key = kTemporaryKeyPrefix + tmp_key;
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -687,7 +687,7 @@ public:
             const std::string& val,
             db::DbWriteBatch& db_batch) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
-        SETH_DEBUG("save temporary kv: %s, %s", common::Encode::HexEncode(tmp_key).c_str(), common::Encode::HexEncode(val).c_str());
+        SHARDORA_DEBUG("save temporary kv: %s, %s", common::Encode::HexEncode(tmp_key).c_str(), common::Encode::HexEncode(val).c_str());
         db_batch.Put(key, val);
     }
 
@@ -696,7 +696,7 @@ public:
             std::string* val) {
         std::string key = kTemporaryKeyPrefix + tmp_key;
         auto st = db_->Get(key, val);
-        SETH_DEBUG("get temporary kv: %s, status: %d, value: %s", 
+        SHARDORA_DEBUG("get temporary kv: %s, status: %d, value: %s", 
             common::Encode::HexEncode(tmp_key).c_str(), 
             st.ok(), 
             common::Encode::HexEncode(*val).c_str());
@@ -714,7 +714,7 @@ public:
         key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&pool_index, sizeof(pool_index));
         batch.Put(key, pool_info.SerializeAsString());
-        SETH_DEBUG("save latest pool info: %s, %u_%u_%lu, synced_height: %lu, hash: %s",
+        SHARDORA_DEBUG("save latest pool info: %s, %u_%u_%lu, synced_height: %lu, hash: %s",
             ProtobufToJson(pool_info).c_str(), 
             sharding_id, 
             pool_index, 
@@ -742,7 +742,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("get latest pool info: %s, %u_%u_%lu, synced_height: %lu, hash: %s",
+        SHARDORA_DEBUG("get latest pool info: %s, %u_%u_%lu, synced_height: %lu, hash: %s",
             ProtobufToJson(*pool_info).c_str(), 
             sharding_id, 
             pool_index, 
@@ -763,7 +763,7 @@ public:
         key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&pool_index, sizeof(pool_index));
         batch.Put(key, block_hash);
-        SETH_DEBUG("save high view block: %u_%u, hash: %s",
+        SHARDORA_DEBUG("save high view block: %u_%u, hash: %s",
             sharding_id, pool_index,
             common::Encode::HexEncode(block_hash).c_str());
     }
@@ -783,7 +783,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("get high view block: %u_%u, hash: %s",
+        SHARDORA_DEBUG("get high view block: %u_%u, hash: %s",
             sharding_id, pool_index,
             common::Encode::HexEncode(block_hash).c_str());
         return GetBlock(block_hash, block);
@@ -844,7 +844,7 @@ public:
         std::string key = kBlsVerifyPrefex + id;
         std::string val = verfy_req.SerializeAsString();
         db_batch.Put(key, val);
-        SETH_DEBUG("%s add bls verify g2: %s", 
+        SHARDORA_DEBUG("%s add bls verify g2: %s", 
             common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_req).c_str());
     }
 
@@ -855,10 +855,10 @@ public:
         std::string val = verfy_req.SerializeAsString();
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
 
-        SETH_DEBUG("%s add bls verify g2: %s", 
+        SHARDORA_DEBUG("%s add bls verify g2: %s", 
             common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_req).c_str());
     }
 
@@ -869,17 +869,17 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_DEBUG("%s get bls verify g2 failed", common::Encode::HexEncode(id).c_str());
+            SHARDORA_DEBUG("%s get bls verify g2 failed", common::Encode::HexEncode(id).c_str());
             return false;
         }
 
         if (!verfy_req->ParseFromString(val)) {
             //assert(false);
-            SETH_DEBUG("%s get bls verify g2 failed", common::Encode::HexEncode(id).c_str());
+            SHARDORA_DEBUG("%s get bls verify g2 failed", common::Encode::HexEncode(id).c_str());
             return false;
         }
 
-        SETH_DEBUG("%s get bls verify g2 success", common::Encode::HexEncode(id).c_str());
+        SHARDORA_DEBUG("%s get bls verify g2 success", common::Encode::HexEncode(id).c_str());
         return true;
     }
 
@@ -896,10 +896,10 @@ public:
         key.append(node_addr);
         auto st = db_->Put(key, bls_prikey);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
         
-        SETH_DEBUG("save bls success: %lu, %u, %s, bls_prikey: %s", elect_height,
+        SHARDORA_DEBUG("save bls success: %lu, %u, %s, bls_prikey: %s", elect_height,
             sharding_id,
             common::Encode::HexEncode(node_addr).c_str(),
             common::Encode::HexEncode(bls_prikey).c_str());
@@ -919,7 +919,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_DEBUG("get bls failed: %lu, %u, %s",
+            SHARDORA_DEBUG("get bls failed: %lu, %u, %s",
                 elect_height,
                 sharding_id,
                 common::Encode::HexEncode(security_ptr->GetAddress()).c_str());
@@ -941,7 +941,7 @@ public:
         }
 
         *bls_prikey = tmp_data.substr(0, int_data[0]);
-        SETH_DEBUG("get bls success: %lu, %u, %s, enc bls_item: %s, dec bls item: %s", elect_height,
+        SHARDORA_DEBUG("get bls success: %lu, %u, %s, enc bls_item: %s, dec bls item: %s", elect_height,
             sharding_id,
             common::Encode::HexEncode(security_ptr->GetAddress()).c_str(),
             common::Encode::HexEncode(val).c_str(),
@@ -959,7 +959,7 @@ public:
         std::string val = verify_val.SerializeAsString();
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -984,7 +984,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_ERROR("write db failed!");
+            SHARDORA_ERROR("write db failed!");
             return false;
         }
 
@@ -1059,7 +1059,7 @@ public:
         std::string val(data, sizeof(data));
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1100,10 +1100,10 @@ public:
         std::string val(data, sizeof(data));
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_ERROR("Failed to save stake info for address: %s, status: %s",
+            SHARDORA_ERROR("Failed to save stake info for address: %s, status: %s",
                 common::Encode::HexEncode(address).c_str(), st.ToString().c_str());
         } else {
-            SETH_DEBUG("Saved stake info: addr=%s, total_stake=%lu, timestamp=%lu, block_height=%lu",
+            SHARDORA_DEBUG("Saved stake info: addr=%s, total_stake=%lu, timestamp=%lu, block_height=%lu",
                 common::Encode::HexEncode(address).c_str(),
                 total_stake_amount, stake_timestamp, stake_block_height);
         }
@@ -1130,7 +1130,7 @@ public:
         
         std::string val(data, sizeof(data));
         db_batch.Put(key, val);
-        SETH_DEBUG("Saved stake info to batch: addr=%s, total_stake=%lu, timestamp=%lu, block_height=%lu",
+        SHARDORA_DEBUG("Saved stake info to batch: addr=%s, total_stake=%lu, timestamp=%lu, block_height=%lu",
             common::Encode::HexEncode(address).c_str(),
             total_stake_amount, stake_timestamp, stake_block_height);
     }
@@ -1152,7 +1152,7 @@ public:
         }
         
         if (val.size() != 24) {
-            SETH_ERROR("Invalid stake info size: %lu for address: %s",
+            SHARDORA_ERROR("Invalid stake info size: %lu for address: %s",
                 val.size(), common::Encode::HexEncode(address).c_str());
             return false;
         }
@@ -1162,7 +1162,7 @@ public:
         *stake_timestamp = u64_ptr[1];
         // stake_block_height = u64_ptr[2] (not needed for return)
         
-        SETH_DEBUG("Got stake info: addr=%s, total_stake=%lu, timestamp=%lu",
+        SHARDORA_DEBUG("Got stake info: addr=%s, total_stake=%lu, timestamp=%lu",
             common::Encode::HexEncode(address).c_str(),
             *total_stake_amount, *stake_timestamp);
         
@@ -1178,10 +1178,10 @@ public:
         
         auto st = db_->Delete(key);
         if (!st.ok()) {
-            SETH_ERROR("Failed to remove stake info for address: %s, status: %s",
+            SHARDORA_ERROR("Failed to remove stake info for address: %s, status: %s",
                 common::Encode::HexEncode(address).c_str(), st.ToString().c_str());
         } else {
-            SETH_DEBUG("Removed stake info for address: %s",
+            SHARDORA_DEBUG("Removed stake info for address: %s",
                 common::Encode::HexEncode(address).c_str());
         }
     }
@@ -1194,7 +1194,7 @@ public:
         key.append(address);
         
         db_batch.Delete(key);
-        SETH_DEBUG("Removed stake info from batch for address: %s",
+        SHARDORA_DEBUG("Removed stake info from batch for address: %s",
             common::Encode::HexEncode(address).c_str());
     }
 
@@ -1220,13 +1220,13 @@ public:
                 val,
                 security_ptr->GetPrikey(),
                 &enc_data) != security::kSecuritySuccess) {
-            SETH_FATAL("encrypt data failed!");
+            SHARDORA_FATAL("encrypt data failed!");
             return;
         }
 
         auto st = db_->Put(key, enc_data);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1253,7 +1253,7 @@ public:
                 val,
                 security_ptr->GetPrikey(),
                 &enc_data) != security::kSecuritySuccess) {
-            SETH_FATAL("encrypt data failed!");
+            SHARDORA_FATAL("encrypt data failed!");
             return;
         }
 
@@ -1277,7 +1277,7 @@ public:
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
 //             //assert(false);
-            SETH_ERROR("get db failed!");
+            SHARDORA_ERROR("get db failed!");
             return false;
         }
 
@@ -1287,14 +1287,14 @@ public:
                 security_ptr->GetPrikey(),
                 &dec_data) != security::kSecuritySuccess) {
             //assert(false);
-            SETH_ERROR("decrypt db failed!");
+            SHARDORA_ERROR("decrypt db failed!");
             return false;
         }
 
         uint32_t* tmp = (uint32_t*)dec_data.c_str();
         if (!local_poly->ParseFromArray(dec_data.c_str() + 4, tmp[0])) {
             //assert(false);
-            SETH_ERROR("parse db failed!");
+            SHARDORA_ERROR("parse db failed!");
             return false;
         }
 
@@ -1315,7 +1315,7 @@ public:
         key.append(id);
         std::string val = verfy_final_vals.SerializeAsString();
         db_batch.Put(key, val);
-        SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
+        SHARDORA_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
             common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
             common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_final_vals).c_str());
     }
@@ -1334,10 +1334,10 @@ public:
         std::string val = verfy_final_vals.SerializeAsString();
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
 
-        SETH_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
+        SHARDORA_DEBUG("%s save verified g2s: local_member_idx: %u, valid_t: %u, id: %s, val: %s",
             common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
             common::Encode::HexEncode(id).c_str(), ProtobufToJson(verfy_final_vals).c_str());
     }
@@ -1353,13 +1353,13 @@ public:
         key.append((char*)&local_member_idx, sizeof(local_member_idx));
         key.append((char*)&valid_t, sizeof(valid_t));
         key.append(id);
-        SETH_DEBUG("%s get verified g2s: local_member_idx: %u, valid_t: %u, id: %s",
+        SHARDORA_DEBUG("%s get verified g2s: local_member_idx: %u, valid_t: %u, id: %s",
             common::Encode::HexEncode(id).c_str(), local_member_idx, valid_t,
             common::Encode::HexEncode(id).c_str());
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_DEBUG("get data from db failed local_member_idx: %u, valid_t: %u, id: %s",
+            SHARDORA_DEBUG("get data from db failed local_member_idx: %u, valid_t: %u, id: %s",
                 local_member_idx, valid_t, common::Encode::HexEncode(id).c_str());
             return false;
         }
@@ -1393,7 +1393,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_ERROR("get data from db failed!");
+            SHARDORA_ERROR("get data from db failed!");
             return false;
         }
 
@@ -1427,7 +1427,7 @@ public:
         std::string val(data, sizeof(data));
         auto st = db_->Put(key, val);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1439,7 +1439,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_DEBUG("get db failed!");
+            SHARDORA_DEBUG("get db failed!");
             return false;
         }
 
@@ -1477,7 +1477,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_DEBUG("get db failed!");
+            SHARDORA_DEBUG("get db failed!");
             return false;
         }
 
@@ -1511,7 +1511,7 @@ public:
         item.set_timestamp(day);
         st = db_->Put(key, item.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
 
         return true;
@@ -1526,7 +1526,7 @@ public:
         key.append(id);
         auto st = db_->Put(key, sell_info.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1572,7 +1572,7 @@ public:
         key.append(id);
         auto st = db_->Put(key, sell_info.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1623,7 +1623,7 @@ public:
         val_data[1] = view_block.qc().pool_index();
         val_data[2] = view_block.block_info().height();
         db_batch.Put(key, value);
-        SETH_DEBUG("success save latest to block: %u_%u_%lu",
+        SHARDORA_DEBUG("success save latest to block: %u_%u_%lu",
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
             view_block.block_info().height());
@@ -1640,7 +1640,7 @@ public:
         }
 
         uint64_t* val_data = (uint64_t*)value.data();
-        SETH_DEBUG("success get latest to block: %u_%u_%lu", static_cast<uint32_t>(val_data[0]), 
+        SHARDORA_DEBUG("success get latest to block: %u_%u_%lu", static_cast<uint32_t>(val_data[0]), 
             static_cast<uint32_t>(val_data[1]), 
             val_data[2]);
         return GetBlockWithHeight(
@@ -1659,10 +1659,10 @@ public:
         key.append((char*)&network_id, sizeof(network_id));
         auto st = db_->Put(key, statistic_info.SerializeAsString());
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
         
-        SETH_DEBUG("success SaveLatestPoolStatisticTag network: %u, message: %s",
+        SHARDORA_DEBUG("success SaveLatestPoolStatisticTag network: %u, message: %s",
             network_id, ProtobufToJson(statistic_info).c_str());
     }
 
@@ -1675,7 +1675,7 @@ public:
         key.append(kLatestPoolStatisticTagPrefix);
         key.append((char*)&network_id, sizeof(network_id));
         db_batch.Put(key, statistic_info.SerializeAsString());
-        SETH_DEBUG("success SaveLatestPoolStatisticTag network: %u, message: %s",
+        SHARDORA_DEBUG("success SaveLatestPoolStatisticTag network: %u, message: %s",
             network_id, ProtobufToJson(statistic_info).c_str());
     }
 
@@ -1696,7 +1696,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("success GetLatestPoolStatisticTag network: %u, message: %s",
+        SHARDORA_DEBUG("success GetLatestPoolStatisticTag network: %u, message: %s",
             network_id, ProtobufToJson(*statistic_info).c_str());
         return true;
     }
@@ -1721,7 +1721,7 @@ public:
         
         auto st = db_->Put(key, enc_data);
         if (!st.ok()) {
-            SETH_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
+            SHARDORA_FATAL("write block to db failed: %d, status: %s", 1, st.ToString().c_str());
         }
     }
 
@@ -1735,7 +1735,7 @@ public:
         std::string val;
         auto st = db_->Get(key, &val);
         if (!st.ok()) {
-            SETH_DEBUG("get agg bls failed: %s",
+            SHARDORA_DEBUG("get agg bls failed: %s",
                 common::Encode::HexEncode(security_ptr->GetAddress()).c_str());
             return false;
         }
@@ -1748,7 +1748,7 @@ public:
             return false;
         }
 
-        SETH_DEBUG("save agg bls success: %s",
+        SHARDORA_DEBUG("save agg bls success: %s",
             common::Encode::HexEncode(security_ptr->GetAddress()).c_str());
 
         *bls_prikey = libff::alt_bn128_Fr(prikey_str.c_str());
@@ -1780,7 +1780,7 @@ public:
         uint64_t* u64_arr = (uint64_t*)(value + 8);
         u64_arr[0] = view;
         db_batch.Put(key, std::string(value, sizeof(value)));
-        SETH_DEBUG("save valid view block parent hash: %s, %u_%u_%lu",
+        SHARDORA_DEBUG("save valid view block parent hash: %s, %u_%u_%lu",
             common::Encode::HexEncode(parent_hash).c_str(), 
             network_id, 
             pool_index, 
@@ -1798,7 +1798,7 @@ public:
         key.append((char*)&sharding_id, sizeof(sharding_id));
         key.append((char*)&elect_height, sizeof(elect_height));
         db_batch.Put(key, block_hash);
-        SETH_DEBUG("save elect height with block hash: %s, sharding id: %u, elect height: %lu",
+        SHARDORA_DEBUG("save elect height with block hash: %s, sharding id: %u, elect height: %lu",
             common::Encode::HexEncode(block_hash).c_str(), 
             sharding_id, 
             elect_height);
@@ -1816,7 +1816,7 @@ public:
         std::string block_hash;
         auto st = db_->Get(key, &block_hash);
         if (!st.ok()) {
-            SETH_DEBUG("failed get elect height with block hash: %s, sharding id: %u, elect height: %lu",
+            SHARDORA_DEBUG("failed get elect height with block hash: %s, sharding id: %u, elect height: %lu",
                 common::Encode::HexEncode(block_hash).c_str(), 
                 sharding_id, 
                 elect_height);
@@ -1842,7 +1842,7 @@ public:
         memcpy(data + sizeof(latest_qc_view), val.data(), val.size());
         std::string value(data, sizeof(data));
         auto st = db_->Put(key, value);
-        SETH_DEBUG("success SaveLatestLeaderProposeMessage network: %u, pool: %u, view: %lu, latest_qc_view: %lu",
+        SHARDORA_DEBUG("success SaveLatestLeaderProposeMessage network: %u, pool: %u, view: %lu, latest_qc_view: %lu",
             sharding_id, pool_index, view_item.qc().view(), latest_qc_view);
         return st.ok();
     }
@@ -1865,7 +1865,7 @@ public:
         
         uint64_t* udata = (uint64_t*)data.c_str();
         *latest_qc_view = udata[0];
-        SETH_DEBUG("success GetLatestLeaderProposeMessage network: %u, pool: %u, latest_qc_view: %lu",
+        SHARDORA_DEBUG("success GetLatestLeaderProposeMessage network: %u, pool: %u, latest_qc_view: %lu",
             sharding_id, pool_index, *latest_qc_view);
         return msg->ParseFromArray(data.data() + sizeof(*latest_qc_view), data.size() - sizeof(*latest_qc_view));
     }
@@ -1911,4 +1911,4 @@ private:
 
 };  // namespace protos
 
-};  // namespace seth
+};  // namespace shardora

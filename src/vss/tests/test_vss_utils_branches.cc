@@ -3,7 +3,7 @@
 #include "elect/elect_utils.h"
 #include "vss/vss_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace vss {
 namespace test {
 
@@ -74,4 +74,4 @@ TEST(VssUtilsBranches, ElectItemLeaderFlagCanBeToggled) {
 
 }  // namespace test
 }  // namespace vss
-}  // namespace seth
+}  // namespace shardora

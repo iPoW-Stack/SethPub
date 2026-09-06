@@ -4,7 +4,7 @@ import sys
 import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'clipy')))
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link, to_checksum_address
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link, to_checksum_address
 
 PROXY_RE_SOL = """
 // SPDX-License-Identifier: GPL-3.0
@@ -282,7 +282,7 @@ def run_comprehensive_proxy_demo():
     IP, PORT = "127.0.0.1", 23001
     PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     MY_ADDR = w3.client.get_address(PRIV_KEY)
     print(f"[*] Operator Address: {MY_ADDR}")
 
@@ -292,7 +292,7 @@ def run_comprehensive_proxy_demo():
     
     # 构造函数参数
     init_data = b"system_init_pbc_params"
-    contract = w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
+    contract = w3.shardora.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
         'from': MY_ADDR,
         'salt': secrets.token_hex(32),
         'args': [init_data]
@@ -349,7 +349,7 @@ def run_comprehensive_proxy_demo():
 
     # C. JustCallRipemd160 (工具类函数测试)
     print("[3-C] JustCallRipemd160 (Pure Tooling Test):")
-    ripemd_res = contract.functions.JustCallRipemd160(b"hello_seth").call()
+    ripemd_res = contract.functions.JustCallRipemd160(b"hello_shardora").call()
     print(f"    Tooling Result: {ripemd_res}")
 
     # D. 直接访问 Public Mapping (proxy_map)

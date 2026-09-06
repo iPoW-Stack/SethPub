@@ -24,7 +24,7 @@ Modified three files to skip signature verification for ETH transactions (identi
 ```cpp
 // Re-verify ETH signature by rebuilding EIP-155 hash and recovering pubkey
 if (!security::VerifyEthSignature(tx_msg.eth_raw_tx(), tx_msg.pubkey(), tx_msg.sign())) {
-    SETH_ERROR("ETH tx signature verification failed");
+    SHARDORA_ERROR("ETH tx signature verification failed");
     msg_ptr->set_status(transport::kTxInvalidSignature);
     return transport::kFirewallCheckError;
 }
@@ -45,7 +45,7 @@ if (msg_ptr->address_info == nullptr) {
         security_->GetAddressWithPublicKey(tx_msg.pubkey()));
     
     if (msg_ptr->address_info == nullptr) {
-        SETH_DEBUG("ETH tx: address not found: %s",
+        SHARDORA_DEBUG("ETH tx: address not found: %s",
             common::Encode::HexEncode(
                 security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
         msg_ptr->set_status(transport::kTxInvalidAddress);
@@ -53,7 +53,7 @@ if (msg_ptr->address_info == nullptr) {
     }
 }
 
-SETH_DEBUG("ETH tx passed firewall check, from: %s",
+SHARDORA_DEBUG("ETH tx passed firewall check, from: %s",
     common::Encode::HexEncode(
         security_->GetAddressWithPublicKey(tx_msg.pubkey())).c_str());
 ```
@@ -93,7 +93,7 @@ if (tx_ptr->tx_info->has_eth_raw_tx() && !tx_ptr->tx_info->eth_raw_tx().empty())
             tx_ptr->tx_info->sign())) {
         pools_mgr_->BackupConsensusAddTxs(msg_ptr, address_info->pool_index(), tx_ptr);
     } else {
-        SETH_WARN("ETH tx verify failed in hotstuff_manager");
+        SHARDORA_WARN("ETH tx verify failed in hotstuff_manager");
     }
 } else if (tx_ptr->tx_info->pubkey().size() == 64u) {
 ```
@@ -132,10 +132,10 @@ if (tx_ptr->tx_info->has_eth_raw_tx() && !tx_ptr->tx_info->eth_raw_tx().empty())
 After these changes, compile and test:
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 test_eip1559.py
 ```
 

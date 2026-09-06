@@ -7,7 +7,7 @@
 #include "libff/algebra/curves/alt_bn128/alt_bn128_pp.hpp"
 #include "libff/common/profiling.hpp"
 
-namespace seth {
+namespace shardora {
 
 namespace bignum {
 
@@ -201,4 +201,4 @@ libff::alt_bn128_G2 Snark::DecodePointG2(const std::string& data) {
 
 };  // namespace bignum
 
-};  // namespace seth
+};  // namespace shardora

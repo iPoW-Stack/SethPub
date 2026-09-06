@@ -45,7 +45,7 @@ struct TableStruct {
 };
 void AddDescriptors();
 }  // namespace protobuf_protos_2felect_2eproto
-namespace seth {
+namespace shardora {
 namespace elect {
 namespace protobuf {
 class BlsPopProof;
@@ -95,33 +95,33 @@ class memberDefaultTypeInternal;
 extern memberDefaultTypeInternal _member_default_instance_;
 }  // namespace protobuf
 }  // namespace elect
-}  // namespace seth
+}  // namespace shardora
 namespace google {
 namespace protobuf {
-template<> ::seth::elect::protobuf::BlsPopProof* Arena::CreateMaybeMessage<::seth::elect::protobuf::BlsPopProof>(Arena*);
-template<> ::seth::elect::protobuf::BlsPublicKey* Arena::CreateMaybeMessage<::seth::elect::protobuf::BlsPublicKey>(Arena*);
-template<> ::seth::elect::protobuf::ElectBlock* Arena::CreateMaybeMessage<::seth::elect::protobuf::ElectBlock>(Arena*);
-template<> ::seth::elect::protobuf::ElectMessage* Arena::CreateMaybeMessage<::seth::elect::protobuf::ElectMessage>(Arena*);
-template<> ::seth::elect::protobuf::LeaderRotationMessage* Arena::CreateMaybeMessage<::seth::elect::protobuf::LeaderRotationMessage>(Arena*);
-template<> ::seth::elect::protobuf::PrevMemberInfo* Arena::CreateMaybeMessage<::seth::elect::protobuf::PrevMemberInfo>(Arena*);
-template<> ::seth::elect::protobuf::PrevMembers* Arena::CreateMaybeMessage<::seth::elect::protobuf::PrevMembers>(Arena*);
-template<> ::seth::elect::protobuf::SyncNodeStokeItem* Arena::CreateMaybeMessage<::seth::elect::protobuf::SyncNodeStokeItem>(Arena*);
-template<> ::seth::elect::protobuf::SyncNodeStokeRequest* Arena::CreateMaybeMessage<::seth::elect::protobuf::SyncNodeStokeRequest>(Arena*);
-template<> ::seth::elect::protobuf::SyncNodeStokeResItem* Arena::CreateMaybeMessage<::seth::elect::protobuf::SyncNodeStokeResItem>(Arena*);
-template<> ::seth::elect::protobuf::SyncNodeStokeResponse* Arena::CreateMaybeMessage<::seth::elect::protobuf::SyncNodeStokeResponse>(Arena*);
-template<> ::seth::elect::protobuf::VerifyVecValue* Arena::CreateMaybeMessage<::seth::elect::protobuf::VerifyVecValue>(Arena*);
-template<> ::seth::elect::protobuf::WaitingNodeHeartbeat* Arena::CreateMaybeMessage<::seth::elect::protobuf::WaitingNodeHeartbeat>(Arena*);
-template<> ::seth::elect::protobuf::WaitingNodesMessage* Arena::CreateMaybeMessage<::seth::elect::protobuf::WaitingNodesMessage>(Arena*);
-template<> ::seth::elect::protobuf::member* Arena::CreateMaybeMessage<::seth::elect::protobuf::member>(Arena*);
+template<> ::shardora::elect::protobuf::BlsPopProof* Arena::CreateMaybeMessage<::shardora::elect::protobuf::BlsPopProof>(Arena*);
+template<> ::shardora::elect::protobuf::BlsPublicKey* Arena::CreateMaybeMessage<::shardora::elect::protobuf::BlsPublicKey>(Arena*);
+template<> ::shardora::elect::protobuf::ElectBlock* Arena::CreateMaybeMessage<::shardora::elect::protobuf::ElectBlock>(Arena*);
+template<> ::shardora::elect::protobuf::ElectMessage* Arena::CreateMaybeMessage<::shardora::elect::protobuf::ElectMessage>(Arena*);
+template<> ::shardora::elect::protobuf::LeaderRotationMessage* Arena::CreateMaybeMessage<::shardora::elect::protobuf::LeaderRotationMessage>(Arena*);
+template<> ::shardora::elect::protobuf::PrevMemberInfo* Arena::CreateMaybeMessage<::shardora::elect::protobuf::PrevMemberInfo>(Arena*);
+template<> ::shardora::elect::protobuf::PrevMembers* Arena::CreateMaybeMessage<::shardora::elect::protobuf::PrevMembers>(Arena*);
+template<> ::shardora::elect::protobuf::SyncNodeStokeItem* Arena::CreateMaybeMessage<::shardora::elect::protobuf::SyncNodeStokeItem>(Arena*);
+template<> ::shardora::elect::protobuf::SyncNodeStokeRequest* Arena::CreateMaybeMessage<::shardora::elect::protobuf::SyncNodeStokeRequest>(Arena*);
+template<> ::shardora::elect::protobuf::SyncNodeStokeResItem* Arena::CreateMaybeMessage<::shardora::elect::protobuf::SyncNodeStokeResItem>(Arena*);
+template<> ::shardora::elect::protobuf::SyncNodeStokeResponse* Arena::CreateMaybeMessage<::shardora::elect::protobuf::SyncNodeStokeResponse>(Arena*);
+template<> ::shardora::elect::protobuf::VerifyVecValue* Arena::CreateMaybeMessage<::shardora::elect::protobuf::VerifyVecValue>(Arena*);
+template<> ::shardora::elect::protobuf::WaitingNodeHeartbeat* Arena::CreateMaybeMessage<::shardora::elect::protobuf::WaitingNodeHeartbeat>(Arena*);
+template<> ::shardora::elect::protobuf::WaitingNodesMessage* Arena::CreateMaybeMessage<::shardora::elect::protobuf::WaitingNodesMessage>(Arena*);
+template<> ::shardora::elect::protobuf::member* Arena::CreateMaybeMessage<::shardora::elect::protobuf::member>(Arena*);
 }  // namespace protobuf
 }  // namespace google
-namespace seth {
+namespace shardora {
 namespace elect {
 namespace protobuf {
 
 // ===================================================================
 
-class VerifyVecValue : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.VerifyVecValue) */ {
+class VerifyVecValue : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.VerifyVecValue) */ {
  public:
   VerifyVecValue();
   virtual ~VerifyVecValue();
@@ -312,7 +312,7 @@ class VerifyVecValue : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::uint32 valid_t() const;
   void set_valid_t(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.VerifyVecValue)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.VerifyVecValue)
  private:
   void set_has_x_c0();
   void clear_has_x_c0();
@@ -343,7 +343,7 @@ class VerifyVecValue : public ::google::protobuf::Message /* @@protoc_insertion_
 };
 // -------------------------------------------------------------------
 
-class BlsPublicKey : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.BlsPublicKey) */ {
+class BlsPublicKey : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.BlsPublicKey) */ {
  public:
   BlsPublicKey();
   virtual ~BlsPublicKey();
@@ -497,7 +497,7 @@ class BlsPublicKey : public ::google::protobuf::Message /* @@protoc_insertion_po
   ::std::string* release_y_c1();
   void set_allocated_y_c1(::std::string* y_c1);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.BlsPublicKey)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.BlsPublicKey)
  private:
   void set_has_x_c0();
   void clear_has_x_c0();
@@ -519,7 +519,7 @@ class BlsPublicKey : public ::google::protobuf::Message /* @@protoc_insertion_po
 };
 // -------------------------------------------------------------------
 
-class BlsPopProof : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.BlsPopProof) */ {
+class BlsPopProof : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.BlsPopProof) */ {
  public:
   BlsPopProof();
   virtual ~BlsPopProof();
@@ -658,7 +658,7 @@ class BlsPopProof : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::std::string* release_sign_z();
   void set_allocated_sign_z(::std::string* sign_z);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.BlsPopProof)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.BlsPopProof)
  private:
   void set_has_sign_x();
   void clear_has_sign_x();
@@ -677,7 +677,7 @@ class BlsPopProof : public ::google::protobuf::Message /* @@protoc_insertion_poi
 };
 // -------------------------------------------------------------------
 
-class PrevMemberInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.PrevMemberInfo) */ {
+class PrevMemberInfo : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.PrevMemberInfo) */ {
  public:
   PrevMemberInfo();
   virtual ~PrevMemberInfo();
@@ -838,7 +838,7 @@ class PrevMemberInfo : public ::google::protobuf::Message /* @@protoc_insertion_
   ::google::protobuf::int32 pool_idx_mod_num() const;
   void set_pool_idx_mod_num(::google::protobuf::int32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.PrevMemberInfo)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.PrevMemberInfo)
  private:
   void set_has_x_c0();
   void clear_has_x_c0();
@@ -863,7 +863,7 @@ class PrevMemberInfo : public ::google::protobuf::Message /* @@protoc_insertion_
 };
 // -------------------------------------------------------------------
 
-class PrevMembers : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.PrevMembers) */ {
+class PrevMembers : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.PrevMembers) */ {
  public:
   PrevMembers();
   virtual ~PrevMembers();
@@ -957,29 +957,29 @@ class PrevMembers : public ::google::protobuf::Message /* @@protoc_insertion_poi
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.elect.protobuf.PrevMemberInfo bls_pubkey = 1;
+  // repeated .shardora.elect.protobuf.PrevMemberInfo bls_pubkey = 1;
   int bls_pubkey_size() const;
   void clear_bls_pubkey();
   static const int kBlsPubkeyFieldNumber = 1;
-  ::seth::elect::protobuf::PrevMemberInfo* mutable_bls_pubkey(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::PrevMemberInfo >*
+  ::shardora::elect::protobuf::PrevMemberInfo* mutable_bls_pubkey(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::PrevMemberInfo >*
       mutable_bls_pubkey();
-  const ::seth::elect::protobuf::PrevMemberInfo& bls_pubkey(int index) const;
-  ::seth::elect::protobuf::PrevMemberInfo* add_bls_pubkey();
-  const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::PrevMemberInfo >&
+  const ::shardora::elect::protobuf::PrevMemberInfo& bls_pubkey(int index) const;
+  ::shardora::elect::protobuf::PrevMemberInfo* add_bls_pubkey();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::PrevMemberInfo >&
       bls_pubkey() const;
 
-  // optional .seth.elect.protobuf.BlsPublicKey common_pubkey = 3;
+  // optional .shardora.elect.protobuf.BlsPublicKey common_pubkey = 3;
   bool has_common_pubkey() const;
   void clear_common_pubkey();
   static const int kCommonPubkeyFieldNumber = 3;
   private:
-  const ::seth::elect::protobuf::BlsPublicKey& _internal_common_pubkey() const;
+  const ::shardora::elect::protobuf::BlsPublicKey& _internal_common_pubkey() const;
   public:
-  const ::seth::elect::protobuf::BlsPublicKey& common_pubkey() const;
-  ::seth::elect::protobuf::BlsPublicKey* release_common_pubkey();
-  ::seth::elect::protobuf::BlsPublicKey* mutable_common_pubkey();
-  void set_allocated_common_pubkey(::seth::elect::protobuf::BlsPublicKey* common_pubkey);
+  const ::shardora::elect::protobuf::BlsPublicKey& common_pubkey() const;
+  ::shardora::elect::protobuf::BlsPublicKey* release_common_pubkey();
+  ::shardora::elect::protobuf::BlsPublicKey* mutable_common_pubkey();
+  void set_allocated_common_pubkey(::shardora::elect::protobuf::BlsPublicKey* common_pubkey);
 
   // optional uint64 prev_elect_height = 2;
   bool has_prev_elect_height() const;
@@ -988,7 +988,7 @@ class PrevMembers : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::uint64 prev_elect_height() const;
   void set_prev_elect_height(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.PrevMembers)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.PrevMembers)
  private:
   void set_has_prev_elect_height();
   void clear_has_prev_elect_height();
@@ -998,14 +998,14 @@ class PrevMembers : public ::google::protobuf::Message /* @@protoc_insertion_poi
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::PrevMemberInfo > bls_pubkey_;
-  ::seth::elect::protobuf::BlsPublicKey* common_pubkey_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::PrevMemberInfo > bls_pubkey_;
+  ::shardora::elect::protobuf::BlsPublicKey* common_pubkey_;
   ::google::protobuf::uint64 prev_elect_height_;
   friend struct ::protobuf_protos_2felect_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
 
-class member : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.member) */ {
+class member : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.member) */ {
  public:
   member();
   virtual ~member();
@@ -1142,7 +1142,7 @@ class member : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
   ::google::protobuf::int32 pool_idx_mod_num() const;
   void set_pool_idx_mod_num(::google::protobuf::int32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.member)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.member)
  private:
   void set_has_pubkey();
   void clear_has_pubkey();
@@ -1167,7 +1167,7 @@ class member : public ::google::protobuf::Message /* @@protoc_insertion_point(cl
 };
 // -------------------------------------------------------------------
 
-class ElectBlock : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.ElectBlock) */ {
+class ElectBlock : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.ElectBlock) */ {
  public:
   ElectBlock();
   virtual ~ElectBlock();
@@ -1261,29 +1261,29 @@ class ElectBlock : public ::google::protobuf::Message /* @@protoc_insertion_poin
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.elect.protobuf.member in = 1;
+  // repeated .shardora.elect.protobuf.member in = 1;
   int in_size() const;
   void clear_in();
   static const int kInFieldNumber = 1;
-  ::seth::elect::protobuf::member* mutable_in(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::member >*
+  ::shardora::elect::protobuf::member* mutable_in(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::member >*
       mutable_in();
-  const ::seth::elect::protobuf::member& in(int index) const;
-  ::seth::elect::protobuf::member* add_in();
-  const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::member >&
+  const ::shardora::elect::protobuf::member& in(int index) const;
+  ::shardora::elect::protobuf::member* add_in();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::member >&
       in() const;
 
-  // optional .seth.elect.protobuf.PrevMembers prev_members = 2;
+  // optional .shardora.elect.protobuf.PrevMembers prev_members = 2;
   bool has_prev_members() const;
   void clear_prev_members();
   static const int kPrevMembersFieldNumber = 2;
   private:
-  const ::seth::elect::protobuf::PrevMembers& _internal_prev_members() const;
+  const ::shardora::elect::protobuf::PrevMembers& _internal_prev_members() const;
   public:
-  const ::seth::elect::protobuf::PrevMembers& prev_members() const;
-  ::seth::elect::protobuf::PrevMembers* release_prev_members();
-  ::seth::elect::protobuf::PrevMembers* mutable_prev_members();
-  void set_allocated_prev_members(::seth::elect::protobuf::PrevMembers* prev_members);
+  const ::shardora::elect::protobuf::PrevMembers& prev_members() const;
+  ::shardora::elect::protobuf::PrevMembers* release_prev_members();
+  ::shardora::elect::protobuf::PrevMembers* mutable_prev_members();
+  void set_allocated_prev_members(::shardora::elect::protobuf::PrevMembers* prev_members);
 
   // optional uint64 elect_height = 4;
   bool has_elect_height() const;
@@ -1313,7 +1313,7 @@ class ElectBlock : public ::google::protobuf::Message /* @@protoc_insertion_poin
   ::google::protobuf::uint32 shard_network_id() const;
   void set_shard_network_id(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.ElectBlock)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.ElectBlock)
  private:
   void set_has_prev_members();
   void clear_has_prev_members();
@@ -1329,8 +1329,8 @@ class ElectBlock : public ::google::protobuf::Message /* @@protoc_insertion_poin
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::member > in_;
-  ::seth::elect::protobuf::PrevMembers* prev_members_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::member > in_;
+  ::shardora::elect::protobuf::PrevMembers* prev_members_;
   ::google::protobuf::uint64 elect_height_;
   ::google::protobuf::uint64 all_gas_amount_;
   ::google::protobuf::uint64 gas_for_root_;
@@ -1339,7 +1339,7 @@ class ElectBlock : public ::google::protobuf::Message /* @@protoc_insertion_poin
 };
 // -------------------------------------------------------------------
 
-class WaitingNodesMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.WaitingNodesMessage) */ {
+class WaitingNodesMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.WaitingNodesMessage) */ {
  public:
   WaitingNodesMessage();
   virtual ~WaitingNodesMessage();
@@ -1467,7 +1467,7 @@ class WaitingNodesMessage : public ::google::protobuf::Message /* @@protoc_inser
   ::google::protobuf::uint32 waiting_shard_id() const;
   void set_waiting_shard_id(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.WaitingNodesMessage)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.WaitingNodesMessage)
  private:
   void set_has_waiting_shard_id();
   void clear_has_waiting_shard_id();
@@ -1484,7 +1484,7 @@ class WaitingNodesMessage : public ::google::protobuf::Message /* @@protoc_inser
 };
 // -------------------------------------------------------------------
 
-class WaitingNodeHeartbeat : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.WaitingNodeHeartbeat) */ {
+class WaitingNodeHeartbeat : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.WaitingNodeHeartbeat) */ {
  public:
   WaitingNodeHeartbeat();
   virtual ~WaitingNodeHeartbeat();
@@ -1614,7 +1614,7 @@ class WaitingNodeHeartbeat : public ::google::protobuf::Message /* @@protoc_inse
   ::google::protobuf::uint64 timestamp_sec() const;
   void set_timestamp_sec(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.WaitingNodeHeartbeat)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.WaitingNodeHeartbeat)
  private:
   void set_has_public_ip();
   void clear_has_public_ip();
@@ -1636,7 +1636,7 @@ class WaitingNodeHeartbeat : public ::google::protobuf::Message /* @@protoc_inse
 };
 // -------------------------------------------------------------------
 
-class LeaderRotationMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.LeaderRotationMessage) */ {
+class LeaderRotationMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.LeaderRotationMessage) */ {
  public:
   LeaderRotationMessage();
   virtual ~LeaderRotationMessage();
@@ -1752,7 +1752,7 @@ class LeaderRotationMessage : public ::google::protobuf::Message /* @@protoc_ins
   ::google::protobuf::uint32 pool_mod_num() const;
   void set_pool_mod_num(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.LeaderRotationMessage)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.LeaderRotationMessage)
  private:
   void set_has_leader_id();
   void clear_has_leader_id();
@@ -1768,7 +1768,7 @@ class LeaderRotationMessage : public ::google::protobuf::Message /* @@protoc_ins
 };
 // -------------------------------------------------------------------
 
-class SyncNodeStokeItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.SyncNodeStokeItem) */ {
+class SyncNodeStokeItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.SyncNodeStokeItem) */ {
  public:
   SyncNodeStokeItem();
   virtual ~SyncNodeStokeItem();
@@ -1884,7 +1884,7 @@ class SyncNodeStokeItem : public ::google::protobuf::Message /* @@protoc_inserti
   ::google::protobuf::uint64 synced_tm_height() const;
   void set_synced_tm_height(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeItem)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeItem)
  private:
   void set_has_id();
   void clear_has_id();
@@ -1900,7 +1900,7 @@ class SyncNodeStokeItem : public ::google::protobuf::Message /* @@protoc_inserti
 };
 // -------------------------------------------------------------------
 
-class SyncNodeStokeRequest : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.SyncNodeStokeRequest) */ {
+class SyncNodeStokeRequest : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.SyncNodeStokeRequest) */ {
  public:
   SyncNodeStokeRequest();
   virtual ~SyncNodeStokeRequest();
@@ -1994,16 +1994,16 @@ class SyncNodeStokeRequest : public ::google::protobuf::Message /* @@protoc_inse
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.elect.protobuf.SyncNodeStokeItem sync_item = 1;
+  // repeated .shardora.elect.protobuf.SyncNodeStokeItem sync_item = 1;
   int sync_item_size() const;
   void clear_sync_item();
   static const int kSyncItemFieldNumber = 1;
-  ::seth::elect::protobuf::SyncNodeStokeItem* mutable_sync_item(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeItem >*
+  ::shardora::elect::protobuf::SyncNodeStokeItem* mutable_sync_item(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeItem >*
       mutable_sync_item();
-  const ::seth::elect::protobuf::SyncNodeStokeItem& sync_item(int index) const;
-  ::seth::elect::protobuf::SyncNodeStokeItem* add_sync_item();
-  const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeItem >&
+  const ::shardora::elect::protobuf::SyncNodeStokeItem& sync_item(int index) const;
+  ::shardora::elect::protobuf::SyncNodeStokeItem* add_sync_item();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeItem >&
       sync_item() const;
 
   // optional uint64 now_tm_height = 2;
@@ -2013,7 +2013,7 @@ class SyncNodeStokeRequest : public ::google::protobuf::Message /* @@protoc_inse
   ::google::protobuf::uint64 now_tm_height() const;
   void set_now_tm_height(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeRequest)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeRequest)
  private:
   void set_has_now_tm_height();
   void clear_has_now_tm_height();
@@ -2021,13 +2021,13 @@ class SyncNodeStokeRequest : public ::google::protobuf::Message /* @@protoc_inse
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeItem > sync_item_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeItem > sync_item_;
   ::google::protobuf::uint64 now_tm_height_;
   friend struct ::protobuf_protos_2felect_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
 
-class SyncNodeStokeResItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.SyncNodeStokeResItem) */ {
+class SyncNodeStokeResItem : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.SyncNodeStokeResItem) */ {
  public:
   SyncNodeStokeResItem();
   virtual ~SyncNodeStokeResItem();
@@ -2143,7 +2143,7 @@ class SyncNodeStokeResItem : public ::google::protobuf::Message /* @@protoc_inse
   ::google::protobuf::uint64 balance() const;
   void set_balance(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeResItem)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeResItem)
  private:
   void set_has_id();
   void clear_has_id();
@@ -2159,7 +2159,7 @@ class SyncNodeStokeResItem : public ::google::protobuf::Message /* @@protoc_inse
 };
 // -------------------------------------------------------------------
 
-class SyncNodeStokeResponse : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.SyncNodeStokeResponse) */ {
+class SyncNodeStokeResponse : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.SyncNodeStokeResponse) */ {
  public:
   SyncNodeStokeResponse();
   virtual ~SyncNodeStokeResponse();
@@ -2253,16 +2253,16 @@ class SyncNodeStokeResponse : public ::google::protobuf::Message /* @@protoc_ins
 
   // accessors -------------------------------------------------------
 
-  // repeated .seth.elect.protobuf.SyncNodeStokeResItem items = 1;
+  // repeated .shardora.elect.protobuf.SyncNodeStokeResItem items = 1;
   int items_size() const;
   void clear_items();
   static const int kItemsFieldNumber = 1;
-  ::seth::elect::protobuf::SyncNodeStokeResItem* mutable_items(int index);
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeResItem >*
+  ::shardora::elect::protobuf::SyncNodeStokeResItem* mutable_items(int index);
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeResItem >*
       mutable_items();
-  const ::seth::elect::protobuf::SyncNodeStokeResItem& items(int index) const;
-  ::seth::elect::protobuf::SyncNodeStokeResItem* add_items();
-  const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeResItem >&
+  const ::shardora::elect::protobuf::SyncNodeStokeResItem& items(int index) const;
+  ::shardora::elect::protobuf::SyncNodeStokeResItem* add_items();
+  const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeResItem >&
       items() const;
 
   // optional uint64 now_tm_height = 2;
@@ -2272,7 +2272,7 @@ class SyncNodeStokeResponse : public ::google::protobuf::Message /* @@protoc_ins
   ::google::protobuf::uint64 now_tm_height() const;
   void set_now_tm_height(::google::protobuf::uint64 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeResponse)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeResponse)
  private:
   void set_has_now_tm_height();
   void clear_has_now_tm_height();
@@ -2280,13 +2280,13 @@ class SyncNodeStokeResponse : public ::google::protobuf::Message /* @@protoc_ins
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::HasBits<1> _has_bits_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
-  ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeResItem > items_;
+  ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeResItem > items_;
   ::google::protobuf::uint64 now_tm_height_;
   friend struct ::protobuf_protos_2felect_2eproto::TableStruct;
 };
 // -------------------------------------------------------------------
 
-class ElectMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:seth.elect.protobuf.ElectMessage) */ {
+class ElectMessage : public ::google::protobuf::Message /* @@protoc_insertion_point(class_definition:shardora.elect.protobuf.ElectMessage) */ {
  public:
   ElectMessage();
   virtual ~ElectMessage();
@@ -2410,89 +2410,89 @@ class ElectMessage : public ::google::protobuf::Message /* @@protoc_insertion_po
   ::std::string* release_sign_res();
   void set_allocated_sign_res(::std::string* sign_res);
 
-  // optional .seth.elect.protobuf.ElectBlock elect_block = 1;
+  // optional .shardora.elect.protobuf.ElectBlock elect_block = 1;
   bool has_elect_block() const;
   void clear_elect_block();
   static const int kElectBlockFieldNumber = 1;
   private:
-  const ::seth::elect::protobuf::ElectBlock& _internal_elect_block() const;
+  const ::shardora::elect::protobuf::ElectBlock& _internal_elect_block() const;
   public:
-  const ::seth::elect::protobuf::ElectBlock& elect_block() const;
-  ::seth::elect::protobuf::ElectBlock* release_elect_block();
-  ::seth::elect::protobuf::ElectBlock* mutable_elect_block();
-  void set_allocated_elect_block(::seth::elect::protobuf::ElectBlock* elect_block);
+  const ::shardora::elect::protobuf::ElectBlock& elect_block() const;
+  ::shardora::elect::protobuf::ElectBlock* release_elect_block();
+  ::shardora::elect::protobuf::ElectBlock* mutable_elect_block();
+  void set_allocated_elect_block(::shardora::elect::protobuf::ElectBlock* elect_block);
 
-  // optional .seth.elect.protobuf.ElectBlock prev_elect_block = 2;
+  // optional .shardora.elect.protobuf.ElectBlock prev_elect_block = 2;
   bool has_prev_elect_block() const;
   void clear_prev_elect_block();
   static const int kPrevElectBlockFieldNumber = 2;
   private:
-  const ::seth::elect::protobuf::ElectBlock& _internal_prev_elect_block() const;
+  const ::shardora::elect::protobuf::ElectBlock& _internal_prev_elect_block() const;
   public:
-  const ::seth::elect::protobuf::ElectBlock& prev_elect_block() const;
-  ::seth::elect::protobuf::ElectBlock* release_prev_elect_block();
-  ::seth::elect::protobuf::ElectBlock* mutable_prev_elect_block();
-  void set_allocated_prev_elect_block(::seth::elect::protobuf::ElectBlock* prev_elect_block);
+  const ::shardora::elect::protobuf::ElectBlock& prev_elect_block() const;
+  ::shardora::elect::protobuf::ElectBlock* release_prev_elect_block();
+  ::shardora::elect::protobuf::ElectBlock* mutable_prev_elect_block();
+  void set_allocated_prev_elect_block(::shardora::elect::protobuf::ElectBlock* prev_elect_block);
 
-  // optional .seth.elect.protobuf.WaitingNodesMessage waiting_nodes = 3;
+  // optional .shardora.elect.protobuf.WaitingNodesMessage waiting_nodes = 3;
   bool has_waiting_nodes() const;
   void clear_waiting_nodes();
   static const int kWaitingNodesFieldNumber = 3;
   private:
-  const ::seth::elect::protobuf::WaitingNodesMessage& _internal_waiting_nodes() const;
+  const ::shardora::elect::protobuf::WaitingNodesMessage& _internal_waiting_nodes() const;
   public:
-  const ::seth::elect::protobuf::WaitingNodesMessage& waiting_nodes() const;
-  ::seth::elect::protobuf::WaitingNodesMessage* release_waiting_nodes();
-  ::seth::elect::protobuf::WaitingNodesMessage* mutable_waiting_nodes();
-  void set_allocated_waiting_nodes(::seth::elect::protobuf::WaitingNodesMessage* waiting_nodes);
+  const ::shardora::elect::protobuf::WaitingNodesMessage& waiting_nodes() const;
+  ::shardora::elect::protobuf::WaitingNodesMessage* release_waiting_nodes();
+  ::shardora::elect::protobuf::WaitingNodesMessage* mutable_waiting_nodes();
+  void set_allocated_waiting_nodes(::shardora::elect::protobuf::WaitingNodesMessage* waiting_nodes);
 
-  // optional .seth.elect.protobuf.WaitingNodeHeartbeat waiting_heartbeat = 7;
+  // optional .shardora.elect.protobuf.WaitingNodeHeartbeat waiting_heartbeat = 7;
   bool has_waiting_heartbeat() const;
   void clear_waiting_heartbeat();
   static const int kWaitingHeartbeatFieldNumber = 7;
   private:
-  const ::seth::elect::protobuf::WaitingNodeHeartbeat& _internal_waiting_heartbeat() const;
+  const ::shardora::elect::protobuf::WaitingNodeHeartbeat& _internal_waiting_heartbeat() const;
   public:
-  const ::seth::elect::protobuf::WaitingNodeHeartbeat& waiting_heartbeat() const;
-  ::seth::elect::protobuf::WaitingNodeHeartbeat* release_waiting_heartbeat();
-  ::seth::elect::protobuf::WaitingNodeHeartbeat* mutable_waiting_heartbeat();
-  void set_allocated_waiting_heartbeat(::seth::elect::protobuf::WaitingNodeHeartbeat* waiting_heartbeat);
+  const ::shardora::elect::protobuf::WaitingNodeHeartbeat& waiting_heartbeat() const;
+  ::shardora::elect::protobuf::WaitingNodeHeartbeat* release_waiting_heartbeat();
+  ::shardora::elect::protobuf::WaitingNodeHeartbeat* mutable_waiting_heartbeat();
+  void set_allocated_waiting_heartbeat(::shardora::elect::protobuf::WaitingNodeHeartbeat* waiting_heartbeat);
 
-  // optional .seth.elect.protobuf.LeaderRotationMessage leader_rotation = 8;
+  // optional .shardora.elect.protobuf.LeaderRotationMessage leader_rotation = 8;
   bool has_leader_rotation() const;
   void clear_leader_rotation();
   static const int kLeaderRotationFieldNumber = 8;
   private:
-  const ::seth::elect::protobuf::LeaderRotationMessage& _internal_leader_rotation() const;
+  const ::shardora::elect::protobuf::LeaderRotationMessage& _internal_leader_rotation() const;
   public:
-  const ::seth::elect::protobuf::LeaderRotationMessage& leader_rotation() const;
-  ::seth::elect::protobuf::LeaderRotationMessage* release_leader_rotation();
-  ::seth::elect::protobuf::LeaderRotationMessage* mutable_leader_rotation();
-  void set_allocated_leader_rotation(::seth::elect::protobuf::LeaderRotationMessage* leader_rotation);
+  const ::shardora::elect::protobuf::LeaderRotationMessage& leader_rotation() const;
+  ::shardora::elect::protobuf::LeaderRotationMessage* release_leader_rotation();
+  ::shardora::elect::protobuf::LeaderRotationMessage* mutable_leader_rotation();
+  void set_allocated_leader_rotation(::shardora::elect::protobuf::LeaderRotationMessage* leader_rotation);
 
-  // optional .seth.elect.protobuf.SyncNodeStokeRequest sync_stoke_req = 9;
+  // optional .shardora.elect.protobuf.SyncNodeStokeRequest sync_stoke_req = 9;
   bool has_sync_stoke_req() const;
   void clear_sync_stoke_req();
   static const int kSyncStokeReqFieldNumber = 9;
   private:
-  const ::seth::elect::protobuf::SyncNodeStokeRequest& _internal_sync_stoke_req() const;
+  const ::shardora::elect::protobuf::SyncNodeStokeRequest& _internal_sync_stoke_req() const;
   public:
-  const ::seth::elect::protobuf::SyncNodeStokeRequest& sync_stoke_req() const;
-  ::seth::elect::protobuf::SyncNodeStokeRequest* release_sync_stoke_req();
-  ::seth::elect::protobuf::SyncNodeStokeRequest* mutable_sync_stoke_req();
-  void set_allocated_sync_stoke_req(::seth::elect::protobuf::SyncNodeStokeRequest* sync_stoke_req);
+  const ::shardora::elect::protobuf::SyncNodeStokeRequest& sync_stoke_req() const;
+  ::shardora::elect::protobuf::SyncNodeStokeRequest* release_sync_stoke_req();
+  ::shardora::elect::protobuf::SyncNodeStokeRequest* mutable_sync_stoke_req();
+  void set_allocated_sync_stoke_req(::shardora::elect::protobuf::SyncNodeStokeRequest* sync_stoke_req);
 
-  // optional .seth.elect.protobuf.SyncNodeStokeResponse sync_stoke_res = 10;
+  // optional .shardora.elect.protobuf.SyncNodeStokeResponse sync_stoke_res = 10;
   bool has_sync_stoke_res() const;
   void clear_sync_stoke_res();
   static const int kSyncStokeResFieldNumber = 10;
   private:
-  const ::seth::elect::protobuf::SyncNodeStokeResponse& _internal_sync_stoke_res() const;
+  const ::shardora::elect::protobuf::SyncNodeStokeResponse& _internal_sync_stoke_res() const;
   public:
-  const ::seth::elect::protobuf::SyncNodeStokeResponse& sync_stoke_res() const;
-  ::seth::elect::protobuf::SyncNodeStokeResponse* release_sync_stoke_res();
-  ::seth::elect::protobuf::SyncNodeStokeResponse* mutable_sync_stoke_res();
-  void set_allocated_sync_stoke_res(::seth::elect::protobuf::SyncNodeStokeResponse* sync_stoke_res);
+  const ::shardora::elect::protobuf::SyncNodeStokeResponse& sync_stoke_res() const;
+  ::shardora::elect::protobuf::SyncNodeStokeResponse* release_sync_stoke_res();
+  ::shardora::elect::protobuf::SyncNodeStokeResponse* mutable_sync_stoke_res();
+  void set_allocated_sync_stoke_res(::shardora::elect::protobuf::SyncNodeStokeResponse* sync_stoke_res);
 
   // optional int32 member_index = 4;
   bool has_member_index() const;
@@ -2501,7 +2501,7 @@ class ElectMessage : public ::google::protobuf::Message /* @@protoc_insertion_po
   ::google::protobuf::int32 member_index() const;
   void set_member_index(::google::protobuf::int32 value);
 
-  // @@protoc_insertion_point(class_scope:seth.elect.protobuf.ElectMessage)
+  // @@protoc_insertion_point(class_scope:shardora.elect.protobuf.ElectMessage)
  private:
   void set_has_elect_block();
   void clear_has_elect_block();
@@ -2529,13 +2529,13 @@ class ElectMessage : public ::google::protobuf::Message /* @@protoc_insertion_po
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   ::google::protobuf::internal::ArenaStringPtr sign_ch_;
   ::google::protobuf::internal::ArenaStringPtr sign_res_;
-  ::seth::elect::protobuf::ElectBlock* elect_block_;
-  ::seth::elect::protobuf::ElectBlock* prev_elect_block_;
-  ::seth::elect::protobuf::WaitingNodesMessage* waiting_nodes_;
-  ::seth::elect::protobuf::WaitingNodeHeartbeat* waiting_heartbeat_;
-  ::seth::elect::protobuf::LeaderRotationMessage* leader_rotation_;
-  ::seth::elect::protobuf::SyncNodeStokeRequest* sync_stoke_req_;
-  ::seth::elect::protobuf::SyncNodeStokeResponse* sync_stoke_res_;
+  ::shardora::elect::protobuf::ElectBlock* elect_block_;
+  ::shardora::elect::protobuf::ElectBlock* prev_elect_block_;
+  ::shardora::elect::protobuf::WaitingNodesMessage* waiting_nodes_;
+  ::shardora::elect::protobuf::WaitingNodeHeartbeat* waiting_heartbeat_;
+  ::shardora::elect::protobuf::LeaderRotationMessage* leader_rotation_;
+  ::shardora::elect::protobuf::SyncNodeStokeRequest* sync_stoke_req_;
+  ::shardora::elect::protobuf::SyncNodeStokeResponse* sync_stoke_res_;
   ::google::protobuf::int32 member_index_;
   friend struct ::protobuf_protos_2felect_2eproto::TableStruct;
 };
@@ -2565,41 +2565,41 @@ inline void VerifyVecValue::clear_x_c0() {
   clear_has_x_c0();
 }
 inline const ::std::string& VerifyVecValue::x_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.x_c0)
   return x_c0_.GetNoArena();
 }
 inline void VerifyVecValue::set_x_c0(const ::std::string& value) {
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.x_c0)
 }
 #if LANG_CXX11
 inline void VerifyVecValue::set_x_c0(::std::string&& value) {
   set_has_x_c0();
   x_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.VerifyVecValue.x_c0)
 }
 #endif
 inline void VerifyVecValue::set_x_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.VerifyVecValue.x_c0)
 }
 inline void VerifyVecValue::set_x_c0(const void* value, size_t size) {
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.VerifyVecValue.x_c0)
 }
 inline ::std::string* VerifyVecValue::mutable_x_c0() {
   set_has_x_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.VerifyVecValue.x_c0)
   return x_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* VerifyVecValue::release_x_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.VerifyVecValue.x_c0)
   if (!has_x_c0()) {
     return NULL;
   }
@@ -2613,7 +2613,7 @@ inline void VerifyVecValue::set_allocated_x_c0(::std::string* x_c0) {
     clear_has_x_c0();
   }
   x_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), x_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.VerifyVecValue.x_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.VerifyVecValue.x_c0)
 }
 
 // optional bytes x_c1 = 2;
@@ -2631,41 +2631,41 @@ inline void VerifyVecValue::clear_x_c1() {
   clear_has_x_c1();
 }
 inline const ::std::string& VerifyVecValue::x_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.x_c1)
   return x_c1_.GetNoArena();
 }
 inline void VerifyVecValue::set_x_c1(const ::std::string& value) {
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.x_c1)
 }
 #if LANG_CXX11
 inline void VerifyVecValue::set_x_c1(::std::string&& value) {
   set_has_x_c1();
   x_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.VerifyVecValue.x_c1)
 }
 #endif
 inline void VerifyVecValue::set_x_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.VerifyVecValue.x_c1)
 }
 inline void VerifyVecValue::set_x_c1(const void* value, size_t size) {
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.VerifyVecValue.x_c1)
 }
 inline ::std::string* VerifyVecValue::mutable_x_c1() {
   set_has_x_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.VerifyVecValue.x_c1)
   return x_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* VerifyVecValue::release_x_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.VerifyVecValue.x_c1)
   if (!has_x_c1()) {
     return NULL;
   }
@@ -2679,7 +2679,7 @@ inline void VerifyVecValue::set_allocated_x_c1(::std::string* x_c1) {
     clear_has_x_c1();
   }
   x_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), x_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.VerifyVecValue.x_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.VerifyVecValue.x_c1)
 }
 
 // optional bytes y_c0 = 3;
@@ -2697,41 +2697,41 @@ inline void VerifyVecValue::clear_y_c0() {
   clear_has_y_c0();
 }
 inline const ::std::string& VerifyVecValue::y_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.y_c0)
   return y_c0_.GetNoArena();
 }
 inline void VerifyVecValue::set_y_c0(const ::std::string& value) {
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.y_c0)
 }
 #if LANG_CXX11
 inline void VerifyVecValue::set_y_c0(::std::string&& value) {
   set_has_y_c0();
   y_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.VerifyVecValue.y_c0)
 }
 #endif
 inline void VerifyVecValue::set_y_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.VerifyVecValue.y_c0)
 }
 inline void VerifyVecValue::set_y_c0(const void* value, size_t size) {
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.VerifyVecValue.y_c0)
 }
 inline ::std::string* VerifyVecValue::mutable_y_c0() {
   set_has_y_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.VerifyVecValue.y_c0)
   return y_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* VerifyVecValue::release_y_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.VerifyVecValue.y_c0)
   if (!has_y_c0()) {
     return NULL;
   }
@@ -2745,7 +2745,7 @@ inline void VerifyVecValue::set_allocated_y_c0(::std::string* y_c0) {
     clear_has_y_c0();
   }
   y_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), y_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.VerifyVecValue.y_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.VerifyVecValue.y_c0)
 }
 
 // optional bytes y_c1 = 4;
@@ -2763,41 +2763,41 @@ inline void VerifyVecValue::clear_y_c1() {
   clear_has_y_c1();
 }
 inline const ::std::string& VerifyVecValue::y_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.y_c1)
   return y_c1_.GetNoArena();
 }
 inline void VerifyVecValue::set_y_c1(const ::std::string& value) {
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.y_c1)
 }
 #if LANG_CXX11
 inline void VerifyVecValue::set_y_c1(::std::string&& value) {
   set_has_y_c1();
   y_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.VerifyVecValue.y_c1)
 }
 #endif
 inline void VerifyVecValue::set_y_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.VerifyVecValue.y_c1)
 }
 inline void VerifyVecValue::set_y_c1(const void* value, size_t size) {
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.VerifyVecValue.y_c1)
 }
 inline ::std::string* VerifyVecValue::mutable_y_c1() {
   set_has_y_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.VerifyVecValue.y_c1)
   return y_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* VerifyVecValue::release_y_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.VerifyVecValue.y_c1)
   if (!has_y_c1()) {
     return NULL;
   }
@@ -2811,7 +2811,7 @@ inline void VerifyVecValue::set_allocated_y_c1(::std::string* y_c1) {
     clear_has_y_c1();
   }
   y_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), y_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.VerifyVecValue.y_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.VerifyVecValue.y_c1)
 }
 
 // optional bytes z_c0 = 5;
@@ -2829,41 +2829,41 @@ inline void VerifyVecValue::clear_z_c0() {
   clear_has_z_c0();
 }
 inline const ::std::string& VerifyVecValue::z_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.z_c0)
   return z_c0_.GetNoArena();
 }
 inline void VerifyVecValue::set_z_c0(const ::std::string& value) {
   set_has_z_c0();
   z_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.z_c0)
 }
 #if LANG_CXX11
 inline void VerifyVecValue::set_z_c0(::std::string&& value) {
   set_has_z_c0();
   z_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.VerifyVecValue.z_c0)
 }
 #endif
 inline void VerifyVecValue::set_z_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_z_c0();
   z_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.VerifyVecValue.z_c0)
 }
 inline void VerifyVecValue::set_z_c0(const void* value, size_t size) {
   set_has_z_c0();
   z_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.VerifyVecValue.z_c0)
 }
 inline ::std::string* VerifyVecValue::mutable_z_c0() {
   set_has_z_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.VerifyVecValue.z_c0)
   return z_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* VerifyVecValue::release_z_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.VerifyVecValue.z_c0)
   if (!has_z_c0()) {
     return NULL;
   }
@@ -2877,7 +2877,7 @@ inline void VerifyVecValue::set_allocated_z_c0(::std::string* z_c0) {
     clear_has_z_c0();
   }
   z_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), z_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.VerifyVecValue.z_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.VerifyVecValue.z_c0)
 }
 
 // optional bytes z_c1 = 6;
@@ -2895,41 +2895,41 @@ inline void VerifyVecValue::clear_z_c1() {
   clear_has_z_c1();
 }
 inline const ::std::string& VerifyVecValue::z_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.z_c1)
   return z_c1_.GetNoArena();
 }
 inline void VerifyVecValue::set_z_c1(const ::std::string& value) {
   set_has_z_c1();
   z_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.z_c1)
 }
 #if LANG_CXX11
 inline void VerifyVecValue::set_z_c1(::std::string&& value) {
   set_has_z_c1();
   z_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.VerifyVecValue.z_c1)
 }
 #endif
 inline void VerifyVecValue::set_z_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_z_c1();
   z_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.VerifyVecValue.z_c1)
 }
 inline void VerifyVecValue::set_z_c1(const void* value, size_t size) {
   set_has_z_c1();
   z_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.VerifyVecValue.z_c1)
 }
 inline ::std::string* VerifyVecValue::mutable_z_c1() {
   set_has_z_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.VerifyVecValue.z_c1)
   return z_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* VerifyVecValue::release_z_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.VerifyVecValue.z_c1)
   if (!has_z_c1()) {
     return NULL;
   }
@@ -2943,7 +2943,7 @@ inline void VerifyVecValue::set_allocated_z_c1(::std::string* z_c1) {
     clear_has_z_c1();
   }
   z_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), z_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.VerifyVecValue.z_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.VerifyVecValue.z_c1)
 }
 
 // optional uint32 valid_t = 7;
@@ -2961,13 +2961,13 @@ inline void VerifyVecValue::clear_valid_t() {
   clear_has_valid_t();
 }
 inline ::google::protobuf::uint32 VerifyVecValue::valid_t() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.VerifyVecValue.valid_t)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.VerifyVecValue.valid_t)
   return valid_t_;
 }
 inline void VerifyVecValue::set_valid_t(::google::protobuf::uint32 value) {
   set_has_valid_t();
   valid_t_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.VerifyVecValue.valid_t)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.VerifyVecValue.valid_t)
 }
 
 // -------------------------------------------------------------------
@@ -2989,41 +2989,41 @@ inline void BlsPublicKey::clear_x_c0() {
   clear_has_x_c0();
 }
 inline const ::std::string& BlsPublicKey::x_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPublicKey.x_c0)
   return x_c0_.GetNoArena();
 }
 inline void BlsPublicKey::set_x_c0(const ::std::string& value) {
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPublicKey.x_c0)
 }
 #if LANG_CXX11
 inline void BlsPublicKey::set_x_c0(::std::string&& value) {
   set_has_x_c0();
   x_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPublicKey.x_c0)
 }
 #endif
 inline void BlsPublicKey::set_x_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPublicKey.x_c0)
 }
 inline void BlsPublicKey::set_x_c0(const void* value, size_t size) {
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPublicKey.x_c0)
 }
 inline ::std::string* BlsPublicKey::mutable_x_c0() {
   set_has_x_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPublicKey.x_c0)
   return x_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPublicKey::release_x_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPublicKey.x_c0)
   if (!has_x_c0()) {
     return NULL;
   }
@@ -3037,7 +3037,7 @@ inline void BlsPublicKey::set_allocated_x_c0(::std::string* x_c0) {
     clear_has_x_c0();
   }
   x_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), x_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPublicKey.x_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPublicKey.x_c0)
 }
 
 // optional bytes x_c1 = 2;
@@ -3055,41 +3055,41 @@ inline void BlsPublicKey::clear_x_c1() {
   clear_has_x_c1();
 }
 inline const ::std::string& BlsPublicKey::x_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPublicKey.x_c1)
   return x_c1_.GetNoArena();
 }
 inline void BlsPublicKey::set_x_c1(const ::std::string& value) {
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPublicKey.x_c1)
 }
 #if LANG_CXX11
 inline void BlsPublicKey::set_x_c1(::std::string&& value) {
   set_has_x_c1();
   x_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPublicKey.x_c1)
 }
 #endif
 inline void BlsPublicKey::set_x_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPublicKey.x_c1)
 }
 inline void BlsPublicKey::set_x_c1(const void* value, size_t size) {
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPublicKey.x_c1)
 }
 inline ::std::string* BlsPublicKey::mutable_x_c1() {
   set_has_x_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPublicKey.x_c1)
   return x_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPublicKey::release_x_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPublicKey.x_c1)
   if (!has_x_c1()) {
     return NULL;
   }
@@ -3103,7 +3103,7 @@ inline void BlsPublicKey::set_allocated_x_c1(::std::string* x_c1) {
     clear_has_x_c1();
   }
   x_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), x_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPublicKey.x_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPublicKey.x_c1)
 }
 
 // optional bytes y_c0 = 3;
@@ -3121,41 +3121,41 @@ inline void BlsPublicKey::clear_y_c0() {
   clear_has_y_c0();
 }
 inline const ::std::string& BlsPublicKey::y_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPublicKey.y_c0)
   return y_c0_.GetNoArena();
 }
 inline void BlsPublicKey::set_y_c0(const ::std::string& value) {
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPublicKey.y_c0)
 }
 #if LANG_CXX11
 inline void BlsPublicKey::set_y_c0(::std::string&& value) {
   set_has_y_c0();
   y_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPublicKey.y_c0)
 }
 #endif
 inline void BlsPublicKey::set_y_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPublicKey.y_c0)
 }
 inline void BlsPublicKey::set_y_c0(const void* value, size_t size) {
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPublicKey.y_c0)
 }
 inline ::std::string* BlsPublicKey::mutable_y_c0() {
   set_has_y_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPublicKey.y_c0)
   return y_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPublicKey::release_y_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPublicKey.y_c0)
   if (!has_y_c0()) {
     return NULL;
   }
@@ -3169,7 +3169,7 @@ inline void BlsPublicKey::set_allocated_y_c0(::std::string* y_c0) {
     clear_has_y_c0();
   }
   y_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), y_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPublicKey.y_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPublicKey.y_c0)
 }
 
 // optional bytes y_c1 = 4;
@@ -3187,41 +3187,41 @@ inline void BlsPublicKey::clear_y_c1() {
   clear_has_y_c1();
 }
 inline const ::std::string& BlsPublicKey::y_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPublicKey.y_c1)
   return y_c1_.GetNoArena();
 }
 inline void BlsPublicKey::set_y_c1(const ::std::string& value) {
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPublicKey.y_c1)
 }
 #if LANG_CXX11
 inline void BlsPublicKey::set_y_c1(::std::string&& value) {
   set_has_y_c1();
   y_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPublicKey.y_c1)
 }
 #endif
 inline void BlsPublicKey::set_y_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPublicKey.y_c1)
 }
 inline void BlsPublicKey::set_y_c1(const void* value, size_t size) {
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPublicKey.y_c1)
 }
 inline ::std::string* BlsPublicKey::mutable_y_c1() {
   set_has_y_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPublicKey.y_c1)
   return y_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPublicKey::release_y_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPublicKey.y_c1)
   if (!has_y_c1()) {
     return NULL;
   }
@@ -3235,7 +3235,7 @@ inline void BlsPublicKey::set_allocated_y_c1(::std::string* y_c1) {
     clear_has_y_c1();
   }
   y_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), y_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPublicKey.y_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPublicKey.y_c1)
 }
 
 // -------------------------------------------------------------------
@@ -3257,41 +3257,41 @@ inline void BlsPopProof::clear_sign_x() {
   clear_has_sign_x();
 }
 inline const ::std::string& BlsPopProof::sign_x() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPopProof.sign_x)
   return sign_x_.GetNoArena();
 }
 inline void BlsPopProof::set_sign_x(const ::std::string& value) {
   set_has_sign_x();
   sign_x_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPopProof.sign_x)
 }
 #if LANG_CXX11
 inline void BlsPopProof::set_sign_x(::std::string&& value) {
   set_has_sign_x();
   sign_x_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPopProof.sign_x)
 }
 #endif
 inline void BlsPopProof::set_sign_x(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_sign_x();
   sign_x_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPopProof.sign_x)
 }
 inline void BlsPopProof::set_sign_x(const void* value, size_t size) {
   set_has_sign_x();
   sign_x_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPopProof.sign_x)
 }
 inline ::std::string* BlsPopProof::mutable_sign_x() {
   set_has_sign_x();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPopProof.sign_x)
   return sign_x_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPopProof::release_sign_x() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPopProof.sign_x)
   if (!has_sign_x()) {
     return NULL;
   }
@@ -3305,7 +3305,7 @@ inline void BlsPopProof::set_allocated_sign_x(::std::string* sign_x) {
     clear_has_sign_x();
   }
   sign_x_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), sign_x);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPopProof.sign_x)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPopProof.sign_x)
 }
 
 // optional bytes sign_y = 2;
@@ -3323,41 +3323,41 @@ inline void BlsPopProof::clear_sign_y() {
   clear_has_sign_y();
 }
 inline const ::std::string& BlsPopProof::sign_y() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPopProof.sign_y)
   return sign_y_.GetNoArena();
 }
 inline void BlsPopProof::set_sign_y(const ::std::string& value) {
   set_has_sign_y();
   sign_y_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPopProof.sign_y)
 }
 #if LANG_CXX11
 inline void BlsPopProof::set_sign_y(::std::string&& value) {
   set_has_sign_y();
   sign_y_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPopProof.sign_y)
 }
 #endif
 inline void BlsPopProof::set_sign_y(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_sign_y();
   sign_y_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPopProof.sign_y)
 }
 inline void BlsPopProof::set_sign_y(const void* value, size_t size) {
   set_has_sign_y();
   sign_y_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPopProof.sign_y)
 }
 inline ::std::string* BlsPopProof::mutable_sign_y() {
   set_has_sign_y();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPopProof.sign_y)
   return sign_y_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPopProof::release_sign_y() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPopProof.sign_y)
   if (!has_sign_y()) {
     return NULL;
   }
@@ -3371,7 +3371,7 @@ inline void BlsPopProof::set_allocated_sign_y(::std::string* sign_y) {
     clear_has_sign_y();
   }
   sign_y_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), sign_y);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPopProof.sign_y)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPopProof.sign_y)
 }
 
 // optional bytes sign_z = 3;
@@ -3389,41 +3389,41 @@ inline void BlsPopProof::clear_sign_z() {
   clear_has_sign_z();
 }
 inline const ::std::string& BlsPopProof::sign_z() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.BlsPopProof.sign_z)
   return sign_z_.GetNoArena();
 }
 inline void BlsPopProof::set_sign_z(const ::std::string& value) {
   set_has_sign_z();
   sign_z_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.BlsPopProof.sign_z)
 }
 #if LANG_CXX11
 inline void BlsPopProof::set_sign_z(::std::string&& value) {
   set_has_sign_z();
   sign_z_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.BlsPopProof.sign_z)
 }
 #endif
 inline void BlsPopProof::set_sign_z(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_sign_z();
   sign_z_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.BlsPopProof.sign_z)
 }
 inline void BlsPopProof::set_sign_z(const void* value, size_t size) {
   set_has_sign_z();
   sign_z_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.BlsPopProof.sign_z)
 }
 inline ::std::string* BlsPopProof::mutable_sign_z() {
   set_has_sign_z();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.BlsPopProof.sign_z)
   return sign_z_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* BlsPopProof::release_sign_z() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.BlsPopProof.sign_z)
   if (!has_sign_z()) {
     return NULL;
   }
@@ -3437,7 +3437,7 @@ inline void BlsPopProof::set_allocated_sign_z(::std::string* sign_z) {
     clear_has_sign_z();
   }
   sign_z_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), sign_z);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.BlsPopProof.sign_z)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.BlsPopProof.sign_z)
 }
 
 // -------------------------------------------------------------------
@@ -3459,41 +3459,41 @@ inline void PrevMemberInfo::clear_x_c0() {
   clear_has_x_c0();
 }
 inline const ::std::string& PrevMemberInfo::x_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMemberInfo.x_c0)
   return x_c0_.GetNoArena();
 }
 inline void PrevMemberInfo::set_x_c0(const ::std::string& value) {
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.PrevMemberInfo.x_c0)
 }
 #if LANG_CXX11
 inline void PrevMemberInfo::set_x_c0(::std::string&& value) {
   set_has_x_c0();
   x_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.PrevMemberInfo.x_c0)
 }
 #endif
 inline void PrevMemberInfo::set_x_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.PrevMemberInfo.x_c0)
 }
 inline void PrevMemberInfo::set_x_c0(const void* value, size_t size) {
   set_has_x_c0();
   x_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.PrevMemberInfo.x_c0)
 }
 inline ::std::string* PrevMemberInfo::mutable_x_c0() {
   set_has_x_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.PrevMemberInfo.x_c0)
   return x_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* PrevMemberInfo::release_x_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.PrevMemberInfo.x_c0)
   if (!has_x_c0()) {
     return NULL;
   }
@@ -3507,7 +3507,7 @@ inline void PrevMemberInfo::set_allocated_x_c0(::std::string* x_c0) {
     clear_has_x_c0();
   }
   x_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), x_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.PrevMemberInfo.x_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.PrevMemberInfo.x_c0)
 }
 
 // optional bytes x_c1 = 2;
@@ -3525,41 +3525,41 @@ inline void PrevMemberInfo::clear_x_c1() {
   clear_has_x_c1();
 }
 inline const ::std::string& PrevMemberInfo::x_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMemberInfo.x_c1)
   return x_c1_.GetNoArena();
 }
 inline void PrevMemberInfo::set_x_c1(const ::std::string& value) {
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.PrevMemberInfo.x_c1)
 }
 #if LANG_CXX11
 inline void PrevMemberInfo::set_x_c1(::std::string&& value) {
   set_has_x_c1();
   x_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.PrevMemberInfo.x_c1)
 }
 #endif
 inline void PrevMemberInfo::set_x_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.PrevMemberInfo.x_c1)
 }
 inline void PrevMemberInfo::set_x_c1(const void* value, size_t size) {
   set_has_x_c1();
   x_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.PrevMemberInfo.x_c1)
 }
 inline ::std::string* PrevMemberInfo::mutable_x_c1() {
   set_has_x_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.PrevMemberInfo.x_c1)
   return x_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* PrevMemberInfo::release_x_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.PrevMemberInfo.x_c1)
   if (!has_x_c1()) {
     return NULL;
   }
@@ -3573,7 +3573,7 @@ inline void PrevMemberInfo::set_allocated_x_c1(::std::string* x_c1) {
     clear_has_x_c1();
   }
   x_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), x_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.PrevMemberInfo.x_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.PrevMemberInfo.x_c1)
 }
 
 // optional bytes y_c0 = 3;
@@ -3591,41 +3591,41 @@ inline void PrevMemberInfo::clear_y_c0() {
   clear_has_y_c0();
 }
 inline const ::std::string& PrevMemberInfo::y_c0() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMemberInfo.y_c0)
   return y_c0_.GetNoArena();
 }
 inline void PrevMemberInfo::set_y_c0(const ::std::string& value) {
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.PrevMemberInfo.y_c0)
 }
 #if LANG_CXX11
 inline void PrevMemberInfo::set_y_c0(::std::string&& value) {
   set_has_y_c0();
   y_c0_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.PrevMemberInfo.y_c0)
 }
 #endif
 inline void PrevMemberInfo::set_y_c0(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.PrevMemberInfo.y_c0)
 }
 inline void PrevMemberInfo::set_y_c0(const void* value, size_t size) {
   set_has_y_c0();
   y_c0_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.PrevMemberInfo.y_c0)
 }
 inline ::std::string* PrevMemberInfo::mutable_y_c0() {
   set_has_y_c0();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.PrevMemberInfo.y_c0)
   return y_c0_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* PrevMemberInfo::release_y_c0() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.PrevMemberInfo.y_c0)
   if (!has_y_c0()) {
     return NULL;
   }
@@ -3639,7 +3639,7 @@ inline void PrevMemberInfo::set_allocated_y_c0(::std::string* y_c0) {
     clear_has_y_c0();
   }
   y_c0_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), y_c0);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.PrevMemberInfo.y_c0)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.PrevMemberInfo.y_c0)
 }
 
 // optional bytes y_c1 = 4;
@@ -3657,41 +3657,41 @@ inline void PrevMemberInfo::clear_y_c1() {
   clear_has_y_c1();
 }
 inline const ::std::string& PrevMemberInfo::y_c1() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMemberInfo.y_c1)
   return y_c1_.GetNoArena();
 }
 inline void PrevMemberInfo::set_y_c1(const ::std::string& value) {
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.PrevMemberInfo.y_c1)
 }
 #if LANG_CXX11
 inline void PrevMemberInfo::set_y_c1(::std::string&& value) {
   set_has_y_c1();
   y_c1_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.PrevMemberInfo.y_c1)
 }
 #endif
 inline void PrevMemberInfo::set_y_c1(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.PrevMemberInfo.y_c1)
 }
 inline void PrevMemberInfo::set_y_c1(const void* value, size_t size) {
   set_has_y_c1();
   y_c1_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.PrevMemberInfo.y_c1)
 }
 inline ::std::string* PrevMemberInfo::mutable_y_c1() {
   set_has_y_c1();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.PrevMemberInfo.y_c1)
   return y_c1_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* PrevMemberInfo::release_y_c1() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.PrevMemberInfo.y_c1)
   if (!has_y_c1()) {
     return NULL;
   }
@@ -3705,7 +3705,7 @@ inline void PrevMemberInfo::set_allocated_y_c1(::std::string* y_c1) {
     clear_has_y_c1();
   }
   y_c1_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), y_c1);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.PrevMemberInfo.y_c1)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.PrevMemberInfo.y_c1)
 }
 
 // optional int32 pool_idx_mod_num = 5 [default = -1];
@@ -3723,46 +3723,46 @@ inline void PrevMemberInfo::clear_pool_idx_mod_num() {
   clear_has_pool_idx_mod_num();
 }
 inline ::google::protobuf::int32 PrevMemberInfo::pool_idx_mod_num() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMemberInfo.pool_idx_mod_num)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMemberInfo.pool_idx_mod_num)
   return pool_idx_mod_num_;
 }
 inline void PrevMemberInfo::set_pool_idx_mod_num(::google::protobuf::int32 value) {
   set_has_pool_idx_mod_num();
   pool_idx_mod_num_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.PrevMemberInfo.pool_idx_mod_num)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.PrevMemberInfo.pool_idx_mod_num)
 }
 
 // -------------------------------------------------------------------
 
 // PrevMembers
 
-// repeated .seth.elect.protobuf.PrevMemberInfo bls_pubkey = 1;
+// repeated .shardora.elect.protobuf.PrevMemberInfo bls_pubkey = 1;
 inline int PrevMembers::bls_pubkey_size() const {
   return bls_pubkey_.size();
 }
 inline void PrevMembers::clear_bls_pubkey() {
   bls_pubkey_.Clear();
 }
-inline ::seth::elect::protobuf::PrevMemberInfo* PrevMembers::mutable_bls_pubkey(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.PrevMembers.bls_pubkey)
+inline ::shardora::elect::protobuf::PrevMemberInfo* PrevMembers::mutable_bls_pubkey(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.PrevMembers.bls_pubkey)
   return bls_pubkey_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::PrevMemberInfo >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::PrevMemberInfo >*
 PrevMembers::mutable_bls_pubkey() {
-  // @@protoc_insertion_point(field_mutable_list:seth.elect.protobuf.PrevMembers.bls_pubkey)
+  // @@protoc_insertion_point(field_mutable_list:shardora.elect.protobuf.PrevMembers.bls_pubkey)
   return &bls_pubkey_;
 }
-inline const ::seth::elect::protobuf::PrevMemberInfo& PrevMembers::bls_pubkey(int index) const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMembers.bls_pubkey)
+inline const ::shardora::elect::protobuf::PrevMemberInfo& PrevMembers::bls_pubkey(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMembers.bls_pubkey)
   return bls_pubkey_.Get(index);
 }
-inline ::seth::elect::protobuf::PrevMemberInfo* PrevMembers::add_bls_pubkey() {
-  // @@protoc_insertion_point(field_add:seth.elect.protobuf.PrevMembers.bls_pubkey)
+inline ::shardora::elect::protobuf::PrevMemberInfo* PrevMembers::add_bls_pubkey() {
+  // @@protoc_insertion_point(field_add:shardora.elect.protobuf.PrevMembers.bls_pubkey)
   return bls_pubkey_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::PrevMemberInfo >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::PrevMemberInfo >&
 PrevMembers::bls_pubkey() const {
-  // @@protoc_insertion_point(field_list:seth.elect.protobuf.PrevMembers.bls_pubkey)
+  // @@protoc_insertion_point(field_list:shardora.elect.protobuf.PrevMembers.bls_pubkey)
   return bls_pubkey_;
 }
 
@@ -3781,16 +3781,16 @@ inline void PrevMembers::clear_prev_elect_height() {
   clear_has_prev_elect_height();
 }
 inline ::google::protobuf::uint64 PrevMembers::prev_elect_height() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMembers.prev_elect_height)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMembers.prev_elect_height)
   return prev_elect_height_;
 }
 inline void PrevMembers::set_prev_elect_height(::google::protobuf::uint64 value) {
   set_has_prev_elect_height();
   prev_elect_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.PrevMembers.prev_elect_height)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.PrevMembers.prev_elect_height)
 }
 
-// optional .seth.elect.protobuf.BlsPublicKey common_pubkey = 3;
+// optional .shardora.elect.protobuf.BlsPublicKey common_pubkey = 3;
 inline bool PrevMembers::has_common_pubkey() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -3804,32 +3804,32 @@ inline void PrevMembers::clear_common_pubkey() {
   if (common_pubkey_ != NULL) common_pubkey_->Clear();
   clear_has_common_pubkey();
 }
-inline const ::seth::elect::protobuf::BlsPublicKey& PrevMembers::_internal_common_pubkey() const {
+inline const ::shardora::elect::protobuf::BlsPublicKey& PrevMembers::_internal_common_pubkey() const {
   return *common_pubkey_;
 }
-inline const ::seth::elect::protobuf::BlsPublicKey& PrevMembers::common_pubkey() const {
-  const ::seth::elect::protobuf::BlsPublicKey* p = common_pubkey_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.PrevMembers.common_pubkey)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::BlsPublicKey*>(
-      &::seth::elect::protobuf::_BlsPublicKey_default_instance_);
+inline const ::shardora::elect::protobuf::BlsPublicKey& PrevMembers::common_pubkey() const {
+  const ::shardora::elect::protobuf::BlsPublicKey* p = common_pubkey_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.PrevMembers.common_pubkey)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::BlsPublicKey*>(
+      &::shardora::elect::protobuf::_BlsPublicKey_default_instance_);
 }
-inline ::seth::elect::protobuf::BlsPublicKey* PrevMembers::release_common_pubkey() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.PrevMembers.common_pubkey)
+inline ::shardora::elect::protobuf::BlsPublicKey* PrevMembers::release_common_pubkey() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.PrevMembers.common_pubkey)
   clear_has_common_pubkey();
-  ::seth::elect::protobuf::BlsPublicKey* temp = common_pubkey_;
+  ::shardora::elect::protobuf::BlsPublicKey* temp = common_pubkey_;
   common_pubkey_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::BlsPublicKey* PrevMembers::mutable_common_pubkey() {
+inline ::shardora::elect::protobuf::BlsPublicKey* PrevMembers::mutable_common_pubkey() {
   set_has_common_pubkey();
   if (common_pubkey_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::BlsPublicKey>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::BlsPublicKey>(GetArenaNoVirtual());
     common_pubkey_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.PrevMembers.common_pubkey)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.PrevMembers.common_pubkey)
   return common_pubkey_;
 }
-inline void PrevMembers::set_allocated_common_pubkey(::seth::elect::protobuf::BlsPublicKey* common_pubkey) {
+inline void PrevMembers::set_allocated_common_pubkey(::shardora::elect::protobuf::BlsPublicKey* common_pubkey) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete common_pubkey_;
@@ -3845,7 +3845,7 @@ inline void PrevMembers::set_allocated_common_pubkey(::seth::elect::protobuf::Bl
     clear_has_common_pubkey();
   }
   common_pubkey_ = common_pubkey;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.PrevMembers.common_pubkey)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.PrevMembers.common_pubkey)
 }
 
 // -------------------------------------------------------------------
@@ -3867,41 +3867,41 @@ inline void member::clear_pubkey() {
   clear_has_pubkey();
 }
 inline const ::std::string& member::pubkey() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.member.pubkey)
   return pubkey_.GetNoArena();
 }
 inline void member::set_pubkey(const ::std::string& value) {
   set_has_pubkey();
   pubkey_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.member.pubkey)
 }
 #if LANG_CXX11
 inline void member::set_pubkey(::std::string&& value) {
   set_has_pubkey();
   pubkey_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.member.pubkey)
 }
 #endif
 inline void member::set_pubkey(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_pubkey();
   pubkey_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.member.pubkey)
 }
 inline void member::set_pubkey(const void* value, size_t size) {
   set_has_pubkey();
   pubkey_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.member.pubkey)
 }
 inline ::std::string* member::mutable_pubkey() {
   set_has_pubkey();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.member.pubkey)
   return pubkey_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* member::release_pubkey() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.member.pubkey)
   if (!has_pubkey()) {
     return NULL;
   }
@@ -3915,7 +3915,7 @@ inline void member::set_allocated_pubkey(::std::string* pubkey) {
     clear_has_pubkey();
   }
   pubkey_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), pubkey);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.member.pubkey)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.member.pubkey)
 }
 
 // optional int32 pool_idx_mod_num = 2;
@@ -3933,13 +3933,13 @@ inline void member::clear_pool_idx_mod_num() {
   clear_has_pool_idx_mod_num();
 }
 inline ::google::protobuf::int32 member::pool_idx_mod_num() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.member.pool_idx_mod_num)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.member.pool_idx_mod_num)
   return pool_idx_mod_num_;
 }
 inline void member::set_pool_idx_mod_num(::google::protobuf::int32 value) {
   set_has_pool_idx_mod_num();
   pool_idx_mod_num_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.member.pool_idx_mod_num)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.member.pool_idx_mod_num)
 }
 
 // optional uint64 mining_amount = 3;
@@ -3957,13 +3957,13 @@ inline void member::clear_mining_amount() {
   clear_has_mining_amount();
 }
 inline ::google::protobuf::uint64 member::mining_amount() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.member.mining_amount)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.member.mining_amount)
   return mining_amount_;
 }
 inline void member::set_mining_amount(::google::protobuf::uint64 value) {
   set_has_mining_amount();
   mining_amount_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.member.mining_amount)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.member.mining_amount)
 }
 
 // optional uint64 fts_value = 4;
@@ -3981,13 +3981,13 @@ inline void member::clear_fts_value() {
   clear_has_fts_value();
 }
 inline ::google::protobuf::uint64 member::fts_value() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.member.fts_value)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.member.fts_value)
   return fts_value_;
 }
 inline void member::set_fts_value(::google::protobuf::uint64 value) {
   set_has_fts_value();
   fts_value_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.member.fts_value)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.member.fts_value)
 }
 
 // optional uint64 consensus_gap = 5;
@@ -4005,50 +4005,50 @@ inline void member::clear_consensus_gap() {
   clear_has_consensus_gap();
 }
 inline ::google::protobuf::uint64 member::consensus_gap() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.member.consensus_gap)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.member.consensus_gap)
   return consensus_gap_;
 }
 inline void member::set_consensus_gap(::google::protobuf::uint64 value) {
   set_has_consensus_gap();
   consensus_gap_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.member.consensus_gap)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.member.consensus_gap)
 }
 
 // -------------------------------------------------------------------
 
 // ElectBlock
 
-// repeated .seth.elect.protobuf.member in = 1;
+// repeated .shardora.elect.protobuf.member in = 1;
 inline int ElectBlock::in_size() const {
   return in_.size();
 }
 inline void ElectBlock::clear_in() {
   in_.Clear();
 }
-inline ::seth::elect::protobuf::member* ElectBlock::mutable_in(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectBlock.in)
+inline ::shardora::elect::protobuf::member* ElectBlock::mutable_in(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectBlock.in)
   return in_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::member >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::member >*
 ElectBlock::mutable_in() {
-  // @@protoc_insertion_point(field_mutable_list:seth.elect.protobuf.ElectBlock.in)
+  // @@protoc_insertion_point(field_mutable_list:shardora.elect.protobuf.ElectBlock.in)
   return &in_;
 }
-inline const ::seth::elect::protobuf::member& ElectBlock::in(int index) const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectBlock.in)
+inline const ::shardora::elect::protobuf::member& ElectBlock::in(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectBlock.in)
   return in_.Get(index);
 }
-inline ::seth::elect::protobuf::member* ElectBlock::add_in() {
-  // @@protoc_insertion_point(field_add:seth.elect.protobuf.ElectBlock.in)
+inline ::shardora::elect::protobuf::member* ElectBlock::add_in() {
+  // @@protoc_insertion_point(field_add:shardora.elect.protobuf.ElectBlock.in)
   return in_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::member >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::member >&
 ElectBlock::in() const {
-  // @@protoc_insertion_point(field_list:seth.elect.protobuf.ElectBlock.in)
+  // @@protoc_insertion_point(field_list:shardora.elect.protobuf.ElectBlock.in)
   return in_;
 }
 
-// optional .seth.elect.protobuf.PrevMembers prev_members = 2;
+// optional .shardora.elect.protobuf.PrevMembers prev_members = 2;
 inline bool ElectBlock::has_prev_members() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -4062,32 +4062,32 @@ inline void ElectBlock::clear_prev_members() {
   if (prev_members_ != NULL) prev_members_->Clear();
   clear_has_prev_members();
 }
-inline const ::seth::elect::protobuf::PrevMembers& ElectBlock::_internal_prev_members() const {
+inline const ::shardora::elect::protobuf::PrevMembers& ElectBlock::_internal_prev_members() const {
   return *prev_members_;
 }
-inline const ::seth::elect::protobuf::PrevMembers& ElectBlock::prev_members() const {
-  const ::seth::elect::protobuf::PrevMembers* p = prev_members_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectBlock.prev_members)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::PrevMembers*>(
-      &::seth::elect::protobuf::_PrevMembers_default_instance_);
+inline const ::shardora::elect::protobuf::PrevMembers& ElectBlock::prev_members() const {
+  const ::shardora::elect::protobuf::PrevMembers* p = prev_members_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectBlock.prev_members)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::PrevMembers*>(
+      &::shardora::elect::protobuf::_PrevMembers_default_instance_);
 }
-inline ::seth::elect::protobuf::PrevMembers* ElectBlock::release_prev_members() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectBlock.prev_members)
+inline ::shardora::elect::protobuf::PrevMembers* ElectBlock::release_prev_members() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectBlock.prev_members)
   clear_has_prev_members();
-  ::seth::elect::protobuf::PrevMembers* temp = prev_members_;
+  ::shardora::elect::protobuf::PrevMembers* temp = prev_members_;
   prev_members_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::PrevMembers* ElectBlock::mutable_prev_members() {
+inline ::shardora::elect::protobuf::PrevMembers* ElectBlock::mutable_prev_members() {
   set_has_prev_members();
   if (prev_members_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::PrevMembers>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::PrevMembers>(GetArenaNoVirtual());
     prev_members_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectBlock.prev_members)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectBlock.prev_members)
   return prev_members_;
 }
-inline void ElectBlock::set_allocated_prev_members(::seth::elect::protobuf::PrevMembers* prev_members) {
+inline void ElectBlock::set_allocated_prev_members(::shardora::elect::protobuf::PrevMembers* prev_members) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete prev_members_;
@@ -4103,7 +4103,7 @@ inline void ElectBlock::set_allocated_prev_members(::seth::elect::protobuf::Prev
     clear_has_prev_members();
   }
   prev_members_ = prev_members;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectBlock.prev_members)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectBlock.prev_members)
 }
 
 // optional uint32 shard_network_id = 3;
@@ -4121,13 +4121,13 @@ inline void ElectBlock::clear_shard_network_id() {
   clear_has_shard_network_id();
 }
 inline ::google::protobuf::uint32 ElectBlock::shard_network_id() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectBlock.shard_network_id)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectBlock.shard_network_id)
   return shard_network_id_;
 }
 inline void ElectBlock::set_shard_network_id(::google::protobuf::uint32 value) {
   set_has_shard_network_id();
   shard_network_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectBlock.shard_network_id)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectBlock.shard_network_id)
 }
 
 // optional uint64 elect_height = 4;
@@ -4145,13 +4145,13 @@ inline void ElectBlock::clear_elect_height() {
   clear_has_elect_height();
 }
 inline ::google::protobuf::uint64 ElectBlock::elect_height() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectBlock.elect_height)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectBlock.elect_height)
   return elect_height_;
 }
 inline void ElectBlock::set_elect_height(::google::protobuf::uint64 value) {
   set_has_elect_height();
   elect_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectBlock.elect_height)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectBlock.elect_height)
 }
 
 // optional uint64 all_gas_amount = 5;
@@ -4169,13 +4169,13 @@ inline void ElectBlock::clear_all_gas_amount() {
   clear_has_all_gas_amount();
 }
 inline ::google::protobuf::uint64 ElectBlock::all_gas_amount() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectBlock.all_gas_amount)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectBlock.all_gas_amount)
   return all_gas_amount_;
 }
 inline void ElectBlock::set_all_gas_amount(::google::protobuf::uint64 value) {
   set_has_all_gas_amount();
   all_gas_amount_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectBlock.all_gas_amount)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectBlock.all_gas_amount)
 }
 
 // optional uint64 gas_for_root = 6;
@@ -4193,13 +4193,13 @@ inline void ElectBlock::clear_gas_for_root() {
   clear_has_gas_for_root();
 }
 inline ::google::protobuf::uint64 ElectBlock::gas_for_root() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectBlock.gas_for_root)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectBlock.gas_for_root)
   return gas_for_root_;
 }
 inline void ElectBlock::set_gas_for_root(::google::protobuf::uint64 value) {
   set_has_gas_for_root();
   gas_for_root_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectBlock.gas_for_root)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectBlock.gas_for_root)
 }
 
 // -------------------------------------------------------------------
@@ -4214,25 +4214,25 @@ inline void WaitingNodesMessage::clear_nodes_filter() {
   nodes_filter_.Clear();
 }
 inline ::google::protobuf::uint64 WaitingNodesMessage::nodes_filter(int index) const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodesMessage.nodes_filter)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodesMessage.nodes_filter)
   return nodes_filter_.Get(index);
 }
 inline void WaitingNodesMessage::set_nodes_filter(int index, ::google::protobuf::uint64 value) {
   nodes_filter_.Set(index, value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodesMessage.nodes_filter)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodesMessage.nodes_filter)
 }
 inline void WaitingNodesMessage::add_nodes_filter(::google::protobuf::uint64 value) {
   nodes_filter_.Add(value);
-  // @@protoc_insertion_point(field_add:seth.elect.protobuf.WaitingNodesMessage.nodes_filter)
+  // @@protoc_insertion_point(field_add:shardora.elect.protobuf.WaitingNodesMessage.nodes_filter)
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint64 >&
 WaitingNodesMessage::nodes_filter() const {
-  // @@protoc_insertion_point(field_list:seth.elect.protobuf.WaitingNodesMessage.nodes_filter)
+  // @@protoc_insertion_point(field_list:shardora.elect.protobuf.WaitingNodesMessage.nodes_filter)
   return nodes_filter_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint64 >*
 WaitingNodesMessage::mutable_nodes_filter() {
-  // @@protoc_insertion_point(field_mutable_list:seth.elect.protobuf.WaitingNodesMessage.nodes_filter)
+  // @@protoc_insertion_point(field_mutable_list:shardora.elect.protobuf.WaitingNodesMessage.nodes_filter)
   return &nodes_filter_;
 }
 
@@ -4251,13 +4251,13 @@ inline void WaitingNodesMessage::clear_waiting_shard_id() {
   clear_has_waiting_shard_id();
 }
 inline ::google::protobuf::uint32 WaitingNodesMessage::waiting_shard_id() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodesMessage.waiting_shard_id)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodesMessage.waiting_shard_id)
   return waiting_shard_id_;
 }
 inline void WaitingNodesMessage::set_waiting_shard_id(::google::protobuf::uint32 value) {
   set_has_waiting_shard_id();
   waiting_shard_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodesMessage.waiting_shard_id)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodesMessage.waiting_shard_id)
 }
 
 // optional bytes stoke_hash = 3;
@@ -4275,41 +4275,41 @@ inline void WaitingNodesMessage::clear_stoke_hash() {
   clear_has_stoke_hash();
 }
 inline const ::std::string& WaitingNodesMessage::stoke_hash() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
   return stoke_hash_.GetNoArena();
 }
 inline void WaitingNodesMessage::set_stoke_hash(const ::std::string& value) {
   set_has_stoke_hash();
   stoke_hash_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
 }
 #if LANG_CXX11
 inline void WaitingNodesMessage::set_stoke_hash(::std::string&& value) {
   set_has_stoke_hash();
   stoke_hash_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
 }
 #endif
 inline void WaitingNodesMessage::set_stoke_hash(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_stoke_hash();
   stoke_hash_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
 }
 inline void WaitingNodesMessage::set_stoke_hash(const void* value, size_t size) {
   set_has_stoke_hash();
   stoke_hash_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
 }
 inline ::std::string* WaitingNodesMessage::mutable_stoke_hash() {
   set_has_stoke_hash();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
   return stoke_hash_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* WaitingNodesMessage::release_stoke_hash() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
   if (!has_stoke_hash()) {
     return NULL;
   }
@@ -4323,7 +4323,7 @@ inline void WaitingNodesMessage::set_allocated_stoke_hash(::std::string* stoke_h
     clear_has_stoke_hash();
   }
   stoke_hash_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), stoke_hash);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.WaitingNodesMessage.stoke_hash)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.WaitingNodesMessage.stoke_hash)
 }
 
 // -------------------------------------------------------------------
@@ -4345,41 +4345,41 @@ inline void WaitingNodeHeartbeat::clear_public_ip() {
   clear_has_public_ip();
 }
 inline const ::std::string& WaitingNodeHeartbeat::public_ip() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
   return public_ip_.GetNoArena();
 }
 inline void WaitingNodeHeartbeat::set_public_ip(const ::std::string& value) {
   set_has_public_ip();
   public_ip_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
 }
 #if LANG_CXX11
 inline void WaitingNodeHeartbeat::set_public_ip(::std::string&& value) {
   set_has_public_ip();
   public_ip_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
 }
 #endif
 inline void WaitingNodeHeartbeat::set_public_ip(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_public_ip();
   public_ip_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
 }
 inline void WaitingNodeHeartbeat::set_public_ip(const void* value, size_t size) {
   set_has_public_ip();
   public_ip_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
 }
 inline ::std::string* WaitingNodeHeartbeat::mutable_public_ip() {
   set_has_public_ip();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
   return public_ip_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* WaitingNodeHeartbeat::release_public_ip() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
   if (!has_public_ip()) {
     return NULL;
   }
@@ -4393,7 +4393,7 @@ inline void WaitingNodeHeartbeat::set_allocated_public_ip(::std::string* public_
     clear_has_public_ip();
   }
   public_ip_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), public_ip);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.WaitingNodeHeartbeat.public_ip)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip)
 }
 
 // optional uint32 public_port = 2;
@@ -4411,13 +4411,13 @@ inline void WaitingNodeHeartbeat::clear_public_port() {
   clear_has_public_port();
 }
 inline ::google::protobuf::uint32 WaitingNodeHeartbeat::public_port() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodeHeartbeat.public_port)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodeHeartbeat.public_port)
   return public_port_;
 }
 inline void WaitingNodeHeartbeat::set_public_port(::google::protobuf::uint32 value) {
   set_has_public_port();
   public_port_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodeHeartbeat.public_port)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodeHeartbeat.public_port)
 }
 
 // optional uint32 network_id = 3;
@@ -4435,13 +4435,13 @@ inline void WaitingNodeHeartbeat::clear_network_id() {
   clear_has_network_id();
 }
 inline ::google::protobuf::uint32 WaitingNodeHeartbeat::network_id() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodeHeartbeat.network_id)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodeHeartbeat.network_id)
   return network_id_;
 }
 inline void WaitingNodeHeartbeat::set_network_id(::google::protobuf::uint32 value) {
   set_has_network_id();
   network_id_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodeHeartbeat.network_id)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodeHeartbeat.network_id)
 }
 
 // optional uint64 timestamp_sec = 4;
@@ -4459,13 +4459,13 @@ inline void WaitingNodeHeartbeat::clear_timestamp_sec() {
   clear_has_timestamp_sec();
 }
 inline ::google::protobuf::uint64 WaitingNodeHeartbeat::timestamp_sec() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.WaitingNodeHeartbeat.timestamp_sec)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.WaitingNodeHeartbeat.timestamp_sec)
   return timestamp_sec_;
 }
 inline void WaitingNodeHeartbeat::set_timestamp_sec(::google::protobuf::uint64 value) {
   set_has_timestamp_sec();
   timestamp_sec_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.WaitingNodeHeartbeat.timestamp_sec)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.WaitingNodeHeartbeat.timestamp_sec)
 }
 
 // -------------------------------------------------------------------
@@ -4487,41 +4487,41 @@ inline void LeaderRotationMessage::clear_leader_id() {
   clear_has_leader_id();
 }
 inline const ::std::string& LeaderRotationMessage::leader_id() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
   return leader_id_.GetNoArena();
 }
 inline void LeaderRotationMessage::set_leader_id(const ::std::string& value) {
   set_has_leader_id();
   leader_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
 }
 #if LANG_CXX11
 inline void LeaderRotationMessage::set_leader_id(::std::string&& value) {
   set_has_leader_id();
   leader_id_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
 }
 #endif
 inline void LeaderRotationMessage::set_leader_id(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_leader_id();
   leader_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
 }
 inline void LeaderRotationMessage::set_leader_id(const void* value, size_t size) {
   set_has_leader_id();
   leader_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
 }
 inline ::std::string* LeaderRotationMessage::mutable_leader_id() {
   set_has_leader_id();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
   return leader_id_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* LeaderRotationMessage::release_leader_id() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
   if (!has_leader_id()) {
     return NULL;
   }
@@ -4535,7 +4535,7 @@ inline void LeaderRotationMessage::set_allocated_leader_id(::std::string* leader
     clear_has_leader_id();
   }
   leader_id_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), leader_id);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.LeaderRotationMessage.leader_id)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.LeaderRotationMessage.leader_id)
 }
 
 // optional uint32 pool_mod_num = 2;
@@ -4553,13 +4553,13 @@ inline void LeaderRotationMessage::clear_pool_mod_num() {
   clear_has_pool_mod_num();
 }
 inline ::google::protobuf::uint32 LeaderRotationMessage::pool_mod_num() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.LeaderRotationMessage.pool_mod_num)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.LeaderRotationMessage.pool_mod_num)
   return pool_mod_num_;
 }
 inline void LeaderRotationMessage::set_pool_mod_num(::google::protobuf::uint32 value) {
   set_has_pool_mod_num();
   pool_mod_num_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.LeaderRotationMessage.pool_mod_num)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.LeaderRotationMessage.pool_mod_num)
 }
 
 // -------------------------------------------------------------------
@@ -4581,41 +4581,41 @@ inline void SyncNodeStokeItem::clear_id() {
   clear_has_id();
 }
 inline const ::std::string& SyncNodeStokeItem::id() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeItem.id)
   return id_.GetNoArena();
 }
 inline void SyncNodeStokeItem::set_id(const ::std::string& value) {
   set_has_id();
   id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.SyncNodeStokeItem.id)
 }
 #if LANG_CXX11
 inline void SyncNodeStokeItem::set_id(::std::string&& value) {
   set_has_id();
   id_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.SyncNodeStokeItem.id)
 }
 #endif
 inline void SyncNodeStokeItem::set_id(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_id();
   id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.SyncNodeStokeItem.id)
 }
 inline void SyncNodeStokeItem::set_id(const void* value, size_t size) {
   set_has_id();
   id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.SyncNodeStokeItem.id)
 }
 inline ::std::string* SyncNodeStokeItem::mutable_id() {
   set_has_id();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.SyncNodeStokeItem.id)
   return id_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* SyncNodeStokeItem::release_id() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.SyncNodeStokeItem.id)
   if (!has_id()) {
     return NULL;
   }
@@ -4629,7 +4629,7 @@ inline void SyncNodeStokeItem::set_allocated_id(::std::string* id) {
     clear_has_id();
   }
   id_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), id);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.SyncNodeStokeItem.id)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.SyncNodeStokeItem.id)
 }
 
 // optional uint64 synced_tm_height = 2;
@@ -4647,46 +4647,46 @@ inline void SyncNodeStokeItem::clear_synced_tm_height() {
   clear_has_synced_tm_height();
 }
 inline ::google::protobuf::uint64 SyncNodeStokeItem::synced_tm_height() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeItem.synced_tm_height)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeItem.synced_tm_height)
   return synced_tm_height_;
 }
 inline void SyncNodeStokeItem::set_synced_tm_height(::google::protobuf::uint64 value) {
   set_has_synced_tm_height();
   synced_tm_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.SyncNodeStokeItem.synced_tm_height)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.SyncNodeStokeItem.synced_tm_height)
 }
 
 // -------------------------------------------------------------------
 
 // SyncNodeStokeRequest
 
-// repeated .seth.elect.protobuf.SyncNodeStokeItem sync_item = 1;
+// repeated .shardora.elect.protobuf.SyncNodeStokeItem sync_item = 1;
 inline int SyncNodeStokeRequest::sync_item_size() const {
   return sync_item_.size();
 }
 inline void SyncNodeStokeRequest::clear_sync_item() {
   sync_item_.Clear();
 }
-inline ::seth::elect::protobuf::SyncNodeStokeItem* SyncNodeStokeRequest::mutable_sync_item(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.SyncNodeStokeRequest.sync_item)
+inline ::shardora::elect::protobuf::SyncNodeStokeItem* SyncNodeStokeRequest::mutable_sync_item(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.SyncNodeStokeRequest.sync_item)
   return sync_item_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeItem >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeItem >*
 SyncNodeStokeRequest::mutable_sync_item() {
-  // @@protoc_insertion_point(field_mutable_list:seth.elect.protobuf.SyncNodeStokeRequest.sync_item)
+  // @@protoc_insertion_point(field_mutable_list:shardora.elect.protobuf.SyncNodeStokeRequest.sync_item)
   return &sync_item_;
 }
-inline const ::seth::elect::protobuf::SyncNodeStokeItem& SyncNodeStokeRequest::sync_item(int index) const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeRequest.sync_item)
+inline const ::shardora::elect::protobuf::SyncNodeStokeItem& SyncNodeStokeRequest::sync_item(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeRequest.sync_item)
   return sync_item_.Get(index);
 }
-inline ::seth::elect::protobuf::SyncNodeStokeItem* SyncNodeStokeRequest::add_sync_item() {
-  // @@protoc_insertion_point(field_add:seth.elect.protobuf.SyncNodeStokeRequest.sync_item)
+inline ::shardora::elect::protobuf::SyncNodeStokeItem* SyncNodeStokeRequest::add_sync_item() {
+  // @@protoc_insertion_point(field_add:shardora.elect.protobuf.SyncNodeStokeRequest.sync_item)
   return sync_item_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeItem >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeItem >&
 SyncNodeStokeRequest::sync_item() const {
-  // @@protoc_insertion_point(field_list:seth.elect.protobuf.SyncNodeStokeRequest.sync_item)
+  // @@protoc_insertion_point(field_list:shardora.elect.protobuf.SyncNodeStokeRequest.sync_item)
   return sync_item_;
 }
 
@@ -4705,13 +4705,13 @@ inline void SyncNodeStokeRequest::clear_now_tm_height() {
   clear_has_now_tm_height();
 }
 inline ::google::protobuf::uint64 SyncNodeStokeRequest::now_tm_height() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeRequest.now_tm_height)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeRequest.now_tm_height)
   return now_tm_height_;
 }
 inline void SyncNodeStokeRequest::set_now_tm_height(::google::protobuf::uint64 value) {
   set_has_now_tm_height();
   now_tm_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.SyncNodeStokeRequest.now_tm_height)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.SyncNodeStokeRequest.now_tm_height)
 }
 
 // -------------------------------------------------------------------
@@ -4733,41 +4733,41 @@ inline void SyncNodeStokeResItem::clear_id() {
   clear_has_id();
 }
 inline const ::std::string& SyncNodeStokeResItem::id() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeResItem.id)
   return id_.GetNoArena();
 }
 inline void SyncNodeStokeResItem::set_id(const ::std::string& value) {
   set_has_id();
   id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.SyncNodeStokeResItem.id)
 }
 #if LANG_CXX11
 inline void SyncNodeStokeResItem::set_id(::std::string&& value) {
   set_has_id();
   id_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.SyncNodeStokeResItem.id)
 }
 #endif
 inline void SyncNodeStokeResItem::set_id(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_id();
   id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.SyncNodeStokeResItem.id)
 }
 inline void SyncNodeStokeResItem::set_id(const void* value, size_t size) {
   set_has_id();
   id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.SyncNodeStokeResItem.id)
 }
 inline ::std::string* SyncNodeStokeResItem::mutable_id() {
   set_has_id();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.SyncNodeStokeResItem.id)
   return id_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* SyncNodeStokeResItem::release_id() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.SyncNodeStokeResItem.id)
   if (!has_id()) {
     return NULL;
   }
@@ -4781,7 +4781,7 @@ inline void SyncNodeStokeResItem::set_allocated_id(::std::string* id) {
     clear_has_id();
   }
   id_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), id);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.SyncNodeStokeResItem.id)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.SyncNodeStokeResItem.id)
 }
 
 // optional uint64 balance = 2;
@@ -4799,46 +4799,46 @@ inline void SyncNodeStokeResItem::clear_balance() {
   clear_has_balance();
 }
 inline ::google::protobuf::uint64 SyncNodeStokeResItem::balance() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeResItem.balance)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeResItem.balance)
   return balance_;
 }
 inline void SyncNodeStokeResItem::set_balance(::google::protobuf::uint64 value) {
   set_has_balance();
   balance_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.SyncNodeStokeResItem.balance)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.SyncNodeStokeResItem.balance)
 }
 
 // -------------------------------------------------------------------
 
 // SyncNodeStokeResponse
 
-// repeated .seth.elect.protobuf.SyncNodeStokeResItem items = 1;
+// repeated .shardora.elect.protobuf.SyncNodeStokeResItem items = 1;
 inline int SyncNodeStokeResponse::items_size() const {
   return items_.size();
 }
 inline void SyncNodeStokeResponse::clear_items() {
   items_.Clear();
 }
-inline ::seth::elect::protobuf::SyncNodeStokeResItem* SyncNodeStokeResponse::mutable_items(int index) {
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.SyncNodeStokeResponse.items)
+inline ::shardora::elect::protobuf::SyncNodeStokeResItem* SyncNodeStokeResponse::mutable_items(int index) {
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.SyncNodeStokeResponse.items)
   return items_.Mutable(index);
 }
-inline ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeResItem >*
+inline ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeResItem >*
 SyncNodeStokeResponse::mutable_items() {
-  // @@protoc_insertion_point(field_mutable_list:seth.elect.protobuf.SyncNodeStokeResponse.items)
+  // @@protoc_insertion_point(field_mutable_list:shardora.elect.protobuf.SyncNodeStokeResponse.items)
   return &items_;
 }
-inline const ::seth::elect::protobuf::SyncNodeStokeResItem& SyncNodeStokeResponse::items(int index) const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeResponse.items)
+inline const ::shardora::elect::protobuf::SyncNodeStokeResItem& SyncNodeStokeResponse::items(int index) const {
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeResponse.items)
   return items_.Get(index);
 }
-inline ::seth::elect::protobuf::SyncNodeStokeResItem* SyncNodeStokeResponse::add_items() {
-  // @@protoc_insertion_point(field_add:seth.elect.protobuf.SyncNodeStokeResponse.items)
+inline ::shardora::elect::protobuf::SyncNodeStokeResItem* SyncNodeStokeResponse::add_items() {
+  // @@protoc_insertion_point(field_add:shardora.elect.protobuf.SyncNodeStokeResponse.items)
   return items_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::seth::elect::protobuf::SyncNodeStokeResItem >&
+inline const ::google::protobuf::RepeatedPtrField< ::shardora::elect::protobuf::SyncNodeStokeResItem >&
 SyncNodeStokeResponse::items() const {
-  // @@protoc_insertion_point(field_list:seth.elect.protobuf.SyncNodeStokeResponse.items)
+  // @@protoc_insertion_point(field_list:shardora.elect.protobuf.SyncNodeStokeResponse.items)
   return items_;
 }
 
@@ -4857,20 +4857,20 @@ inline void SyncNodeStokeResponse::clear_now_tm_height() {
   clear_has_now_tm_height();
 }
 inline ::google::protobuf::uint64 SyncNodeStokeResponse::now_tm_height() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.SyncNodeStokeResponse.now_tm_height)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.SyncNodeStokeResponse.now_tm_height)
   return now_tm_height_;
 }
 inline void SyncNodeStokeResponse::set_now_tm_height(::google::protobuf::uint64 value) {
   set_has_now_tm_height();
   now_tm_height_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.SyncNodeStokeResponse.now_tm_height)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.SyncNodeStokeResponse.now_tm_height)
 }
 
 // -------------------------------------------------------------------
 
 // ElectMessage
 
-// optional .seth.elect.protobuf.ElectBlock elect_block = 1;
+// optional .shardora.elect.protobuf.ElectBlock elect_block = 1;
 inline bool ElectMessage::has_elect_block() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
@@ -4884,32 +4884,32 @@ inline void ElectMessage::clear_elect_block() {
   if (elect_block_ != NULL) elect_block_->Clear();
   clear_has_elect_block();
 }
-inline const ::seth::elect::protobuf::ElectBlock& ElectMessage::_internal_elect_block() const {
+inline const ::shardora::elect::protobuf::ElectBlock& ElectMessage::_internal_elect_block() const {
   return *elect_block_;
 }
-inline const ::seth::elect::protobuf::ElectBlock& ElectMessage::elect_block() const {
-  const ::seth::elect::protobuf::ElectBlock* p = elect_block_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.elect_block)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::ElectBlock*>(
-      &::seth::elect::protobuf::_ElectBlock_default_instance_);
+inline const ::shardora::elect::protobuf::ElectBlock& ElectMessage::elect_block() const {
+  const ::shardora::elect::protobuf::ElectBlock* p = elect_block_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.elect_block)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::ElectBlock*>(
+      &::shardora::elect::protobuf::_ElectBlock_default_instance_);
 }
-inline ::seth::elect::protobuf::ElectBlock* ElectMessage::release_elect_block() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.elect_block)
+inline ::shardora::elect::protobuf::ElectBlock* ElectMessage::release_elect_block() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.elect_block)
   clear_has_elect_block();
-  ::seth::elect::protobuf::ElectBlock* temp = elect_block_;
+  ::shardora::elect::protobuf::ElectBlock* temp = elect_block_;
   elect_block_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::ElectBlock* ElectMessage::mutable_elect_block() {
+inline ::shardora::elect::protobuf::ElectBlock* ElectMessage::mutable_elect_block() {
   set_has_elect_block();
   if (elect_block_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::ElectBlock>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::ElectBlock>(GetArenaNoVirtual());
     elect_block_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.elect_block)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.elect_block)
   return elect_block_;
 }
-inline void ElectMessage::set_allocated_elect_block(::seth::elect::protobuf::ElectBlock* elect_block) {
+inline void ElectMessage::set_allocated_elect_block(::shardora::elect::protobuf::ElectBlock* elect_block) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete elect_block_;
@@ -4925,10 +4925,10 @@ inline void ElectMessage::set_allocated_elect_block(::seth::elect::protobuf::Ele
     clear_has_elect_block();
   }
   elect_block_ = elect_block;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.elect_block)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.elect_block)
 }
 
-// optional .seth.elect.protobuf.ElectBlock prev_elect_block = 2;
+// optional .shardora.elect.protobuf.ElectBlock prev_elect_block = 2;
 inline bool ElectMessage::has_prev_elect_block() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
@@ -4942,32 +4942,32 @@ inline void ElectMessage::clear_prev_elect_block() {
   if (prev_elect_block_ != NULL) prev_elect_block_->Clear();
   clear_has_prev_elect_block();
 }
-inline const ::seth::elect::protobuf::ElectBlock& ElectMessage::_internal_prev_elect_block() const {
+inline const ::shardora::elect::protobuf::ElectBlock& ElectMessage::_internal_prev_elect_block() const {
   return *prev_elect_block_;
 }
-inline const ::seth::elect::protobuf::ElectBlock& ElectMessage::prev_elect_block() const {
-  const ::seth::elect::protobuf::ElectBlock* p = prev_elect_block_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.prev_elect_block)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::ElectBlock*>(
-      &::seth::elect::protobuf::_ElectBlock_default_instance_);
+inline const ::shardora::elect::protobuf::ElectBlock& ElectMessage::prev_elect_block() const {
+  const ::shardora::elect::protobuf::ElectBlock* p = prev_elect_block_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.prev_elect_block)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::ElectBlock*>(
+      &::shardora::elect::protobuf::_ElectBlock_default_instance_);
 }
-inline ::seth::elect::protobuf::ElectBlock* ElectMessage::release_prev_elect_block() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.prev_elect_block)
+inline ::shardora::elect::protobuf::ElectBlock* ElectMessage::release_prev_elect_block() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.prev_elect_block)
   clear_has_prev_elect_block();
-  ::seth::elect::protobuf::ElectBlock* temp = prev_elect_block_;
+  ::shardora::elect::protobuf::ElectBlock* temp = prev_elect_block_;
   prev_elect_block_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::ElectBlock* ElectMessage::mutable_prev_elect_block() {
+inline ::shardora::elect::protobuf::ElectBlock* ElectMessage::mutable_prev_elect_block() {
   set_has_prev_elect_block();
   if (prev_elect_block_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::ElectBlock>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::ElectBlock>(GetArenaNoVirtual());
     prev_elect_block_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.prev_elect_block)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.prev_elect_block)
   return prev_elect_block_;
 }
-inline void ElectMessage::set_allocated_prev_elect_block(::seth::elect::protobuf::ElectBlock* prev_elect_block) {
+inline void ElectMessage::set_allocated_prev_elect_block(::shardora::elect::protobuf::ElectBlock* prev_elect_block) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete prev_elect_block_;
@@ -4983,10 +4983,10 @@ inline void ElectMessage::set_allocated_prev_elect_block(::seth::elect::protobuf
     clear_has_prev_elect_block();
   }
   prev_elect_block_ = prev_elect_block;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.prev_elect_block)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.prev_elect_block)
 }
 
-// optional .seth.elect.protobuf.WaitingNodesMessage waiting_nodes = 3;
+// optional .shardora.elect.protobuf.WaitingNodesMessage waiting_nodes = 3;
 inline bool ElectMessage::has_waiting_nodes() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
@@ -5000,32 +5000,32 @@ inline void ElectMessage::clear_waiting_nodes() {
   if (waiting_nodes_ != NULL) waiting_nodes_->Clear();
   clear_has_waiting_nodes();
 }
-inline const ::seth::elect::protobuf::WaitingNodesMessage& ElectMessage::_internal_waiting_nodes() const {
+inline const ::shardora::elect::protobuf::WaitingNodesMessage& ElectMessage::_internal_waiting_nodes() const {
   return *waiting_nodes_;
 }
-inline const ::seth::elect::protobuf::WaitingNodesMessage& ElectMessage::waiting_nodes() const {
-  const ::seth::elect::protobuf::WaitingNodesMessage* p = waiting_nodes_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.waiting_nodes)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::WaitingNodesMessage*>(
-      &::seth::elect::protobuf::_WaitingNodesMessage_default_instance_);
+inline const ::shardora::elect::protobuf::WaitingNodesMessage& ElectMessage::waiting_nodes() const {
+  const ::shardora::elect::protobuf::WaitingNodesMessage* p = waiting_nodes_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.waiting_nodes)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::WaitingNodesMessage*>(
+      &::shardora::elect::protobuf::_WaitingNodesMessage_default_instance_);
 }
-inline ::seth::elect::protobuf::WaitingNodesMessage* ElectMessage::release_waiting_nodes() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.waiting_nodes)
+inline ::shardora::elect::protobuf::WaitingNodesMessage* ElectMessage::release_waiting_nodes() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.waiting_nodes)
   clear_has_waiting_nodes();
-  ::seth::elect::protobuf::WaitingNodesMessage* temp = waiting_nodes_;
+  ::shardora::elect::protobuf::WaitingNodesMessage* temp = waiting_nodes_;
   waiting_nodes_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::WaitingNodesMessage* ElectMessage::mutable_waiting_nodes() {
+inline ::shardora::elect::protobuf::WaitingNodesMessage* ElectMessage::mutable_waiting_nodes() {
   set_has_waiting_nodes();
   if (waiting_nodes_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::WaitingNodesMessage>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::WaitingNodesMessage>(GetArenaNoVirtual());
     waiting_nodes_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.waiting_nodes)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.waiting_nodes)
   return waiting_nodes_;
 }
-inline void ElectMessage::set_allocated_waiting_nodes(::seth::elect::protobuf::WaitingNodesMessage* waiting_nodes) {
+inline void ElectMessage::set_allocated_waiting_nodes(::shardora::elect::protobuf::WaitingNodesMessage* waiting_nodes) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete waiting_nodes_;
@@ -5041,7 +5041,7 @@ inline void ElectMessage::set_allocated_waiting_nodes(::seth::elect::protobuf::W
     clear_has_waiting_nodes();
   }
   waiting_nodes_ = waiting_nodes;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.waiting_nodes)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.waiting_nodes)
 }
 
 // optional int32 member_index = 4;
@@ -5059,13 +5059,13 @@ inline void ElectMessage::clear_member_index() {
   clear_has_member_index();
 }
 inline ::google::protobuf::int32 ElectMessage::member_index() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.member_index)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.member_index)
   return member_index_;
 }
 inline void ElectMessage::set_member_index(::google::protobuf::int32 value) {
   set_has_member_index();
   member_index_ = value;
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectMessage.member_index)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectMessage.member_index)
 }
 
 // optional bytes sign_ch = 5;
@@ -5083,41 +5083,41 @@ inline void ElectMessage::clear_sign_ch() {
   clear_has_sign_ch();
 }
 inline const ::std::string& ElectMessage::sign_ch() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.sign_ch)
   return sign_ch_.GetNoArena();
 }
 inline void ElectMessage::set_sign_ch(const ::std::string& value) {
   set_has_sign_ch();
   sign_ch_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectMessage.sign_ch)
 }
 #if LANG_CXX11
 inline void ElectMessage::set_sign_ch(::std::string&& value) {
   set_has_sign_ch();
   sign_ch_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.ElectMessage.sign_ch)
 }
 #endif
 inline void ElectMessage::set_sign_ch(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_sign_ch();
   sign_ch_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.ElectMessage.sign_ch)
 }
 inline void ElectMessage::set_sign_ch(const void* value, size_t size) {
   set_has_sign_ch();
   sign_ch_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.ElectMessage.sign_ch)
 }
 inline ::std::string* ElectMessage::mutable_sign_ch() {
   set_has_sign_ch();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.sign_ch)
   return sign_ch_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* ElectMessage::release_sign_ch() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.sign_ch)
   if (!has_sign_ch()) {
     return NULL;
   }
@@ -5131,7 +5131,7 @@ inline void ElectMessage::set_allocated_sign_ch(::std::string* sign_ch) {
     clear_has_sign_ch();
   }
   sign_ch_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), sign_ch);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.sign_ch)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.sign_ch)
 }
 
 // optional bytes sign_res = 6;
@@ -5149,41 +5149,41 @@ inline void ElectMessage::clear_sign_res() {
   clear_has_sign_res();
 }
 inline const ::std::string& ElectMessage::sign_res() const {
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.sign_res)
   return sign_res_.GetNoArena();
 }
 inline void ElectMessage::set_sign_res(const ::std::string& value) {
   set_has_sign_res();
   sign_res_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_set:shardora.elect.protobuf.ElectMessage.sign_res)
 }
 #if LANG_CXX11
 inline void ElectMessage::set_sign_res(::std::string&& value) {
   set_has_sign_res();
   sign_res_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_set_rvalue:shardora.elect.protobuf.ElectMessage.sign_res)
 }
 #endif
 inline void ElectMessage::set_sign_res(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   set_has_sign_res();
   sign_res_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_set_char:shardora.elect.protobuf.ElectMessage.sign_res)
 }
 inline void ElectMessage::set_sign_res(const void* value, size_t size) {
   set_has_sign_res();
   sign_res_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_set_pointer:shardora.elect.protobuf.ElectMessage.sign_res)
 }
 inline ::std::string* ElectMessage::mutable_sign_res() {
   set_has_sign_res();
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.sign_res)
   return sign_res_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 inline ::std::string* ElectMessage::release_sign_res() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.sign_res)
   if (!has_sign_res()) {
     return NULL;
   }
@@ -5197,10 +5197,10 @@ inline void ElectMessage::set_allocated_sign_res(::std::string* sign_res) {
     clear_has_sign_res();
   }
   sign_res_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), sign_res);
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.sign_res)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.sign_res)
 }
 
-// optional .seth.elect.protobuf.WaitingNodeHeartbeat waiting_heartbeat = 7;
+// optional .shardora.elect.protobuf.WaitingNodeHeartbeat waiting_heartbeat = 7;
 inline bool ElectMessage::has_waiting_heartbeat() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
@@ -5214,32 +5214,32 @@ inline void ElectMessage::clear_waiting_heartbeat() {
   if (waiting_heartbeat_ != NULL) waiting_heartbeat_->Clear();
   clear_has_waiting_heartbeat();
 }
-inline const ::seth::elect::protobuf::WaitingNodeHeartbeat& ElectMessage::_internal_waiting_heartbeat() const {
+inline const ::shardora::elect::protobuf::WaitingNodeHeartbeat& ElectMessage::_internal_waiting_heartbeat() const {
   return *waiting_heartbeat_;
 }
-inline const ::seth::elect::protobuf::WaitingNodeHeartbeat& ElectMessage::waiting_heartbeat() const {
-  const ::seth::elect::protobuf::WaitingNodeHeartbeat* p = waiting_heartbeat_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.waiting_heartbeat)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::WaitingNodeHeartbeat*>(
-      &::seth::elect::protobuf::_WaitingNodeHeartbeat_default_instance_);
+inline const ::shardora::elect::protobuf::WaitingNodeHeartbeat& ElectMessage::waiting_heartbeat() const {
+  const ::shardora::elect::protobuf::WaitingNodeHeartbeat* p = waiting_heartbeat_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.waiting_heartbeat)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::WaitingNodeHeartbeat*>(
+      &::shardora::elect::protobuf::_WaitingNodeHeartbeat_default_instance_);
 }
-inline ::seth::elect::protobuf::WaitingNodeHeartbeat* ElectMessage::release_waiting_heartbeat() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.waiting_heartbeat)
+inline ::shardora::elect::protobuf::WaitingNodeHeartbeat* ElectMessage::release_waiting_heartbeat() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.waiting_heartbeat)
   clear_has_waiting_heartbeat();
-  ::seth::elect::protobuf::WaitingNodeHeartbeat* temp = waiting_heartbeat_;
+  ::shardora::elect::protobuf::WaitingNodeHeartbeat* temp = waiting_heartbeat_;
   waiting_heartbeat_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::WaitingNodeHeartbeat* ElectMessage::mutable_waiting_heartbeat() {
+inline ::shardora::elect::protobuf::WaitingNodeHeartbeat* ElectMessage::mutable_waiting_heartbeat() {
   set_has_waiting_heartbeat();
   if (waiting_heartbeat_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::WaitingNodeHeartbeat>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::WaitingNodeHeartbeat>(GetArenaNoVirtual());
     waiting_heartbeat_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.waiting_heartbeat)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.waiting_heartbeat)
   return waiting_heartbeat_;
 }
-inline void ElectMessage::set_allocated_waiting_heartbeat(::seth::elect::protobuf::WaitingNodeHeartbeat* waiting_heartbeat) {
+inline void ElectMessage::set_allocated_waiting_heartbeat(::shardora::elect::protobuf::WaitingNodeHeartbeat* waiting_heartbeat) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete waiting_heartbeat_;
@@ -5255,10 +5255,10 @@ inline void ElectMessage::set_allocated_waiting_heartbeat(::seth::elect::protobu
     clear_has_waiting_heartbeat();
   }
   waiting_heartbeat_ = waiting_heartbeat;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.waiting_heartbeat)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.waiting_heartbeat)
 }
 
-// optional .seth.elect.protobuf.LeaderRotationMessage leader_rotation = 8;
+// optional .shardora.elect.protobuf.LeaderRotationMessage leader_rotation = 8;
 inline bool ElectMessage::has_leader_rotation() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
@@ -5272,32 +5272,32 @@ inline void ElectMessage::clear_leader_rotation() {
   if (leader_rotation_ != NULL) leader_rotation_->Clear();
   clear_has_leader_rotation();
 }
-inline const ::seth::elect::protobuf::LeaderRotationMessage& ElectMessage::_internal_leader_rotation() const {
+inline const ::shardora::elect::protobuf::LeaderRotationMessage& ElectMessage::_internal_leader_rotation() const {
   return *leader_rotation_;
 }
-inline const ::seth::elect::protobuf::LeaderRotationMessage& ElectMessage::leader_rotation() const {
-  const ::seth::elect::protobuf::LeaderRotationMessage* p = leader_rotation_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.leader_rotation)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::LeaderRotationMessage*>(
-      &::seth::elect::protobuf::_LeaderRotationMessage_default_instance_);
+inline const ::shardora::elect::protobuf::LeaderRotationMessage& ElectMessage::leader_rotation() const {
+  const ::shardora::elect::protobuf::LeaderRotationMessage* p = leader_rotation_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.leader_rotation)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::LeaderRotationMessage*>(
+      &::shardora::elect::protobuf::_LeaderRotationMessage_default_instance_);
 }
-inline ::seth::elect::protobuf::LeaderRotationMessage* ElectMessage::release_leader_rotation() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.leader_rotation)
+inline ::shardora::elect::protobuf::LeaderRotationMessage* ElectMessage::release_leader_rotation() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.leader_rotation)
   clear_has_leader_rotation();
-  ::seth::elect::protobuf::LeaderRotationMessage* temp = leader_rotation_;
+  ::shardora::elect::protobuf::LeaderRotationMessage* temp = leader_rotation_;
   leader_rotation_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::LeaderRotationMessage* ElectMessage::mutable_leader_rotation() {
+inline ::shardora::elect::protobuf::LeaderRotationMessage* ElectMessage::mutable_leader_rotation() {
   set_has_leader_rotation();
   if (leader_rotation_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::LeaderRotationMessage>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::LeaderRotationMessage>(GetArenaNoVirtual());
     leader_rotation_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.leader_rotation)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.leader_rotation)
   return leader_rotation_;
 }
-inline void ElectMessage::set_allocated_leader_rotation(::seth::elect::protobuf::LeaderRotationMessage* leader_rotation) {
+inline void ElectMessage::set_allocated_leader_rotation(::shardora::elect::protobuf::LeaderRotationMessage* leader_rotation) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete leader_rotation_;
@@ -5313,10 +5313,10 @@ inline void ElectMessage::set_allocated_leader_rotation(::seth::elect::protobuf:
     clear_has_leader_rotation();
   }
   leader_rotation_ = leader_rotation;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.leader_rotation)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.leader_rotation)
 }
 
-// optional .seth.elect.protobuf.SyncNodeStokeRequest sync_stoke_req = 9;
+// optional .shardora.elect.protobuf.SyncNodeStokeRequest sync_stoke_req = 9;
 inline bool ElectMessage::has_sync_stoke_req() const {
   return (_has_bits_[0] & 0x00000080u) != 0;
 }
@@ -5330,32 +5330,32 @@ inline void ElectMessage::clear_sync_stoke_req() {
   if (sync_stoke_req_ != NULL) sync_stoke_req_->Clear();
   clear_has_sync_stoke_req();
 }
-inline const ::seth::elect::protobuf::SyncNodeStokeRequest& ElectMessage::_internal_sync_stoke_req() const {
+inline const ::shardora::elect::protobuf::SyncNodeStokeRequest& ElectMessage::_internal_sync_stoke_req() const {
   return *sync_stoke_req_;
 }
-inline const ::seth::elect::protobuf::SyncNodeStokeRequest& ElectMessage::sync_stoke_req() const {
-  const ::seth::elect::protobuf::SyncNodeStokeRequest* p = sync_stoke_req_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.sync_stoke_req)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::SyncNodeStokeRequest*>(
-      &::seth::elect::protobuf::_SyncNodeStokeRequest_default_instance_);
+inline const ::shardora::elect::protobuf::SyncNodeStokeRequest& ElectMessage::sync_stoke_req() const {
+  const ::shardora::elect::protobuf::SyncNodeStokeRequest* p = sync_stoke_req_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.sync_stoke_req)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::SyncNodeStokeRequest*>(
+      &::shardora::elect::protobuf::_SyncNodeStokeRequest_default_instance_);
 }
-inline ::seth::elect::protobuf::SyncNodeStokeRequest* ElectMessage::release_sync_stoke_req() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.sync_stoke_req)
+inline ::shardora::elect::protobuf::SyncNodeStokeRequest* ElectMessage::release_sync_stoke_req() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.sync_stoke_req)
   clear_has_sync_stoke_req();
-  ::seth::elect::protobuf::SyncNodeStokeRequest* temp = sync_stoke_req_;
+  ::shardora::elect::protobuf::SyncNodeStokeRequest* temp = sync_stoke_req_;
   sync_stoke_req_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::SyncNodeStokeRequest* ElectMessage::mutable_sync_stoke_req() {
+inline ::shardora::elect::protobuf::SyncNodeStokeRequest* ElectMessage::mutable_sync_stoke_req() {
   set_has_sync_stoke_req();
   if (sync_stoke_req_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::SyncNodeStokeRequest>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::SyncNodeStokeRequest>(GetArenaNoVirtual());
     sync_stoke_req_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.sync_stoke_req)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.sync_stoke_req)
   return sync_stoke_req_;
 }
-inline void ElectMessage::set_allocated_sync_stoke_req(::seth::elect::protobuf::SyncNodeStokeRequest* sync_stoke_req) {
+inline void ElectMessage::set_allocated_sync_stoke_req(::shardora::elect::protobuf::SyncNodeStokeRequest* sync_stoke_req) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete sync_stoke_req_;
@@ -5371,10 +5371,10 @@ inline void ElectMessage::set_allocated_sync_stoke_req(::seth::elect::protobuf::
     clear_has_sync_stoke_req();
   }
   sync_stoke_req_ = sync_stoke_req;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.sync_stoke_req)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.sync_stoke_req)
 }
 
-// optional .seth.elect.protobuf.SyncNodeStokeResponse sync_stoke_res = 10;
+// optional .shardora.elect.protobuf.SyncNodeStokeResponse sync_stoke_res = 10;
 inline bool ElectMessage::has_sync_stoke_res() const {
   return (_has_bits_[0] & 0x00000100u) != 0;
 }
@@ -5388,32 +5388,32 @@ inline void ElectMessage::clear_sync_stoke_res() {
   if (sync_stoke_res_ != NULL) sync_stoke_res_->Clear();
   clear_has_sync_stoke_res();
 }
-inline const ::seth::elect::protobuf::SyncNodeStokeResponse& ElectMessage::_internal_sync_stoke_res() const {
+inline const ::shardora::elect::protobuf::SyncNodeStokeResponse& ElectMessage::_internal_sync_stoke_res() const {
   return *sync_stoke_res_;
 }
-inline const ::seth::elect::protobuf::SyncNodeStokeResponse& ElectMessage::sync_stoke_res() const {
-  const ::seth::elect::protobuf::SyncNodeStokeResponse* p = sync_stoke_res_;
-  // @@protoc_insertion_point(field_get:seth.elect.protobuf.ElectMessage.sync_stoke_res)
-  return p != NULL ? *p : *reinterpret_cast<const ::seth::elect::protobuf::SyncNodeStokeResponse*>(
-      &::seth::elect::protobuf::_SyncNodeStokeResponse_default_instance_);
+inline const ::shardora::elect::protobuf::SyncNodeStokeResponse& ElectMessage::sync_stoke_res() const {
+  const ::shardora::elect::protobuf::SyncNodeStokeResponse* p = sync_stoke_res_;
+  // @@protoc_insertion_point(field_get:shardora.elect.protobuf.ElectMessage.sync_stoke_res)
+  return p != NULL ? *p : *reinterpret_cast<const ::shardora::elect::protobuf::SyncNodeStokeResponse*>(
+      &::shardora::elect::protobuf::_SyncNodeStokeResponse_default_instance_);
 }
-inline ::seth::elect::protobuf::SyncNodeStokeResponse* ElectMessage::release_sync_stoke_res() {
-  // @@protoc_insertion_point(field_release:seth.elect.protobuf.ElectMessage.sync_stoke_res)
+inline ::shardora::elect::protobuf::SyncNodeStokeResponse* ElectMessage::release_sync_stoke_res() {
+  // @@protoc_insertion_point(field_release:shardora.elect.protobuf.ElectMessage.sync_stoke_res)
   clear_has_sync_stoke_res();
-  ::seth::elect::protobuf::SyncNodeStokeResponse* temp = sync_stoke_res_;
+  ::shardora::elect::protobuf::SyncNodeStokeResponse* temp = sync_stoke_res_;
   sync_stoke_res_ = NULL;
   return temp;
 }
-inline ::seth::elect::protobuf::SyncNodeStokeResponse* ElectMessage::mutable_sync_stoke_res() {
+inline ::shardora::elect::protobuf::SyncNodeStokeResponse* ElectMessage::mutable_sync_stoke_res() {
   set_has_sync_stoke_res();
   if (sync_stoke_res_ == NULL) {
-    auto* p = CreateMaybeMessage<::seth::elect::protobuf::SyncNodeStokeResponse>(GetArenaNoVirtual());
+    auto* p = CreateMaybeMessage<::shardora::elect::protobuf::SyncNodeStokeResponse>(GetArenaNoVirtual());
     sync_stoke_res_ = p;
   }
-  // @@protoc_insertion_point(field_mutable:seth.elect.protobuf.ElectMessage.sync_stoke_res)
+  // @@protoc_insertion_point(field_mutable:shardora.elect.protobuf.ElectMessage.sync_stoke_res)
   return sync_stoke_res_;
 }
-inline void ElectMessage::set_allocated_sync_stoke_res(::seth::elect::protobuf::SyncNodeStokeResponse* sync_stoke_res) {
+inline void ElectMessage::set_allocated_sync_stoke_res(::shardora::elect::protobuf::SyncNodeStokeResponse* sync_stoke_res) {
   ::google::protobuf::Arena* message_arena = GetArenaNoVirtual();
   if (message_arena == NULL) {
     delete sync_stoke_res_;
@@ -5429,7 +5429,7 @@ inline void ElectMessage::set_allocated_sync_stoke_res(::seth::elect::protobuf::
     clear_has_sync_stoke_res();
   }
   sync_stoke_res_ = sync_stoke_res;
-  // @@protoc_insertion_point(field_set_allocated:seth.elect.protobuf.ElectMessage.sync_stoke_res)
+  // @@protoc_insertion_point(field_set_allocated:shardora.elect.protobuf.ElectMessage.sync_stoke_res)
 }
 
 #ifdef __GNUC__
@@ -5468,7 +5468,7 @@ inline void ElectMessage::set_allocated_sync_stoke_res(::seth::elect::protobuf::
 
 }  // namespace protobuf
 }  // namespace elect
-}  // namespace seth
+}  // namespace shardora
 
 // @@protoc_insertion_point(global_scope)
 

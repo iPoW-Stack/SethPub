@@ -19,7 +19,7 @@
 #include "protos/prefix_db.h"
 #include "protos/transport.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace block {
 
@@ -71,4 +71,4 @@ private:
 
 }  // namespace block
 
-}  // namespace seth
+}  // namespace shardora

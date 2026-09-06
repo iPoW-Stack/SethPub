@@ -4,7 +4,7 @@
 
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -21,7 +21,7 @@ TEST(EncodeBranches, HexRoundTripGenesisLengthDigest) {
 }
 
 TEST(EncodeBranches, Base64RoundTripShortPayload) {
-    const std::string plain("seth");
+    const std::string plain("shardora");
     const std::string b64 = Encode::Base64Encode(plain);
     EXPECT_FALSE(b64.empty());
     EXPECT_EQ(Encode::Base64Decode(b64), plain);
@@ -67,4 +67,4 @@ TEST(EncodeBranches, Base64SubstrTruncatesLongStrings) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

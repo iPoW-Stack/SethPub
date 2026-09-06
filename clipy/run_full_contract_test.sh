@@ -5,7 +5,7 @@ export PYTHONUTF8=1
 export PYTHONUNBUFFERED=1
 
 NODES_DATA_DIR="${NODES_DATA_DIR:-/data}"
-HOST="${SETH_HOST:-192.168.25.129}"
+HOST="${SHARDORA_HOST:-192.168.25.129}"
 FUNDER_FILE="${NODES_DATA_DIR}/nodes/s3_1/init_accounts3"
 
 python3 -c "import solcx; solcx.install_solc('0.8.34')" 2>/dev/null || true

@@ -752,7 +752,7 @@ if [ ! -f "$SRC_PATH/third_party/include/libusockets.h" ] || \
     mkdir -p $SRC_PATH/third_party/include/uWebSockets
     cp src/*.h $SRC_PATH/third_party/include/uWebSockets/
 
-    # Build uSockets library (no LTO: must match seth link when SETH_ENABLE_LTO is off)
+    # Build uSockets library (no LTO: must match shardora link when SHARDORA_ENABLE_LTO is off)
     echo "Building uSockets library..."
     cd uSockets
     rm -f ./*.o ./*.a

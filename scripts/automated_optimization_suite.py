@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seth Blockchain Automated Optimization Suite
+Shardora Blockchain Automated Optimization Suite
 ============================================
 
 This comprehensive automation suite provides:
@@ -11,7 +11,7 @@ This comprehensive automation suite provides:
 - Deployment automation
 - Monitoring and alerting
 
-Author: Seth Optimization Team
+Author: Shardora Optimization Team
 Version: 3.0 Ultimate
 Date: May 2026
 """
@@ -691,7 +691,7 @@ class AutomatedOptimizationSuite:
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description="Seth Blockchain Automated Optimization Suite")
+    parser = argparse.ArgumentParser(description="Shardora Blockchain Automated Optimization Suite")
     parser.add_argument("--config", default="optimization_config.yaml", help="Configuration file")
     parser.add_argument("--build-only", action="store_true", help="Run build optimization only")
     parser.add_argument("--test-only", action="store_true", help="Run tests only")

@@ -12,7 +12,7 @@
 #include "network/network_proto.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace network {
 namespace test {
 
@@ -219,4 +219,4 @@ TEST(DhtManagerBranches, ValidCountReturnsZeroWhenDhtMissing) {
 
 }  // namespace test
 }  // namespace network
-}  // namespace seth
+}  // namespace shardora

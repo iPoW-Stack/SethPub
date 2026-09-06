@@ -13,7 +13,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -33,7 +33,7 @@ inline bool ElectNodePosDiffCompare(
 int ElectTxItem::TxToBlockTx(
         const pools::protobuf::TxMessage& tx_info,
         block::protobuf::BlockTx* block_tx) {
-    SETH_DEBUG("pools statistic tag tx consensus coming: %s, nonce: %lu, val: %s", 
+    SHARDORA_DEBUG("pools statistic tag tx consensus coming: %s, nonce: %lu, val: %s", 
         common::Encode::HexEncode(tx_info.to()).c_str(), 
         tx_info.nonce(),
         common::Encode::HexEncode(tx_info.value()).c_str());
@@ -52,24 +52,24 @@ int ElectTxItem::TxToBlockTx(
 int ElectTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& pre_seth_host,
+        shardoravm::ShardorahainHost& pre_shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
-    view_block_chain_ = pre_seth_host.view_block_chain_;
+    view_block_chain_ = pre_shardora_host.view_block_chain_;
     g2_ = std::make_shared<std::mt19937_64>(vss_mgr_->EpochRandom());
-    sethvm::SethhainHost seth_host;
-    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
-    seth_host.tx_context_ = pre_seth_host.tx_context_;
-    seth_host.pre_seth_host_ = &pre_seth_host;
-    InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+    shardoravm::ShardorahainHost shardora_host;
+    shardora_host.view_block_chain_ = pre_shardora_host.view_block_chain_;
+    shardora_host.tx_context_ = pre_shardora_host.tx_context_;
+    shardora_host.pre_shardora_host_ = &pre_shardora_host;
+    InitHost(shardora_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     auto& unique_hash = tx_info->key();
     if (!elect_statistic_.ParseFromString(tx_info->value())) {
-        SETH_DEBUG("elect tx parse elect info failed!");
+        SHARDORA_DEBUG("elect tx parse elect info failed!");
         return consensus::kConsensusError;
     }
 
     elect_block_ = elect_statistic_.mutable_elect_block();
-    SETH_DEBUG("get sharding statistic info sharding: %u, statistic_height: %lu, "
+    SHARDORA_DEBUG("get sharding statistic info sharding: %u, statistic_height: %lu, "
         "new node size: %u, %s, unique_hash: %s",
         elect_statistic_.sharding_id(), 
         elect_statistic_.statistic_height(), 
@@ -78,28 +78,28 @@ int ElectTxItem::HandleTx(
         common::Encode::HexEncode(unique_hash).c_str());
     uint64_t to_balance = 0;
     uint64_t to_nonce = 0;
-    GetTempAccountBalance(seth_host, block_tx.to(), acc_balance_map, &to_balance, &to_nonce);
+    GetTempAccountBalance(shardora_host, block_tx.to(), acc_balance_map, &to_balance, &to_nonce);
     auto str_key = block_tx.to() + unique_hash;
     std::string val;
-    if (seth_host.GetKeyValue(block_tx.to(), unique_hash, &val) == sethvm::kSethvmSuccess) {
-        SETH_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
+    if (shardora_host.GetKeyValue(block_tx.to(), unique_hash, &val) == shardoravm::kShardoravmSuccess) {
+        SHARDORA_DEBUG("unique hash has consensus: %s", common::Encode::HexEncode(unique_hash).c_str());
         return consensus::kConsensusError;
     }
 
     block_tx.set_unique_hash(unique_hash);
-    auto res = processElect(seth_host, view_block, block_tx);
+    auto res = processElect(shardora_host, view_block, block_tx);
     if (res != consensus::kConsensusSuccess) {
         return kConsensusError;
     }
 
-    seth_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
-    SETH_WARN("success call elect block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
+    shardora_host.SaveKeyValue(block_tx.to(), unique_hash, "1");
+    SHARDORA_WARN("success call elect block pool: %d, view: %lu, to_nonce: %lu. tx nonce: %lu", 
         view_block.qc().pool_index(), view_block.qc().view(), to_nonce, block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_balance(to_balance);
     acc_balance_map[block_tx.to()]->set_nonce(block_tx.nonce());
     acc_balance_map[block_tx.to()]->set_latest_height(view_block.block_info().height());
     acc_balance_map[block_tx.to()]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s, uqniue hash: %s", 
+    SHARDORA_DEBUG("success add addr: %s, value: %s, uqniue hash: %s", 
         common::Encode::HexEncode(block_tx.to()).c_str(), 
         ProtobufToJson(*(acc_balance_map[block_tx.to()])).c_str(),
         common::Encode::HexEncode(unique_hash).c_str());
@@ -110,21 +110,21 @@ int ElectTxItem::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
-    seth_host.MergeToPrev();
+    shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    shardora_host.MergeToPrev();
     return consensus::kConsensusSuccess;
 }
 
 int ElectTxItem::processElect(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         view_block::protobuf::ViewBlockItem& view_block,
-        seth::block::protobuf::BlockTx &block_tx) {
+        shardora::block::protobuf::BlockTx &block_tx) {
     auto& block = *view_block.mutable_block_info();
     const pools::protobuf::PoolStatisticItem *statistic = nullptr;
-    seth::common::MembersPtr members = nullptr;
+    shardora::common::MembersPtr members = nullptr;
     int retVal = getMaxElectHeightInfo(statistic, members);
     if ( retVal != kConsensusSuccess) {
-        SETH_DEBUG("getMaxElectHeightInfo failed ret val: %d", retVal);
+        SHARDORA_DEBUG("getMaxElectHeightInfo failed ret val: %d", retVal);
         // //assert(false);
         return retVal;
     }
@@ -132,7 +132,7 @@ int ElectTxItem::processElect(
     elect_members_ = members;
     for (auto iter = members->begin(); iter != members->end(); ++iter) {
         added_nodes_.insert((*iter)->pubkey);
-        SETH_DEBUG("success add now elect member: %s, %s",
+        SHARDORA_DEBUG("success add now elect member: %s, %s",
             common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*iter)->pubkey)).c_str(),
             common::Encode::HexEncode((*iter)->pubkey).c_str());
     }
@@ -180,17 +180,17 @@ int ElectTxItem::processElect(
                 std::to_string(src_elect_nodes_to_choose[i]->index) + ",";
         }
 
-        SETH_DEBUG("befor get leader: %s", ids.c_str());
+        SHARDORA_DEBUG("befor get leader: %s", ids.c_str());
     }
 #endif
 
     FtsGetNodes(src_elect_nodes_to_choose, false, expect_leader_count, leader_nodes);
-    SETH_DEBUG("net: %u, elect use height to random order: %lu, leader size: %d, "
+    SHARDORA_DEBUG("net: %u, elect use height to random order: %lu, leader size: %d, "
         "nodes count: %u, leader size: %d, random_str: %s, leader index: %d",
         elect_statistic_.sharding_id(), vss_mgr_->EpochRandom(), expect_leader_count,
         elect_nodes.size(), leader_nodes.size(), random_str.c_str(), *leader_nodes.begin());
     if (leader_nodes.size() != (uint32_t)expect_leader_count) {
-        SETH_ERROR("choose leader failed: %u", elect_statistic_.sharding_id());
+        SHARDORA_ERROR("choose leader failed: %u", elect_statistic_.sharding_id());
         return kConsensusError;
     }
 
@@ -213,12 +213,12 @@ int ElectTxItem::processElect(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ",";
         }
 
-        SETH_DEBUG("LLLLLL before CreateNewElect: count %d, %s", count, ids.c_str());
+        SHARDORA_DEBUG("LLLLLL before CreateNewElect: count %d, %s", count, ids.c_str());
     }
 #endif
 
     CreateNewElect(
-        seth_host,
+        shardora_host,
         block,
         elect_nodes,
         gas_for_root,
@@ -236,7 +236,7 @@ int ElectTxItem::processElect(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ",";
         }
 
-        SETH_DEBUG("LLLLL after CreateNewElect: count: %d ,%s", count, ids.c_str());
+        SHARDORA_DEBUG("LLLLL after CreateNewElect: count: %d ,%s", count, ids.c_str());
     }
 #endif
     // Persist per-election log for analysis (one file per round)
@@ -245,7 +245,7 @@ int ElectTxItem::processElect(
         std::error_code ec;
         std::filesystem::create_directories(log_dir, ec);
         if (ec) {
-            SETH_ERROR("create elect_logs dir failed: %s", ec.message().c_str());
+            SHARDORA_ERROR("create elect_logs dir failed: %s", ec.message().c_str());
         } else {
             auto now = std::chrono::system_clock::now();
             auto now_ts = std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
@@ -305,24 +305,24 @@ int ElectTxItem::processElect(
                 ofs << "\n  ]\n";
                 ofs << "}\n";
                 ofs.close();
-                SETH_DEBUG("wrote elect log: %s", filepath.string().c_str());
+                SHARDORA_DEBUG("wrote elect log: %s", filepath.string().c_str());
             } else {
-                SETH_ERROR("open elect log file failed: %s", filepath.string().c_str());
+                SHARDORA_ERROR("open elect log file failed: %s", filepath.string().c_str());
             }
         }
     } catch (const std::exception &e) {
-        SETH_ERROR("exception while writing elect log: %s", e.what());
+        SHARDORA_ERROR("exception while writing elect log: %s", e.what());
     }
 
-    SETH_DEBUG("consensus elect tx success: %u, proto: %s",
+    SHARDORA_DEBUG("consensus elect tx success: %u, proto: %s",
         elect_statistic_.sharding_id(), 
         ProtobufToJson(elect_statistic_).c_str());
     return kConsensusSuccess;
 }
 
 int ElectTxItem::getMaxElectHeightInfo(
-        const seth::pools::protobuf::PoolStatisticItem *&statistic, 
-        seth::common::MembersPtr &members) {
+        const shardora::pools::protobuf::PoolStatisticItem *&statistic, 
+        shardora::common::MembersPtr &members) {
     uint64_t max_elect_height = 0;
     auto &max_stat = *std::max_element(
         elect_statistic_.statistics().begin(), 
@@ -338,7 +338,7 @@ int ElectTxItem::getMaxElectHeightInfo(
         nullptr,
         nullptr);
     if (members == nullptr) {
-        SETH_WARN("get members failed, elect height: %lu, net: %u",
+        SHARDORA_WARN("get members failed, elect height: %lu, net: %u",
             now_elect_height, elect_statistic_.sharding_id());
         // //assert(false);
         return kConsensusError;
@@ -351,7 +351,7 @@ int ElectTxItem::getMaxElectHeightInfo(
             nullptr,
             nullptr);
         if (older_members == nullptr) {
-            SETH_WARN("get members failed, elect height: %lu, net: %u",
+            SHARDORA_WARN("get members failed, elect height: %lu, net: %u",
                 max_elect_height, elect_statistic_.sharding_id());
             // //assert(false);
             return kConsensusError;
@@ -409,18 +409,18 @@ int ElectTxItem::getMaxElectHeightInfo(
     }
 
     if (max_elect_height != now_elect_height) {
-        SETH_DEBUG("old elect coming max_elect_height: %lu, now_elect_height: %lu",
+        SHARDORA_DEBUG("old elect coming max_elect_height: %lu, now_elect_height: %lu",
             max_elect_height, now_elect_height);
         return kConsensusError;
     }
 
-    SETH_DEBUG("success check old elect coming max_elect_height: %lu, now_elect_height: %lu",
+    SHARDORA_DEBUG("success check old elect coming max_elect_height: %lu, now_elect_height: %lu",
         max_elect_height, now_elect_height);
     int32_t member_count = members->size();
     if (member_count != statistic->tx_count_size() ||
             member_count != statistic->stokes_size() ||
             member_count != statistic->area_point_size()) {
-        SETH_DEBUG("now_elect_height: %lu, member size error: %u, %u, %u, %u",
+        SHARDORA_DEBUG("now_elect_height: %lu, member size error: %u, %u, %u, %u",
             now_elect_height, members->size(), statistic->tx_count_size(),
             statistic->stokes_size(), statistic->area_point_size());
         //assert(false);
@@ -430,8 +430,8 @@ int ElectTxItem::getMaxElectHeightInfo(
 }
 
 void ElectTxItem::JoinNewNodes2ElectNodes(
-        seth::common::MembersPtr &members,
-        std::vector<seth::consensus::NodeDetailPtr> &elect_nodes,
+        shardora::common::MembersPtr &members,
+        std::vector<shardora::consensus::NodeDetailPtr> &elect_nodes,
         uint32_t min_area_weight,
         uint32_t min_tx_count) {
     // Calculate the number of newly added nodes
@@ -453,7 +453,7 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
         join_count = common::kEachShardMaxNodeCount - elect_nodes.size();
     }
 
-    SETH_DEBUG("add new node count: %u", join_count);
+    SHARDORA_DEBUG("add new node count: %u", join_count);
     for (uint32_t i = 0; i < join_count; ++i) {
         elect_nodes.push_back(nullptr);
     }
@@ -480,7 +480,7 @@ void ElectTxItem::JoinNewNodes2ElectNodes(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ",";
         }
 
-        SETH_DEBUG("LLLLLL after join elect: count:%d, %s", count, ids.c_str());
+        SHARDORA_DEBUG("LLLLLL after join elect: count:%d, %s", count, ids.c_str());
     }
 }
 
@@ -509,7 +509,7 @@ void ElectTxItem::ChooseNodeForEachIndex(
                 &elect_nodes_to_choose);
         }
 
-        SETH_DEBUG("elect add new node: %u, index: %d, hold pos: %d",
+        SHARDORA_DEBUG("elect add new node: %u, index: %d, hold pos: %d",
                   elect_nodes_to_choose.size(), i, hold_pos);
         if (elect_nodes_to_choose.empty()) {
             continue;
@@ -527,7 +527,7 @@ void ElectTxItem::ChooseNodeForEachIndex(
         }
 
         if (elect_nodes[i] != nullptr) {
-            SETH_DEBUG("LLLLL elect add new node: %s",
+            SHARDORA_DEBUG("LLLLL elect add new node: %s",
                   common::Encode::HexEncode(elect_nodes[i]->pubkey).c_str());
             added_nodes_.insert(elect_nodes[i]->pubkey);
         }
@@ -540,25 +540,25 @@ void ElectTxItem::GetIndexNodes(
         uint32_t min_tx_count,
         std::vector<NodeDetailPtr> *elect_nodes_to_choose) {
     for (int32_t i = 0; i < elect_statistic_.join_elect_nodes_size(); ++i) {
-        SETH_DEBUG("join new node: %s, des shard: %u, statistic shrad: %u",
+        SHARDORA_DEBUG("join new node: %s, des shard: %u, statistic shrad: %u",
                   common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str(),
                   elect_statistic_.join_elect_nodes(i).shard(),
                   elect_statistic_.sharding_id());
 
         auto iter = added_nodes_.find(elect_statistic_.join_elect_nodes(i).pubkey());
         if (iter != added_nodes_.end()) {
-            SETH_DEBUG("join new node failed: %s, already in committee", common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str());
+            SHARDORA_DEBUG("join new node failed: %s, already in committee", common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str());
             continue;
         }
 
         if (elect_statistic_.join_elect_nodes(i).shard() != elect_statistic_.sharding_id()) {
-            SETH_DEBUG("join new node failed: %s, not in this sharding", common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str());
+            SHARDORA_DEBUG("join new node failed: %s, not in this sharding", common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str());
             continue;
         }
 
         if (index != common::kInvalidUint32) {
             if (elect_statistic_.join_elect_nodes(i).elect_pos() != (int32_t)index) {
-                SETH_DEBUG("join new node failed: %s, not in this index, new node index :%d, need index:%d",
+                SHARDORA_DEBUG("join new node failed: %s, not in this index, new node index :%d, need index:%d",
                     common::Encode::HexEncode(elect_statistic_.join_elect_nodes(i).pubkey()).c_str(),
                     elect_statistic_.join_elect_nodes(i).elect_pos(),
                     index);
@@ -646,7 +646,7 @@ void ElectTxItem::MiningToken(
             auto id = sec_ptr_->GetAddressWithPublicKey(valid_nodes[i]->pubkey);
             protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo(id);
             if (account_info == nullptr) {
-                SETH_DEBUG("get account info failed: %s",
+                SHARDORA_DEBUG("get account info failed: %s",
                           common::Encode::HexEncode(id).c_str());
                 //assert(false);
                 continue;
@@ -669,7 +669,7 @@ void ElectTxItem::MiningToken(
 
             valid_nodes[i]->mining_token += gas_token;
             tmp_all_gas_amount += gas_token;
-            SETH_DEBUG("elect mining %s, mining: %lu, gas mining: %lu, all gas: %lu, src: %lu",
+            SHARDORA_DEBUG("elect mining %s, mining: %lu, gas mining: %lu, all gas: %lu, src: %lu",
                       common::Encode::HexEncode(id).c_str(),
                       mining_token, gas_token, tmp_all_gas_amount, gas_for_mining);
         }
@@ -703,7 +703,7 @@ void ElectTxItem::SetPrevElectInfo(
     }
 
     *block_item.mutable_prev_elect_block() = prev_block_item.elect_block();
-    SETH_DEBUG("success set prev elect block info: %s",
+    SHARDORA_DEBUG("success set prev elect block info: %s",
         ProtobufToJson(prev_block_item.elect_block()).c_str());
 }
 
@@ -967,7 +967,7 @@ uint64_t ElectTxItem::GetMiningMaxCount(uint64_t max_tx_count) {
 }
 
 int ElectTxItem::CreateNewElect(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::Block &block,
         const std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t gas_for_root,
@@ -983,7 +983,7 @@ int ElectTxItem::CreateNewElect(
             in->set_pubkey((*elect_members_)[i]->pubkey);
             in->set_pool_idx_mod_num(-1);
             in->set_mining_amount(0);
-            SETH_DEBUG("elect_nodes[i] == nullptr: %s, i: %d, id: %s, member size: %d, "
+            SHARDORA_DEBUG("elect_nodes[i] == nullptr: %s, i: %d, id: %s, member size: %d, "
                 "pool_idx_mod_num: %d, mining_amount: %lu",
                 common::Encode::HexEncode((*elect_members_)[i]->pubkey).c_str(), 
                 i,
@@ -997,7 +997,7 @@ int ElectTxItem::CreateNewElect(
             in->set_pool_idx_mod_num(elect_nodes[i]->leader_mod_index);
             in->set_mining_amount(elect_nodes[i]->mining_token);
             in->set_fts_value(elect_nodes[i]->fts_value);
-            SETH_DEBUG("elect_nodes[i] == nullptr: %s, i: %d, id: %s, member size: %d, "
+            SHARDORA_DEBUG("elect_nodes[i] == nullptr: %s, i: %d, id: %s, member size: %d, "
                 "pool_idx_mod_num: %d, mining_amount: %lu",
                 common::Encode::HexEncode((*elect_members_)[i]->pubkey).c_str(), 
                 i,
@@ -1013,12 +1013,12 @@ int ElectTxItem::CreateNewElect(
     elect_block.set_elect_height(block.height());
     elect_block.set_all_gas_amount(elect_statistic_.gas_amount());
     if (elect_block.has_prev_members()) {
-        SETH_WARN("success add bls consensus info: %u, %lu",
+        SHARDORA_WARN("success add bls consensus info: %u, %lu",
                   elect_statistic_.sharding_id(),
                   elect_block.prev_members().prev_elect_height());
         SetPrevElectInfo(elect_block, block);
     } else {
-        SETH_WARN("no prev members, maybe first elect: %u, %lu",
+        SHARDORA_WARN("no prev members, maybe first elect: %u, %lu",
                   elect_statistic_.sharding_id(),
                   elect_block.elect_height());
     }
@@ -1044,7 +1044,7 @@ int ElectTxItem::CheckWeedout(
         for (auto &members : *members) {
             dugstr += common::Encode::HexEncode(members->pubkey) + " ";
         }
-        SETH_DEBUG("LLLLL before WeedOut count %d : %s", statistic_item.tx_count_size(), dugstr.c_str());
+        SHARDORA_DEBUG("LLLLL before WeedOut count %d : %s", statistic_item.tx_count_size(), dugstr.c_str());
     }
 
     uint32_t weed_out_count = statistic_item.tx_count_size() * kFtsWeedoutDividRate / 100; // 10% of the old committee will be eliminated
@@ -1071,7 +1071,7 @@ int ElectTxItem::CheckWeedout(
     for (uint32_t i = 0; i < direct_weed_out_count; ++i) {
         if (member_tx_count[i].second < direct_weedout_tx_count) {
             invalid_nodes.insert(member_tx_count[i].first);
-            SETH_DEBUG("direct weedout: %s, tx count: %u, max_tx_count: %u",
+            SHARDORA_DEBUG("direct weedout: %s, tx count: %u, max_tx_count: %u",
                       common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*members)[member_tx_count[i].first]->pubkey)).c_str(),
                       statistic_item.tx_count(member_tx_count[i].first), max_tx_count);
         }
@@ -1139,7 +1139,7 @@ int ElectTxItem::CheckWeedout(
             double composite_weight = avg_distance + (std_dev * 0.5) + (median_distance * 0.3);
             area_weight = static_cast<uint32_t>(composite_weight);
             
-            SETH_DEBUG("Node %d: avg=%.1f, median=%u, std_dev=%.1f, composite_weight=%u",
+            SHARDORA_DEBUG("Node %d: avg=%.1f, median=%u, std_dev=%.1f, composite_weight=%u",
                       member_idx, avg_distance, median_distance, std_dev, area_weight);
         } else {
             // Fallback if no valid neighbors (should not happen)
@@ -1149,7 +1149,7 @@ int ElectTxItem::CheckWeedout(
         // Build node information and update global minimum node distance
         protos::AddressInfoPtr account_info = view_block_chain_->ChainGetAccountInfo((*members)[member_idx]->id);
         if (account_info == nullptr) {
-            SETH_ERROR("get account info failed: %s",
+            SHARDORA_ERROR("get account info failed: %s",
                       common::Encode::HexEncode((*members)[member_idx]->id).c_str());
             //assert(false);
             return kConsensusError;
@@ -1172,7 +1172,7 @@ int ElectTxItem::CheckWeedout(
     }
 
     if (elect_nodes_to_choose.empty()) {
-        SETH_WARN("elect sharding nodes empty.");
+        SHARDORA_WARN("elect sharding nodes empty.");
         return kConsensusError;
     }
 
@@ -1180,7 +1180,7 @@ int ElectTxItem::CheckWeedout(
     FtsGetNodes(elect_nodes_to_choose, true, weed_out_count - invalid_nodes.size(), weedout_nodes);
     for (auto iter = elect_nodes_to_choose.begin(); iter != elect_nodes_to_choose.end(); ++iter) {
         if (weedout_nodes.find((*iter)->index) != weedout_nodes.end()) {
-            SETH_DEBUG("fts weedout: %s, tx count: %u, max_tx_count: %u",
+            SHARDORA_DEBUG("fts weedout: %s, tx count: %u, max_tx_count: %u",
                       common::Encode::HexEncode(sec_ptr_->GetAddressWithPublicKey((*members)[(*iter)->index]->pubkey)).c_str(),
                       statistic_item.tx_count((*iter)->index), max_tx_count);
 
@@ -1201,7 +1201,7 @@ int ElectTxItem::CheckWeedout(
                 debugStr += "null ";
             }
         }
-        SETH_DEBUG("LLLLL after weedOut count:%d , %s", cout, debugStr.c_str());
+        SHARDORA_DEBUG("LLLLL after weedOut count:%d , %s", cout, debugStr.c_str());
     }
 
     return kConsensusSuccess;
@@ -1225,7 +1225,7 @@ int ElectTxItem::GetJoinElectNodesCredit(
         }
 
         elect_nodes[index] = *iter;
-        SETH_DEBUG("success add join elect node: %s",
+        SHARDORA_DEBUG("success add join elect node: %s",
                   common::Encode::HexEncode((*iter)->pubkey).c_str());
         //assert(!(*iter)->pubkey.empty());
         break;
@@ -1248,7 +1248,7 @@ void ElectTxItem::FtsGetNodes(
                    std::to_string(elect_nodes[i]->fts_value) + ",";
         }
 
-        SETH_DEBUG("fts value: %s", ids.c_str());
+        SHARDORA_DEBUG("fts value: %s", ids.c_str());
     }
     uint32_t try_times = 0;
     std::set<int32_t> tmp_res_nodes;
@@ -1298,7 +1298,7 @@ void ElectTxItem::SmoothFtsValue(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ":" + std::to_string(elect_nodes[i]->stoke) + ",";
         }
 
-        SETH_DEBUG("before sort: %s", ids.c_str());
+        SHARDORA_DEBUG("before sort: %s", ids.c_str());
     }
     std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodePosCompare);
     {
@@ -1307,7 +1307,7 @@ void ElectTxItem::SmoothFtsValue(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ":" + std::to_string(elect_nodes[i]->stoke) + ",";
         }
 
-        SETH_DEBUG("before sort 0: %s", ids.c_str());
+        SHARDORA_DEBUG("before sort 0: %s", ids.c_str());
     }
     elect_nodes[0]->stoke_diff = 0;
     for (uint32_t i = 1; i < elect_nodes.size(); ++i) {
@@ -1319,7 +1319,7 @@ void ElectTxItem::SmoothFtsValue(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ":" + std::to_string(elect_nodes[i]->stoke_diff) + ",";
         }
 
-        SETH_DEBUG("after sort: %s", ids.c_str());
+        SHARDORA_DEBUG("after sort: %s", ids.c_str());
     }
     std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodePosDiffCompare);
     {
@@ -1328,7 +1328,7 @@ void ElectTxItem::SmoothFtsValue(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ":" + std::to_string(elect_nodes[i]->stoke_diff) + ",";
         }
 
-        SETH_DEBUG("after sort 1: %s", ids.c_str());
+        SHARDORA_DEBUG("after sort 1: %s", ids.c_str());
     }
     uint64_t diff_2b3 = elect_nodes[elect_nodes.size() * 2 / 3]->stoke_diff;
     std::stable_sort(elect_nodes.begin(), elect_nodes.end(), ElectNodePosCompare);
@@ -1338,7 +1338,7 @@ void ElectTxItem::SmoothFtsValue(
             ids += common::Encode::HexEncode(elect_nodes[i]->pubkey) + ":" + std::to_string(elect_nodes[i]->stoke) + ",";
         }
 
-        SETH_DEBUG("after sort 2: %s", ids.c_str());
+        SHARDORA_DEBUG("after sort 2: %s", ids.c_str());
     }
     // Normalize PoS weight to [100, 10000]
     std::vector<int32_t> pos_weight;
@@ -1543,9 +1543,9 @@ void ElectTxItem::SmoothFtsValue(
         }
     }
 
-    SETH_DEBUG("fts value final: %s", fts_val_str.c_str());
+    SHARDORA_DEBUG("fts value final: %s", fts_val_str.c_str());
 }
 
 }; // namespace consensus
 
-}; // namespace seth
+}; // namespace shardora

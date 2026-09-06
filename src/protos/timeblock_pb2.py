@@ -16,10 +16,10 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/timeblock.proto',
-  package='seth.timeblock.protobuf',
+  package='shardora.timeblock.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x16protos/timeblock.proto\x12\x17seth.timeblock.protobuf\"Q\n\tTimeBlock\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x12\n\nvss_random\x18\x03 \x01(\x04\x12\r\n\x05nonce\x18\x04 \x01(\x04')
+  serialized_pb=_b('\n\x16protos/timeblock.proto\x12\x17shardora.timeblock.protobuf\"Q\n\tTimeBlock\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x11\n\ttimestamp\x18\x02 \x01(\x04\x12\x12\n\nvss_random\x18\x03 \x01(\x04\x12\r\n\x05nonce\x18\x04 \x01(\x04')
 )
 
 
@@ -27,34 +27,34 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _TIMEBLOCK = _descriptor.Descriptor(
   name='TimeBlock',
-  full_name='seth.timeblock.protobuf.TimeBlock',
+  full_name='shardora.timeblock.protobuf.TimeBlock',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='height', full_name='seth.timeblock.protobuf.TimeBlock.height', index=0,
+      name='height', full_name='shardora.timeblock.protobuf.TimeBlock.height', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='seth.timeblock.protobuf.TimeBlock.timestamp', index=1,
+      name='timestamp', full_name='shardora.timeblock.protobuf.TimeBlock.timestamp', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='vss_random', full_name='seth.timeblock.protobuf.TimeBlock.vss_random', index=2,
+      name='vss_random', full_name='shardora.timeblock.protobuf.TimeBlock.vss_random', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='nonce', full_name='seth.timeblock.protobuf.TimeBlock.nonce', index=3,
+      name='nonce', full_name='shardora.timeblock.protobuf.TimeBlock.nonce', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -82,7 +82,7 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 TimeBlock = _reflection.GeneratedProtocolMessageType('TimeBlock', (_message.Message,), dict(
   DESCRIPTOR = _TIMEBLOCK,
   __module__ = 'protos.timeblock_pb2'
-  # @@protoc_insertion_point(class_scope:seth.timeblock.protobuf.TimeBlock)
+  # @@protoc_insertion_point(class_scope:shardora.timeblock.protobuf.TimeBlock)
   ))
 _sym_db.RegisterMessage(TimeBlock)
 

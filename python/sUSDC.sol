@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title sUSDC - Seth Chain USDC
+ * @title sUSDC - Shardora Chain USDC
  * @notice Cross-chain mapped USDC token with mint/burn support
  * @dev Ownable functionality inlined, no external dependencies
  *      Includes DIRM curve trading functionality
@@ -43,7 +43,7 @@ contract sUSDC {
 
     // ==================== ERC20 Basic Functionality ====================
     
-    string public constant name = "Seth USDC";
+    string public constant name = "Shardora USDC";
     string public constant symbol = "sUSDC";
     uint8 public constant decimals = 6;
     uint256 public totalSupply;

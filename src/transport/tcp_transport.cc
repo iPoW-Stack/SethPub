@@ -1,4 +1,4 @@
-#ifndef SETH_USE_UV
+#ifndef SHARDORA_USE_UV
 #include "transport/tcp_transport.h"
 
 #include "common/global_info.h"
@@ -9,7 +9,7 @@
 #include "protos/get_proto_hash.h"
 #include "protos/transport.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace transport {
 
@@ -131,10 +131,10 @@ uint8_t TcpTransport::GetThreadIndexWithPool(uint32_t pool_index) {
 }
 
 bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tnet::Packet& packet) {    
-    // SETH_DEBUG("message coming");
+    // SHARDORA_DEBUG("message coming");
     if (conn->GetSocket() == nullptr) {
         packet.Free();
-        SETH_DEBUG("message coming failed 0");
+        SHARDORA_DEBUG("message coming failed 0");
         return false;
     }
 
@@ -145,7 +145,7 @@ bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tne
         if (packet.PacketType() == tnet::CmdPacket::CT_TCP_NEW_CONNECTION) {
             // add connection
             packet.Free();
-            SETH_DEBUG("message coming failed 1");
+            SHARDORA_DEBUG("message coming failed 1");
             return true;
         }
 
@@ -154,7 +154,7 @@ bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tne
         }
 
         packet.Free();
-        SETH_DEBUG("message coming failed 2 type: %d", packet.PacketType());
+        SHARDORA_DEBUG("message coming failed 2 type: %d", packet.PacketType());
         return false;
     }
 
@@ -169,7 +169,7 @@ bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tne
     uint32_t len = 0;
     msg_packet->GetMessageEx(&data, &len);
     if (len >= kTcpBuffLength) {
-        SETH_DEBUG("message coming failed 3");
+        SHARDORA_DEBUG("message coming failed 3");
         return false;
     }
 
@@ -178,7 +178,7 @@ bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tne
         TRANSPORT_ERROR("Message ParseFromString from string failed!"
             "[%s:%d][len: %d]",
             from_ip.c_str(), from_port, len);
-        SETH_DEBUG("message coming failed 4");
+        SHARDORA_DEBUG("message coming failed 4");
         return false;
     }
 
@@ -193,7 +193,7 @@ bool TcpTransport::OnClientPacket(std::shared_ptr<tnet::TcpConnection> conn, tne
 
     conn->SetPeerIp(from_ip);
     conn->SetPeerPort(from_port);
-    // SETH_DEBUG("message coming: %s:%d", from_ip.c_str(), from_port);
+    // SHARDORA_DEBUG("message coming: %s:%d", from_ip.c_str(), from_port);
     msg_ptr->conn = conn;
     msg_handler_->HandleMessage(msg_ptr);
     if (!conn->is_client() && added_conns_.Push(conn)) {
@@ -244,7 +244,7 @@ int TcpTransport::Send(
     }
 
     ++out_message_type_count_[message.type()];
-    SETH_DEBUG("send message hash64: %lu", message.hash64());
+    SHARDORA_DEBUG("send message hash64: %lu", message.hash64());
     message.SerializeToString(&msg);
     int res = tcp_conn->Send(msg);
     if (res != 0) {
@@ -270,7 +270,7 @@ int TcpTransport::Send(
     // //assert(des_port > 0) was crashing the node when a peer's public_port
     // was not yet known (e.g., during bootstrap before SetPeerPort is called).
     if (des_port == 0 || des_ip.empty()) {
-        SETH_WARN("Send skipped: invalid destination %s:%d, type=%d",
+        SHARDORA_WARN("Send skipped: invalid destination %s:%d, type=%d",
             des_ip.c_str(), des_port, message.type());
         return kTransportError;
     }
@@ -296,7 +296,7 @@ int TcpTransport::Send(
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     output_queues_[thread_idx].push(output_item);
     output_con_.notify_one();
-    SETH_DEBUG("success add sent out message des: %s, %d, hash64: %lu", des_ip.c_str(),des_port, message.hash64());
+    SHARDORA_DEBUG("success add sent out message des: %s, %d, hash64: %lu", des_ip.c_str(),des_port, message.hash64());
     return kTransportSuccess;
 }
 
@@ -400,7 +400,7 @@ void TcpTransport::Output() {
                     }
 
                     if (item_ptr->type == common::kHotstuffMessage) {
-                        SETH_DEBUG("send to tcp connection success[%s][%d][hash64: %llu] "
+                        SHARDORA_DEBUG("send to tcp connection success[%s][%d][hash64: %llu] "
                             "res: %d, size: %u",
                             item_ptr->des_ip.c_str(), item_ptr->port, 
                             item_ptr->hash64, res, item_ptr->msg.size());
@@ -468,7 +468,7 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
     tcp_conn->set_client();
     conn_map_[peer_spec] = tcp_conn;
     in_check_queue_.push(tcp_conn);
-    SETH_DEBUG("success connect new socket %s:%d, conn map size: %d", 
+    SHARDORA_DEBUG("success connect new socket %s:%d, conn map size: %d", 
         ip.c_str(), port, conn_map_.size());
     int process_limit = 32;
     while (process_limit-- > 0 && !destroy_) {
@@ -481,7 +481,7 @@ std::shared_ptr<tnet::TcpConnection> TcpTransport::GetConnection(
         auto iter = conn_map_.find(key);
         if (iter != conn_map_.end()) {
             conn_map_.erase(iter);
-            SETH_DEBUG("remove accept connection: %s", key.c_str());
+            SHARDORA_DEBUG("remove accept connection: %s", key.c_str());
         }
     }
 
@@ -507,7 +507,7 @@ void TcpTransport::CheckConnectionValid() {
         waiting_check_queue_.pop_front();
         conn->ShouldReconnect();
         if (conn->CheckStoped()) {
-            SETH_DEBUG("1 checked stopted conn.");
+            SHARDORA_DEBUG("1 checked stopted conn.");
             out_check_queue_.push(conn);
         } else {
             waiting_check_queue_.push_back(conn);
@@ -516,11 +516,11 @@ void TcpTransport::CheckConnectionValid() {
 
     for (uint32_t i = 0; i < common::kMaxMessageTypeCount; ++i) {
         if (in_message_type_count_[i] > 0) {
-            SETH_DEBUG("in message type: %d, count: %u", i, in_message_type_count_[i]);
+            SHARDORA_DEBUG("in message type: %d, count: %u", i, in_message_type_count_[i]);
         }
 
         if (out_message_type_count_[i] > 0) {
-            SETH_DEBUG("out message type: %d, count: %u", i, out_message_type_count_[i].fetch_add(0));
+            SHARDORA_DEBUG("out message type: %d, count: %u", i, out_message_type_count_[i].fetch_add(0));
         }
     }
 
@@ -558,7 +558,7 @@ void TcpTransport::SetMessageHash(
     auto msg_count = ++thread_msg_count_[thread_idx];
     hash_str.append((char*)&msg_count, sizeof(msg_count));
     tmpHeader->set_hash64(common::Hash::Hash64(hash_str));
-    SETH_DEBUG("3 send message hash64: %lu", message.hash64());
+    SHARDORA_DEBUG("3 send message hash64: %lu", message.hash64());
 }
 
 int TcpTransport::Send(
@@ -570,7 +570,7 @@ int TcpTransport::Send(
     auto tmpHeader = const_cast<transport::protobuf::OldHeader*>(&message);
     tmpHeader->set_from_public_port(common::GlobalInfo::Instance()->config_public_port());
     //assert(message.has_hash64() && message.hash64() != 0);
-    SETH_DEBUG("1 send message hash64: %lu", message.hash64());
+    SHARDORA_DEBUG("1 send message hash64: %lu", message.hash64());
     auto output_item = std::make_shared<ClientItem>();
     output_item->des_ip = des_ip;
     output_item->port = des_port;
@@ -588,6 +588,6 @@ int TcpTransport::Send(
 
 }  // namespace transport
 
-}  // namespace seth
+}  // namespace shardora
 
 #endif

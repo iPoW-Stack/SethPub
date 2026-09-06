@@ -6,7 +6,7 @@
 #define private public
 #include "common/fts_tree.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -343,4 +343,4 @@ TEST_F(TestFtsTreeExtended, CreateFtsTreeOddIndexContinue) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

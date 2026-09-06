@@ -7,7 +7,7 @@
 #include "security/security.h"
 #include "vss/vss_manager.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -59,23 +59,23 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost &seth_host,
+        shardoravm::ShardorahainHost &shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx &block_tx);
 
 private:
     int processElect(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         view_block::protobuf::ViewBlockItem& view_block,
-        seth::block::protobuf::BlockTx &block_tx);
+        shardora::block::protobuf::BlockTx &block_tx);
 
     int getMaxElectHeightInfo(
-        const seth::pools::protobuf::PoolStatisticItem *&statistic, 
-        seth::common::MembersPtr &members);
+        const shardora::pools::protobuf::PoolStatisticItem *&statistic, 
+        shardora::common::MembersPtr &members);
 
     void JoinNewNodes2ElectNodes(
-        seth::common::MembersPtr &members,
-        std::vector<seth::consensus::NodeDetailPtr> &elect_nodes,
+        shardora::common::MembersPtr &members,
+        std::vector<shardora::consensus::NodeDetailPtr> &elect_nodes,
         uint32_t min_area_weight,
         uint32_t min_tx_count);
 
@@ -100,7 +100,7 @@ private:
         std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t *max_fts_val);
     int CreateNewElect(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::Block &block,
         const std::vector<NodeDetailPtr> &elect_nodes,
         uint64_t gas_for_root,
@@ -176,4 +176,4 @@ private:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

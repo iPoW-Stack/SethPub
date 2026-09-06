@@ -6,10 +6,10 @@
 
 #include "contract/contract_utils.h"
 
-namespace seth {
+namespace shardora {
 
-namespace sethvm {
-    class SethhainHost;
+namespace shardoravm {
+    class ShardorahainHost;
 }
 
 namespace contract {
@@ -38,9 +38,9 @@ struct CallParameters {
     evmc_bytes32 create2_salt;
     const uint8_t* code;
     size_t code_size;
-    sethvm::SethhainHost* seth_host;
+    shardoravm::ShardorahainHost* shardora_host;
 };
 
 }  // namespace contact
 
-}  // namespace seth
+}  // namespace shardora

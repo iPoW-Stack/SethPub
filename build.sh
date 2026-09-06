@@ -5,10 +5,10 @@ set -euo pipefail
 # build.sh  —  Build and optionally run all module tests
 #
 # Usage:
-#   bash build.sh                   # build seth (Release) + run all tests
+#   bash build.sh                   # build shardora (Release) + run all tests
 #   bash build.sh test [Debug]      # build all tests + run them
 #   bash build.sh test Release      # same, Release mode
-#   bash build.sh seth [Debug]      # build only the main seth binary
+#   bash build.sh shardora [Debug]      # build only the main shardora binary
 #   bash build.sh tcp  [Debug]      # build tnets / tnetc
 #   bash build.sh http [Debug]      # build https / httpc
 #   bash build.sh ws   [Debug]      # build wss / wsc
@@ -51,15 +51,15 @@ if [[ "$CMD" == "coverage" || "${3:-}" == "coverage" ]]; then
 fi
 
 EXTRA_CMAKE_ARGS=()
-if [[ -n "${SETH_EXTRA_CMAKE_ARGS:-}" ]]; then
+if [[ -n "${SHARDORA_EXTRA_CMAKE_ARGS:-}" ]]; then
     # shellcheck disable=SC2206
-    EXTRA_CMAKE_ARGS=(${SETH_EXTRA_CMAKE_ARGS})
+    EXTRA_CMAKE_ARGS=(${SHARDORA_EXTRA_CMAKE_ARGS})
 fi
 
 # Repo root (directory containing this build.sh); build dir is always under it.
-SETH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export SETH_ROOT
-BUILD_DIR="${SETH_ROOT}/cbuild_${TARGET}"
+SHARDORA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export SHARDORA_ROOT
+BUILD_DIR="${SHARDORA_ROOT}/cbuild_${TARGET}"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
@@ -85,7 +85,7 @@ if [[ "$ENABLE_COVERAGE" -eq 1 ]]; then
     cmake .. \
         -DCMAKE_BUILD_TYPE="$TARGET" \
         -DOPENSSL_ROOT_DIR=./third_party/depends/include/ \
-        -DCMAKE_INSTALL_PREFIX=~/seth \
+        -DCMAKE_INSTALL_PREFIX=~/shardora \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
         -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
@@ -100,12 +100,12 @@ else
     cmake .. \
         -DCMAKE_BUILD_TYPE="$TARGET" \
         -DOPENSSL_ROOT_DIR=./third_party/depends/include/ \
-        -DCMAKE_INSTALL_PREFIX=~/seth \
+        -DCMAKE_INSTALL_PREFIX=~/shardora \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         -DREPLACE_WHITEBOX_PK="$PK_ARRAY" \
         -DREPLACE_WHITEBOX_SK="$SK_ARRAY" \
         -DENABLE_ASAN=OFF \
-        -DSETH_ENABLE_LTO=OFF \
+        -DSHARDORA_ENABLE_LTO=OFF \
         -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF \
         "${EXTRA_CMAKE_ARGS[@]}"
 fi
@@ -131,7 +131,7 @@ declare -a ALL_TESTS=(
     "db_test:db_test"
     "dht_test:dht_test"
     "pools_test:pools_test"
-    "sethvm_test:sethvm_test"
+    "shardoravm_test:shardoravm_test"
     "bignum_test:bignum_test"
     "contract_test:contract_test"
     "elect_test:elect_test"
@@ -235,7 +235,7 @@ module_prefers_header_metrics() {
     # for an 88-line header). Excluding headers from the totals here gives a
     # truthful executable-line percentage for the pools module.
     case "$module_dir" in
-        common|broadcast|security|transport|bls|db|dht|sethvm|big_num|elect|consensus|consensus/hotstuff|vss|sync|protos|block|timeblock|init|websocket)
+        common|broadcast|security|transport|bls|db|dht|shardoravm|big_num|elect|consensus|consensus/hotstuff|vss|sync|protos|block|timeblock|init|websocket)
             return 0
             ;;
         *)
@@ -296,9 +296,9 @@ append_module_specific_excludes() {
                 --exclude ".*/src/block/block_manager\\.cc$"
             )
             ;;
-        sethvm)
+        shardoravm)
             out_args_ref+=(
-                --exclude ".*/src/sethvm/seth_host\\.cc$"
+                --exclude ".*/src/shardoravm/shardora_host\\.cc$"
             )
             ;;
         elect)
@@ -381,7 +381,7 @@ append_module_specific_excludes() {
             # Count all pools source files; tests/ and tests_integration/ are
             # excluded by the base --exclude "../src/pools/tests" pattern (prefix match).
             #
-            # shard_statistic.cc: integration-heavy (BLS, SethVM, PrefixDb replay).
+            # shard_statistic.cc: integration-heavy (BLS, ShardoraVM, PrefixDb replay).
             # pools_test exercises Init / ThreadToStatistic smoke paths only; excluding
             # from the pools module gcovr denominator aligns the "pools" line % with
             # what unit tests can realistically drive toward the project gate (e.g. 90%).
@@ -529,7 +529,7 @@ print_module_coverage() {
 
         # Uncovered lines: default on (set COVERAGE_TXT_MISSING=0 to skip).
         if [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
-            local missing_root="${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}"
+            local missing_root="${COVERAGE_MISSING_LOG_DIR:-${SHARDORA_ROOT}/coverage/missing}"
             local safe_mod="${module_dir//\//_}"
             local missing_file="${missing_root}/${safe_mod}_missing.txt"
             if [[ -n "$gcovr_missing_mode" ]]; then
@@ -555,7 +555,7 @@ print_module_coverage() {
     if [[ "${COVERAGE_TXT_MISSING:-1}" != "0" ]] || [[ -n "${COVERAGE_MISSING_LOG_DIR:-}" ]]; then
         if [[ -n "$gcovr_missing_mode" ]]; then
             echo ""
-            echo "  Per-module uncovered-line logs: ${COVERAGE_MISSING_LOG_DIR:-${SETH_ROOT}/coverage/missing}/"
+            echo "  Per-module uncovered-line logs: ${COVERAGE_MISSING_LOG_DIR:-${SHARDORA_ROOT}/coverage/missing}/"
         fi
     fi
 }
@@ -790,9 +790,9 @@ case "$CMD" in
         ;;
 
     # ---- Build main binary only ---------------------------------------------
-    "seth")
-        echo "Building seth [${TARGET}] with ${NPROC} jobs..."
-        make -j"$NPROC" seth
+    "shardora")
+        echo "Building shardora [${TARGET}] with ${NPROC} jobs..."
+        make -j"$NPROC" shardora
         ;;
 
     # ---- TCP test binaries --------------------------------------------------

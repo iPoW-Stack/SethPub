@@ -12,7 +12,7 @@
 
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -63,4 +63,4 @@ private:
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

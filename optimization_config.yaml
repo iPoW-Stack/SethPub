@@ -1,4 +1,4 @@
-# Seth Blockchain Optimization Configuration
+# Shardora Blockchain Optimization Configuration
 # ==========================================
 # This configuration file controls all aspects of the automated optimization suite
 
@@ -88,7 +88,7 @@ notifications:
   slack:
     enabled: false                  # Enable Slack notifications
     webhook_url: ""                 # Slack webhook URL
-    channel: "#seth-optimization"   # Slack channel
+    channel: "#shardora-optimization"   # Slack channel
   discord:
     enabled: false                  # Enable Discord notifications
     webhook_url: ""                 # Discord webhook URL

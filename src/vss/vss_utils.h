@@ -6,7 +6,7 @@
 #include "common/node_members.h"
 #include "elect/elect_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 
@@ -44,4 +44,4 @@ struct ElectItem {
 
 }  // namespace vss
 
-}  // namespace seth
+}  // namespace shardora

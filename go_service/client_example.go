@@ -45,7 +45,7 @@ func NewClientExample(serverURL string) (*ClientExample, error) {
 }
 
 // CreateCredential creates a signed purchase credential
-func (ce *ClientExample) CreateCredential(sethAddress string) (*PurchaseCredential, error) {
+func (ce *ClientExample) CreateCredential(shardoraAddress string) (*PurchaseCredential, error) {
 	// Generate nonce
 	nonceBytes := make([]byte, 16)
 	if _, err := rand.Read(nonceBytes); err != nil {
@@ -56,7 +56,7 @@ func (ce *ClientExample) CreateCredential(sethAddress string) (*PurchaseCredenti
 	// Create credential
 	timestamp := time.Now().Unix()
 	cred := &PurchaseCredential{
-		Address:   sethAddress,
+		Address:   shardoraAddress,
 		Timestamp: timestamp,
 		Nonce:     nonce,
 		PublicKey: ce.publicKey,
@@ -129,11 +129,11 @@ func main() {
 		return
 	}
 
-	// Seth address to receive coins (hex encoded)
-	sethAddress := "1234567890abcdef1234567890abcdef12345678"
+	// Shardora address to receive coins (hex encoded)
+	shardoraAddress := "1234567890abcdef1234567890abcdef12345678"
 
 	// Create credential
-	cred, err := client.CreateCredential(sethAddress)
+	cred, err := client.CreateCredential(shardoraAddress)
 	if err != nil {
 		fmt.Printf("Failed to create credential: %v\n", err)
 		return

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EIP-1559 Transaction Test for Seth Blockchain
+EIP-1559 Transaction Test for Shardora Blockchain
 """
 
 import sys
@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from seth3 import SethWeb3Mock, _eth_sign_and_send
+from shardora3 import ShardoraWeb3Mock, _eth_sign_and_send
 
 
 def get_chain_id(host, port):
@@ -215,7 +215,7 @@ def main():
     print(f"Host: {args.host}:{args.port}")
     print(f"Private Key: {args.key[:8]}...{args.key[-8:]}")
 
-    w3 = SethWeb3Mock(args.host, args.port)
+    w3 = ShardoraWeb3Mock(args.host, args.port)
     MY = w3.client.get_address(args.key)
     print(f"Sender Address: {MY}")
 

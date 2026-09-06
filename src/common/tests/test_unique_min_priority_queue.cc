@@ -6,7 +6,7 @@
 #define private public
 #include "common/unique_min_priority_queue.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -139,4 +139,4 @@ TEST_F(TestUniqueMinPriorityQueue, NegativeNumbers) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

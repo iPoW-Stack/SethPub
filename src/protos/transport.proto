@@ -14,7 +14,7 @@ import "protos/init.proto";
 import "protos/c2c.proto";
 import "protos/view_block.proto";
 import "protos/hotstuff.proto";
-package seth.transport.protobuf;
+package shardora.transport.protobuf;
 
 message BroadcastParam {
     optional uint32 type = 1;

@@ -14,7 +14,7 @@ RUN yum install -y psmisc
 RUN yum install -y openssl openssl-devel
 
 # 设置工作目录
-COPY ./seth.tar.gz /root
+COPY ./shardora.tar.gz /root
 COPY ./python3.10.tar.gz /root/
 COPY ./gcc-8.3.0.tar.gz /root/
 COPY ./cmake-3.25.1-linux-x86_64.tar.gz /root/

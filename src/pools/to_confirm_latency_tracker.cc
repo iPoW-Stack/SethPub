@@ -8,7 +8,7 @@
 #include "common/time_utils.h"
 #include "protos/pools.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
 
@@ -137,7 +137,7 @@ void ToConfirmLatencyTracker::HandleEvent(const ToLatencyEvent& event) {
     const uint64_t latency_us = event.timestamp_us - start_us;
     latency_sum_us_ += latency_us;
     ++latency_count_;
-    SETH_DEBUG("[ToConfirmLatency] average delay des=%s latency=%lu us",
+    SHARDORA_DEBUG("[ToConfirmLatency] average delay des=%s latency=%lu us",
         common::Encode::HexEncode(to).c_str(),
         latency_us);
 }
@@ -151,7 +151,7 @@ void ToConfirmLatencyTracker::MaybeReportAverage() {
     const uint64_t avg = latency_count_ > 0 ? latency_sum_us_ / latency_count_ : 0;
     avg_latency_us_.store(avg, std::memory_order_relaxed);
     last_report_count_.store(latency_count_, std::memory_order_relaxed);
-    SETH_WARN("[ToConfirmLatency] average delay to_tx avg=%lu us, count=%lu, interval=%lu us",
+    SHARDORA_WARN("[ToConfirmLatency] average delay to_tx avg=%lu us, count=%lu, interval=%lu us",
         avg,
         latency_count_,
         last_report_us_ == 0 ? 0llu : (now_us - last_report_us_));
@@ -163,4 +163,4 @@ void ToConfirmLatencyTracker::MaybeReportAverage() {
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

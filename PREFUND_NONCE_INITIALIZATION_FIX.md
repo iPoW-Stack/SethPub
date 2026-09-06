@@ -17,7 +17,7 @@ Added explicit nonce initialization for all confirmed users before Phase 7 start
 // Initialize nonces for all confirmed users before prefund
 std::cout << "  Initializing nonces for " << confirmed_users.size() << " users..." << std::endl;
 {
-    SethSDK nonce_sdk(global_chain_node_ip, global_chain_node_http_port);
+    ShardoraSDK nonce_sdk(global_chain_node_ip, global_chain_node_http_port);
     uint32_t nonce_init_threads = std::min((uint32_t)common::kMaxThreadCount, (uint32_t)confirmed_users.size());
     if (nonce_init_threads == 0) nonce_init_threads = 1;
     uint32_t users_per_thread = confirmed_users.size() / nonce_init_threads;
@@ -28,7 +28,7 @@ std::cout << "  Initializing nonces for " << confirmed_users.size() << " users..
         uint32_t s = t * users_per_thread;
         uint32_t e = (t == nonce_init_threads - 1) ? (uint32_t)confirmed_users.size() : (s + users_per_thread);
         nonce_threads.emplace_back([&, s, e]() {
-            SethSDK local_sdk(global_chain_node_ip, global_chain_node_http_port);
+            ShardoraSDK local_sdk(global_chain_node_ip, global_chain_node_http_port);
             for (uint32_t i = s; i < e && !global_stop; ++i) {
                 uint32_t user_idx = confirmed_users[i];
                 std::string addr_hex = users[user_idx].addr_hex;

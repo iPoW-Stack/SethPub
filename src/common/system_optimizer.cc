@@ -25,7 +25,7 @@
 #include <sys/sysctl.h>
 #endif
 
-namespace seth {
+namespace shardora {
 namespace common {
 
 // Thread-local storage definitions
@@ -506,4 +506,4 @@ void SystemOptimizer::ConfigureThreadPriorities() {
 }
 
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

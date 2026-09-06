@@ -2,7 +2,7 @@
 
 #include "common/hash.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -38,4 +38,4 @@ int ContractSha256::call(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

@@ -28,7 +28,7 @@
 #include "transport/multi_thread.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools{
     class TxPoolManager;
@@ -217,4 +217,4 @@ private:
 
 }  // namespace block
 
-}  // namespace seth
+}  // namespace shardora

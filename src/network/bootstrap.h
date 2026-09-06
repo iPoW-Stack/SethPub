@@ -10,7 +10,7 @@
 #include "network/universal.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace dht {
     class Node;
@@ -44,4 +44,4 @@ private:
 
 }  // namespace network
 
-}  // namespace seth
+}  // namespace shardora

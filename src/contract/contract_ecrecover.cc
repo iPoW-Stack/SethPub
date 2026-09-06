@@ -4,7 +4,7 @@
 #include "security/security.h"
 #include "security/ecdsa/secp256k1.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -39,10 +39,10 @@ int Ecrecover::call(
         create_address_.c_str(),
         sizeof(res->create_address.bytes));
     res->gas_left -= gas_cast_;
-    SETH_DEBUG("recover addrress: %s", common::Encode::HexEncode(addr_sha3).c_str());
+    SHARDORA_DEBUG("recover addrress: %s", common::Encode::HexEncode(addr_sha3).c_str());
     return kContractSuccess;
 }
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

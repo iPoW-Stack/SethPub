@@ -249,7 +249,7 @@ Governor → Timelock → Treasury → Executor
 ### 相关的现有文件
 - `src/common/utils.cc` - Pool 计算函数
 - `src/common/hash.h` - 哈希函数定义
-- `clipy/seth_sdk.py` - SDK 基础设施
+- `clipy/shardora_sdk.py` - SDK 基础设施
 - `USER_SPECIFIED_SHARD_FEATURE.md` - 用户指定 shard 功能
 
 ## 下一步建议

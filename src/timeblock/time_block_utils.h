@@ -4,12 +4,12 @@
 #include "common/log.h"
 #include "common/encode.h"
 
-#define TMBLOCK_DEBUG(fmt, ...) SETH_DEBUG("[tmblock]" fmt, ## __VA_ARGS__)
-#define TMBLOCK_INFO(fmt, ...) SETH_DEBUG("[tmblock]" fmt, ## __VA_ARGS__)
-#define TMBLOCK_WARN(fmt, ...) SETH_WARN("[tmblock]" fmt, ## __VA_ARGS__)
-#define TMBLOCK_ERROR(fmt, ...) SETH_ERROR("[tmblock]" fmt, ## __VA_ARGS__)
+#define TMBLOCK_DEBUG(fmt, ...) SHARDORA_DEBUG("[tmblock]" fmt, ## __VA_ARGS__)
+#define TMBLOCK_INFO(fmt, ...) SHARDORA_DEBUG("[tmblock]" fmt, ## __VA_ARGS__)
+#define TMBLOCK_WARN(fmt, ...) SHARDORA_WARN("[tmblock]" fmt, ## __VA_ARGS__)
+#define TMBLOCK_ERROR(fmt, ...) SHARDORA_ERROR("[tmblock]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace timeblock {
 
@@ -27,4 +27,4 @@ static const uint64_t kCheckBftPeriodUs = 1000000llu;
 
 }  // namespace timeblock
 
-}  // namespace seth
+}  // namespace shardora

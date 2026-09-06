@@ -5,16 +5,16 @@
 #include "common/hash.h"
 #include "vss/random_num.h"
 
-namespace seth {
+namespace shardora {
 namespace vss {
 namespace test {
 
-TEST(RandomNumBranches, RemoteSethashAndSetFinalWhenHashMatches) {
+TEST(RandomNumBranches, RemoteShardoraashAndSetFinalWhenHashMatches) {
     constexpr uint64_t secret = 999888777ull;
     const uint64_t h = common::Hash::Hash64(std::to_string(secret));
 
     RandomNum remote(false);
-    remote.Sethash("node_alpha", h);
+    remote.Shardoraash("node_alpha", h);
     EXPECT_EQ(remote.GetHash(), h);
 
     remote.SetFinalRandomNum("node_alpha", secret);
@@ -27,7 +27,7 @@ TEST(RandomNumBranches, RemoteSetFinalWrongOwnerNoop) {
     const uint64_t h = common::Hash::Hash64(std::to_string(secret));
 
     RandomNum remote(false);
-    remote.Sethash("alice", h);
+    remote.Shardoraash("alice", h);
     remote.SetFinalRandomNum("bob", secret);
     EXPECT_FALSE(remote.IsRandomValid());
 }
@@ -37,24 +37,24 @@ TEST(RandomNumBranches, RemoteSetFinalWrongSecretDoesNotBecomeValid) {
     const uint64_t h = common::Hash::Hash64(std::to_string(secret));
 
     RandomNum remote(false);
-    remote.Sethash("id1", h);
+    remote.Shardoraash("id1", h);
     remote.SetFinalRandomNum("id1", secret + 1ull);
     EXPECT_FALSE(remote.IsRandomValid());
 }
 
-TEST(RandomNumBranches, LocalIgnoresSethash) {
+TEST(RandomNumBranches, LocalIgnoresShardoraash) {
     RandomNum local(true);
-    local.Sethash("any", 0xDEADBEEFull);
+    local.Shardoraash("any", 0xDEADBEEFull);
     EXPECT_EQ(local.GetHash(), 0ull);
 }
 
-TEST(RandomNumBranches, SethashRejectedAfterOwnerTaken) {
+TEST(RandomNumBranches, ShardoraashRejectedAfterOwnerTaken) {
     constexpr uint64_t s = 777ull;
     const uint64_t h = common::Hash::Hash64(std::to_string(s));
 
     RandomNum remote(false);
-    remote.Sethash("first", h);
-    remote.Sethash("second", 123ull);
+    remote.Shardoraash("first", h);
+    remote.Shardoraash("second", 123ull);
     EXPECT_EQ(remote.GetHash(), h);
 }
 
@@ -63,7 +63,7 @@ TEST(RandomNumBranches, RemoteOnTimeBlockClearsValidatedRandom) {
     const uint64_t h = common::Hash::Hash64(std::to_string(secret));
 
     RandomNum remote(false);
-    remote.Sethash("node_z", h);
+    remote.Shardoraash("node_z", h);
     remote.SetFinalRandomNum("node_z", secret);
     ASSERT_TRUE(remote.IsRandomValid());
 
@@ -84,4 +84,4 @@ TEST(RandomNumBranches, LocalOnTimeBlockSecondCallWithSameTsNoops) {
 
 }  // namespace test
 }  // namespace vss
-}  // namespace seth
+}  // namespace shardora

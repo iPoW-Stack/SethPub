@@ -1,6 +1,6 @@
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -159,4 +159,4 @@ std::string Encode::Base64Substr(const std::string& str) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

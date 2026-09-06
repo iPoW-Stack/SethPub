@@ -5,7 +5,7 @@
 
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -45,4 +45,4 @@ typedef std::shared_ptr<Members> MembersPtr;
 
 };  // namespace common
 
-};  // namespace seth
+};  // namespace shardora

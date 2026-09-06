@@ -20,79 +20,79 @@
 #include "spdlog/async.h"
 
 
-#define SETH_DEBUG(logfmt, ...)
+#define SHARDORA_DEBUG(logfmt, ...)
 #ifdef _WIN32
-#define SETH_LOG_FILE_NAME strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__
+#define SHARDORA_LOG_FILE_NAME strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__
 #else
-#define SETH_LOG_FILE_NAME strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
+#define SHARDORA_LOG_FILE_NAME strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 #endif
 
 #ifdef _WIN32
 
 #ifdef NDEBUG
 #define DEBUG(logfmt, ...)
-#define SETH_DEBUG(logfmt, ...)
+#define SHARDORA_DEBUG(logfmt, ...)
 #else
 // #define DEBUG(logfmt, ...)
-// #define SETH_DEBUG(logfmt, ...)
+// #define SHARDORA_DEBUG(logfmt, ...)
 
 #define DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
-// #define SETH_DEBUG(logfmt, ...)
-#define SETH_DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+// #define SHARDORA_DEBUG(logfmt, ...)
+#define SHARDORA_DEBUG(logfmt, ...)  do {\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 #endif
 
-#define SETH_INFO(logfmt, ...)  do {\
-    spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_INFO(logfmt, ...)  do {\
+    spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
-#define SETH_WARN(logfmt, ...)  do {\
-    spdlog::warn(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_WARN(logfmt, ...)  do {\
+    spdlog::warn(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
-#define SETH_ERROR(logfmt, ...)  do {\
-    spdlog::error(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_ERROR(logfmt, ...)  do {\
+    spdlog::error(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
-#define SETH_FATAL(logfmt, ...)  do {\
-    printf("[DEBUG][%s][%s][%d] " logfmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
-    spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_FATAL(logfmt, ...)  do {\
+    printf("[DEBUG][%s][%s][%d] " logfmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+    spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
     exit(0);\
 } while (0)
 #else
 
 #ifdef NDEBUG
 #define DEBUG(logfmt, ...)
-#define SETH_DEBUG(logfmt, ...)
+#define SHARDORA_DEBUG(logfmt, ...)
 #else
 //#define DEBUG(logfmt, ...)
-//#define SETH_DEBUG(logfmt, ...)
+//#define SHARDORA_DEBUG(logfmt, ...)
 #define DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
-#define SETH_DEBUG(logfmt, ...)  do {\
-    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_DEBUG(logfmt, ...)  do {\
+    spdlog::debug(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 #endif
-// #define SETH_WARN(logfmt, ...)
-#define SETH_INFO(logfmt, ...)  do {\
-    spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+// #define SHARDORA_WARN(logfmt, ...)
+#define SHARDORA_INFO(logfmt, ...)  do {\
+    spdlog::info(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
-#define SETH_WARN(logfmt, ...)  do {\
-    spdlog::warn(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_WARN(logfmt, ...)  do {\
+    spdlog::warn(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
-#define SETH_ERROR(logfmt, ...)  do {\
-    spdlog::error(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_ERROR(logfmt, ...)  do {\
+    spdlog::error(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
 } while (0)
 
-#define SETH_FATAL(logfmt, ...)  do {\
-    printf("[DEBUG][%s][%s][%d] " logfmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
-    spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
+#define SHARDORA_FATAL(logfmt, ...)  do {\
+    printf("[DEBUG][%s][%s][%d] " logfmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+    spdlog::critical(fmt::sprintf("[%s][%s][%d] " logfmt, SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__));\
     exit(0);\
 } while (0)
 
@@ -101,44 +101,44 @@
 // #ifdef LOG
 // #undef LOG
 // #endif // LOG
-// #define LOG(level) LOG_INS << level << "[" << SETH_LOG_FILE_NAME << ": " << __LINE__ << "]"
+// #define LOG(level) LOG_INS << level << "[" << SHARDORA_LOG_FILE_NAME << ": " << __LINE__ << "]"
 
 #ifdef FOR_CONSOLE_DEBUG
 #undef DEBUG
-#undef SETH_INFO
-#undef SETH_WARN
-#undef SETH_ERROR
+#undef SHARDORA_INFO
+#undef SHARDORA_WARN
+#undef SHARDORA_ERROR
 
 #ifdef NDEBUG
 #define DEBUG(logfmt, ...)
-#define SETH_DEBUG(logfmt, ...)
+#define SHARDORA_DEBUG(logfmt, ...)
 #else
  #define DEBUG(logfmt, ...)
- #define SETH_DEBUG(logfmt, ...)
+ #define SHARDORA_DEBUG(logfmt, ...)
 /*
 #define DEBUG(logfmt, ...)  do {\
-    printf("[DEBUG][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+    printf("[DEBUG][%s][%s][%d] " fmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
 } while (0)
-#define SETH_DEBUG(logfmt, ...)  do {\
-    printf("[DEBUG][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+#define SHARDORA_DEBUG(logfmt, ...)  do {\
+    printf("[DEBUG][%s][%s][%d] " fmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
 } while (0)
 */
 #endif
 
-#define SETH_INFO(logfmt, ...)  do {\
-    printf("[INFO][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+#define SHARDORA_INFO(logfmt, ...)  do {\
+    printf("[INFO][%s][%s][%d] " fmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
 } while (0)
 
-#define SETH_WARN(logfmt, ...)  do {\
-    printf("[WARN][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+#define SHARDORA_WARN(logfmt, ...)  do {\
+    printf("[WARN][%s][%s][%d] " fmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
 } while (0)
 
-#define SETH_ERROR(logfmt, ...)  do {\
-    printf("[ERROR][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+#define SHARDORA_ERROR(logfmt, ...)  do {\
+    printf("[ERROR][%s][%s][%d] " fmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
 } while (0)
 
-#define SETH_FATAL(logfmt, ...)  do {\
-    printf("[FATAL][%s][%s][%d] " fmt "\n", SETH_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
+#define SHARDORA_FATAL(logfmt, ...)  do {\
+    printf("[FATAL][%s][%s][%d] " fmt "\n", SHARDORA_LOG_FILE_NAME, __FUNCTION__, __LINE__, ## __VA_ARGS__);\
     exit(0);\
 } while (0)
 

@@ -16,10 +16,10 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/network.proto',
-  package='seth.network.protobuf',
+  package='shardora.network.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x14protos/network.proto\x12\x15seth.network.protobuf\"7\n\x16GetNetworkNodesRequest\x12\x0e\n\x06net_id\x18\x01 \x01(\r\x12\r\n\x05\x63ount\x18\x02 \x01(\r\"W\n\x08NodeInfo\x12\x13\n\x0bsharding_id\x18\x01 \x01(\x05\x12\x11\n\tpublic_ip\x18\x02 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x03 \x01(\x05\x12\x0e\n\x06pubkey\x18\x04 \x01(\x0c\"I\n\x17GetNetworkNodesResponse\x12.\n\x05nodes\x18\x01 \x03(\x0b\x32\x1f.seth.network.protobuf.NodeInfo\"+\n\x0f\x44ropNodeRequest\x12\n\n\x02ip\x18\x01 \x01(\x0c\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\xe0\x01\n\x0eNetworkMessage\x12H\n\x11get_net_nodes_req\x18\x01 \x01(\x0b\x32-.seth.network.protobuf.GetNetworkNodesRequest\x12I\n\x11get_net_nodes_res\x18\x02 \x01(\x0b\x32..seth.network.protobuf.GetNetworkNodesResponse\x12\x39\n\tdrop_node\x18\x03 \x01(\x0b\x32&.seth.network.protobuf.DropNodeRequest')
+  serialized_pb=_b('\n\x14protos/network.proto\x12\x15shardora.network.protobuf\"7\n\x16GetNetworkNodesRequest\x12\x0e\n\x06net_id\x18\x01 \x01(\r\x12\r\n\x05\x63ount\x18\x02 \x01(\r\"W\n\x08NodeInfo\x12\x13\n\x0bsharding_id\x18\x01 \x01(\x05\x12\x11\n\tpublic_ip\x18\x02 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x03 \x01(\x05\x12\x0e\n\x06pubkey\x18\x04 \x01(\x0c\"I\n\x17GetNetworkNodesResponse\x12.\n\x05nodes\x18\x01 \x03(\x0b\x32\x1f.shardora.network.protobuf.NodeInfo\"+\n\x0f\x44ropNodeRequest\x12\n\n\x02ip\x18\x01 \x01(\x0c\x12\x0c\n\x04port\x18\x02 \x01(\x05\"\xe0\x01\n\x0eNetworkMessage\x12H\n\x11get_net_nodes_req\x18\x01 \x01(\x0b\x32-.shardora.network.protobuf.GetNetworkNodesRequest\x12I\n\x11get_net_nodes_res\x18\x02 \x01(\x0b\x32..shardora.network.protobuf.GetNetworkNodesResponse\x12\x39\n\tdrop_node\x18\x03 \x01(\x0b\x32&.shardora.network.protobuf.DropNodeRequest')
 )
 
 
@@ -27,20 +27,20 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _GETNETWORKNODESREQUEST = _descriptor.Descriptor(
   name='GetNetworkNodesRequest',
-  full_name='seth.network.protobuf.GetNetworkNodesRequest',
+  full_name='shardora.network.protobuf.GetNetworkNodesRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='net_id', full_name='seth.network.protobuf.GetNetworkNodesRequest.net_id', index=0,
+      name='net_id', full_name='shardora.network.protobuf.GetNetworkNodesRequest.net_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='count', full_name='seth.network.protobuf.GetNetworkNodesRequest.count', index=1,
+      name='count', full_name='shardora.network.protobuf.GetNetworkNodesRequest.count', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -65,34 +65,34 @@ _GETNETWORKNODESREQUEST = _descriptor.Descriptor(
 
 _NODEINFO = _descriptor.Descriptor(
   name='NodeInfo',
-  full_name='seth.network.protobuf.NodeInfo',
+  full_name='shardora.network.protobuf.NodeInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sharding_id', full_name='seth.network.protobuf.NodeInfo.sharding_id', index=0,
+      name='sharding_id', full_name='shardora.network.protobuf.NodeInfo.sharding_id', index=0,
       number=1, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='public_ip', full_name='seth.network.protobuf.NodeInfo.public_ip', index=1,
+      name='public_ip', full_name='shardora.network.protobuf.NodeInfo.public_ip', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='public_port', full_name='seth.network.protobuf.NodeInfo.public_port', index=2,
+      name='public_port', full_name='shardora.network.protobuf.NodeInfo.public_port', index=2,
       number=3, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pubkey', full_name='seth.network.protobuf.NodeInfo.pubkey', index=3,
+      name='pubkey', full_name='shardora.network.protobuf.NodeInfo.pubkey', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -117,13 +117,13 @@ _NODEINFO = _descriptor.Descriptor(
 
 _GETNETWORKNODESRESPONSE = _descriptor.Descriptor(
   name='GetNetworkNodesResponse',
-  full_name='seth.network.protobuf.GetNetworkNodesResponse',
+  full_name='shardora.network.protobuf.GetNetworkNodesResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='nodes', full_name='seth.network.protobuf.GetNetworkNodesResponse.nodes', index=0,
+      name='nodes', full_name='shardora.network.protobuf.GetNetworkNodesResponse.nodes', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -148,20 +148,20 @@ _GETNETWORKNODESRESPONSE = _descriptor.Descriptor(
 
 _DROPNODEREQUEST = _descriptor.Descriptor(
   name='DropNodeRequest',
-  full_name='seth.network.protobuf.DropNodeRequest',
+  full_name='shardora.network.protobuf.DropNodeRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='ip', full_name='seth.network.protobuf.DropNodeRequest.ip', index=0,
+      name='ip', full_name='shardora.network.protobuf.DropNodeRequest.ip', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='port', full_name='seth.network.protobuf.DropNodeRequest.port', index=1,
+      name='port', full_name='shardora.network.protobuf.DropNodeRequest.port', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -186,27 +186,27 @@ _DROPNODEREQUEST = _descriptor.Descriptor(
 
 _NETWORKMESSAGE = _descriptor.Descriptor(
   name='NetworkMessage',
-  full_name='seth.network.protobuf.NetworkMessage',
+  full_name='shardora.network.protobuf.NetworkMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='get_net_nodes_req', full_name='seth.network.protobuf.NetworkMessage.get_net_nodes_req', index=0,
+      name='get_net_nodes_req', full_name='shardora.network.protobuf.NetworkMessage.get_net_nodes_req', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='get_net_nodes_res', full_name='seth.network.protobuf.NetworkMessage.get_net_nodes_res', index=1,
+      name='get_net_nodes_res', full_name='shardora.network.protobuf.NetworkMessage.get_net_nodes_res', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='drop_node', full_name='seth.network.protobuf.NetworkMessage.drop_node', index=2,
+      name='drop_node', full_name='shardora.network.protobuf.NetworkMessage.drop_node', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -242,35 +242,35 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 GetNetworkNodesRequest = _reflection.GeneratedProtocolMessageType('GetNetworkNodesRequest', (_message.Message,), dict(
   DESCRIPTOR = _GETNETWORKNODESREQUEST,
   __module__ = 'protos.network_pb2'
-  # @@protoc_insertion_point(class_scope:seth.network.protobuf.GetNetworkNodesRequest)
+  # @@protoc_insertion_point(class_scope:shardora.network.protobuf.GetNetworkNodesRequest)
   ))
 _sym_db.RegisterMessage(GetNetworkNodesRequest)
 
 NodeInfo = _reflection.GeneratedProtocolMessageType('NodeInfo', (_message.Message,), dict(
   DESCRIPTOR = _NODEINFO,
   __module__ = 'protos.network_pb2'
-  # @@protoc_insertion_point(class_scope:seth.network.protobuf.NodeInfo)
+  # @@protoc_insertion_point(class_scope:shardora.network.protobuf.NodeInfo)
   ))
 _sym_db.RegisterMessage(NodeInfo)
 
 GetNetworkNodesResponse = _reflection.GeneratedProtocolMessageType('GetNetworkNodesResponse', (_message.Message,), dict(
   DESCRIPTOR = _GETNETWORKNODESRESPONSE,
   __module__ = 'protos.network_pb2'
-  # @@protoc_insertion_point(class_scope:seth.network.protobuf.GetNetworkNodesResponse)
+  # @@protoc_insertion_point(class_scope:shardora.network.protobuf.GetNetworkNodesResponse)
   ))
 _sym_db.RegisterMessage(GetNetworkNodesResponse)
 
 DropNodeRequest = _reflection.GeneratedProtocolMessageType('DropNodeRequest', (_message.Message,), dict(
   DESCRIPTOR = _DROPNODEREQUEST,
   __module__ = 'protos.network_pb2'
-  # @@protoc_insertion_point(class_scope:seth.network.protobuf.DropNodeRequest)
+  # @@protoc_insertion_point(class_scope:shardora.network.protobuf.DropNodeRequest)
   ))
 _sym_db.RegisterMessage(DropNodeRequest)
 
 NetworkMessage = _reflection.GeneratedProtocolMessageType('NetworkMessage', (_message.Message,), dict(
   DESCRIPTOR = _NETWORKMESSAGE,
   __module__ = 'protos.network_pb2'
-  # @@protoc_insertion_point(class_scope:seth.network.protobuf.NetworkMessage)
+  # @@protoc_insertion_point(class_scope:shardora.network.protobuf.NetworkMessage)
   ))
 _sym_db.RegisterMessage(NetworkMessage)
 

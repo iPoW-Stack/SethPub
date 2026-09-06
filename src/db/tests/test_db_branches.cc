@@ -8,14 +8,14 @@
 #include "db/db.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace db {
 namespace test {
 
 class TestDbBranches : public testing::Test {
 protected:
     void SetUp() override {
-        db_path_ = "/tmp/seth_db_branches_test_" + std::to_string(counter_++);
+        db_path_ = "/tmp/shardora_db_branches_test_" + std::to_string(counter_++);
         db_ = std::make_shared<Db>();
         ASSERT_TRUE(db_->Init(db_path_));
     }
@@ -179,4 +179,4 @@ TEST_F(TestDbBranches, DbWriteBatchDeleteReducesLogicalContent) {
 
 }  // namespace test
 }  // namespace db
-}  // namespace seth
+}  // namespace shardora

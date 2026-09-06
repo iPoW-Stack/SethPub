@@ -2,7 +2,7 @@
 
 ## Overview
 
-This report documents the comprehensive system-level optimizations implemented for the Seth blockchain P2P network to reduce unnecessary logging, optimize thread pool configurations, and set CPU affinity for critical threads.
+This report documents the comprehensive system-level optimizations implemented for the Shardora blockchain P2P network to reduce unnecessary logging, optimize thread pool configurations, and set CPU affinity for critical threads.
 
 ## 🎯 Optimization Objectives
 
@@ -17,7 +17,7 @@ This report documents the comprehensive system-level optimizations implemented f
 ### Current System Analysis
 
 #### Logging Patterns Identified
-- **High-frequency debug logs**: Found 300+ SETH_DEBUG calls in critical paths
+- **High-frequency debug logs**: Found 300+ SHARDORA_DEBUG calls in critical paths
 - **Thread management logs**: 50+ debug calls in thread creation/management
 - **Network I/O logs**: 100+ debug calls in transport layer
 - **Consensus logs**: 80+ debug calls in consensus algorithms
@@ -53,23 +53,23 @@ public:
 ```
 
 #### Optimized Logging Macros
-- **SETH_DEBUG_FAST**: Completely disabled in release builds
-- **SETH_DEBUG_THROTTLED**: Rate-limited logging for high-frequency paths
-- **SETH_DEBUG_OPT**: Runtime log level checking
+- **SHARDORA_DEBUG_FAST**: Completely disabled in release builds
+- **SHARDORA_DEBUG_THROTTLED**: Rate-limited logging for high-frequency paths
+- **SHARDORA_DEBUG_OPT**: Runtime log level checking
 
 #### High-Frequency Path Optimizations
 ```cpp
 // Before: High overhead in hot paths
-SETH_DEBUG("thread handler thread index coming thread_idx: %d", thread_idx);
+SHARDORA_DEBUG("thread handler thread index coming thread_idx: %d", thread_idx);
 
 // After: Zero overhead in release builds
-SETH_DEBUG_FAST("thread handler thread index coming thread_idx: %d", thread_idx);
+SHARDORA_DEBUG_FAST("thread handler thread index coming thread_idx: %d", thread_idx);
 
 // Before: Flooding logs in network layer
-SETH_DEBUG("message coming hash64: %lu", msg_ptr->header.hash64());
+SHARDORA_DEBUG("message coming hash64: %lu", msg_ptr->header.hash64());
 
 // After: Throttled to 1 message per second
-SETH_DEBUG_THROTTLED(1000, "message coming hash64: %lu", msg_ptr->header.hash64());
+SHARDORA_DEBUG_THROTTLED(1000, "message coming hash64: %lu", msg_ptr->header.hash64());
 ```
 
 ### 2. CPU Affinity Management
@@ -235,8 +235,8 @@ SystemOptimizer::Instance()->SetLogLevel(LogLevel::INFO);
 SystemOptimizer::Instance()->SetCriticalThreadAffinity();
 
 // Use optimized logging
-SETH_DEBUG_FAST("High frequency debug message");
-SETH_DEBUG_THROTTLED(1000, "Rate-limited debug message");
+SHARDORA_DEBUG_FAST("High frequency debug message");
+SHARDORA_DEBUG_THROTTLED(1000, "Rate-limited debug message");
 ```
 
 ### Configuration Management
@@ -341,7 +341,7 @@ SystemOptimizer::Instance()->SetLogLevel(LogLevel::DEBUG);
 
 ## 📝 Conclusion
 
-The implemented system-level optimizations provide a comprehensive framework for improving the performance of the Seth blockchain P2P network. Key achievements include:
+The implemented system-level optimizations provide a comprehensive framework for improving the performance of the Shardora blockchain P2P network. Key achievements include:
 
 1. **Significant logging overhead reduction** through intelligent throttling and runtime control
 2. **Optimized thread management** with CPU affinity and adaptive pool sizing

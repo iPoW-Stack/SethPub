@@ -6,7 +6,7 @@
 #include "security/ecdsa/crypto_utils.h"
 #include "security/ecdsa/security_string_trans.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -72,4 +72,4 @@ int PrivateKey::Deserialize(const std::string& src) {
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

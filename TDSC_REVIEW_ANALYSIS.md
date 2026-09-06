@@ -41,7 +41,7 @@
 | 子问题 | 能否解决 | 代码证据 |
 |--------|:--------:|---------|
 | 全局一致性 vs 分片一致性 | ✅ | 系统提供**池内全序**（Fast-HotStuff）+ **跨池因果序**（GBP高度单调性）。`to_txs_pools.cc`中`CreateToTxWithHeights()`的双重高度约束保证了因果排序。需要在论文中形式化描述这个SMR模型，与标准共识保证进行对比 |
-| AMM跨分片原子性 | ✅ | **合约共置（co-location）** 是核心解决方案。`GetAddressPoolIndex()`（`utils.h`）基于地址哈希分配池，同一部署者的合约天然在同一池中。`seth_host.cc`中的EVM CALL在同一共识上下文内执行。`AMM_SOLUTION_DEMO.md`和`amm.py`提供了完整的多用户AMM演示。论文中需要明确说明这个部署模式 |
+| AMM跨分片原子性 | ✅ | **合约共置（co-location）** 是核心解决方案。`GetAddressPoolIndex()`（`utils.h`）基于地址哈希分配池，同一部署者的合约天然在同一池中。`shardora_host.cc`中的EVM CALL在同一共识上下文内执行。`AMM_SOLUTION_DEMO.md`和`amm.py`提供了完整的多用户AMM演示。论文中需要明确说明这个部署模式 |
 
 **需要的工作：**
 

@@ -12,7 +12,7 @@
 #include "broadcast/filter_broadcast.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace broadcast {
 namespace test {
 
@@ -532,4 +532,4 @@ TEST(TestFilterBroadcastBranches, BroadcastingReturnsEarlyOnGlobalHopLimit) {
 
 }  // namespace test
 }  // namespace broadcast
-}  // namespace seth
+}  // namespace shardora

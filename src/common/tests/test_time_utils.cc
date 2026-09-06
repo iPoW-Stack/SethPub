@@ -7,7 +7,7 @@
 #define private public
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -106,4 +106,4 @@ TEST_F(TestTimeUtils, ConsistencyBetweenUnits) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

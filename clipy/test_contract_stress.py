@@ -34,7 +34,7 @@ from ecdsa.util import sigencode_string_canonize
 from Crypto.Hash import keccak
 import eth_abi
 
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link
 
 
 # ── Constants ────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ def main():
     contract_sets = int(sys.argv[5]) if len(sys.argv) > 5 else 10
     stress_rounds = int(sys.argv[6]) if len(sys.argv) > 6 else 20
 
-    w3 = SethWeb3Mock(ip, port)
+    w3 = ShardoraWeb3Mock(ip, port)
     funder_addr = w3.client.get_address(funder_key)
 
     print(f"\n{'='*70}")
@@ -269,7 +269,7 @@ def main():
         try:
             # Deploy TokenA
             name_a = f"TkA_{i}".encode().ljust(32, b'\x00')
-            contract_a = w3.seth.contract(abi=token_abi, bytecode=token_bin, sender_address=da)
+            contract_a = w3.shardora.contract(abi=token_abi, bytecode=token_bin, sender_address=da)
             contract_a = contract_a.deploy({
                 'from': da, 'salt': secrets.token_hex(31) + 'a',
                 'args': [name_a, 10_000_000]
@@ -278,7 +278,7 @@ def main():
 
             # Deploy TokenB
             name_b = f"TkB_{i}".encode().ljust(32, b'\x00')
-            contract_b = w3.seth.contract(abi=token_abi, bytecode=token_bin, sender_address=da)
+            contract_b = w3.shardora.contract(abi=token_abi, bytecode=token_bin, sender_address=da)
             contract_b = contract_b.deploy({
                 'from': da, 'salt': secrets.token_hex(31) + 'b',
                 'args': [name_b, 10_000_000]
@@ -286,7 +286,7 @@ def main():
             s.token_b_addr = contract_b.address
 
             # Deploy AMMPool
-            contract_p = w3.seth.contract(abi=pool_abi, bytecode=pool_bin, sender_address=da)
+            contract_p = w3.shardora.contract(abi=pool_abi, bytecode=pool_bin, sender_address=da)
             contract_p = contract_p.deploy({
                 'from': da, 'salt': secrets.token_hex(31) + 'c',
                 'args': [s.token_a_addr, s.token_b_addr]

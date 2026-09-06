@@ -109,7 +109,7 @@ uint64_t gas_cost = kBaseGas + kGasPerWord * word_count;
 
 ```cpp
 if (res->gas_left < gas_cost) {
-    SETH_WARN("Ripemd160: insufficient gas. Required: %lu, Available: %ld",
+    SHARDORA_WARN("Ripemd160: insufficient gas. Required: %lu, Available: %ld",
         gas_cost, res->gas_left);
     return kContractError;
 }
@@ -253,7 +253,7 @@ contract Ripemd160Test {
 #include "contract/contract_ripemd160.h"
 #include "gtest/gtest.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -379,7 +379,7 @@ TEST_F(Ripemd160Test, OutputFormat) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora
 ```
 
 ---
@@ -484,7 +484,7 @@ uint64_t word_count = (data_size + 31) / 32;
 
 ### Ethereum 兼容性
 
-| 特性 | Ethereum | Seth | 兼容 |
+| 特性 | Ethereum | Shardora | 兼容 |
 |------|----------|------|------|
 | 合约地址 | 0x03 | 0x03 | ✅ |
 | 输入格式 | 任意长度 | 任意长度 | ✅ |

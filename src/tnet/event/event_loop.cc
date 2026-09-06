@@ -5,7 +5,7 @@
 #include "common/global_info.h"
 #include "tnet/tnet_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -17,7 +17,7 @@ EventLoop::~EventLoop() {
 
 bool EventLoop::Init() {
     if (epoll_manager_ != NULL) {
-        SETH_ERROR("event loop already init");
+        SHARDORA_ERROR("event loop already init");
         return false;
     }
 
@@ -25,7 +25,7 @@ bool EventLoop::Init() {
     if (!epoll_manager_->Init()) {
         delete epoll_manager_;
         epoll_manager_ = nullptr;
-        SETH_ERROR("init epoll event manager failed");
+        SHARDORA_ERROR("init epoll event manager failed");
         return false;
     }
 
@@ -106,4 +106,4 @@ void EventLoop::RunTask() {
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

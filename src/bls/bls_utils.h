@@ -17,12 +17,12 @@
 #include "common/utils.h"
 #include "protos/elect.pb.h"
 
-#define BLS_DEBUG(fmt, ...) SETH_DEBUG("[bls]" fmt, ## __VA_ARGS__)
-#define BLS_INFO(fmt, ...) SETH_DEBUG("[bls]" fmt, ## __VA_ARGS__)
-#define BLS_WARN(fmt, ...) SETH_WARN("[bls]" fmt, ## __VA_ARGS__)
-#define BLS_ERROR(fmt, ...) SETH_ERROR("[bls]" fmt, ## __VA_ARGS__)
+#define BLS_DEBUG(fmt, ...) SHARDORA_DEBUG("[bls]" fmt, ## __VA_ARGS__)
+#define BLS_INFO(fmt, ...) SHARDORA_DEBUG("[bls]" fmt, ## __VA_ARGS__)
+#define BLS_WARN(fmt, ...) SHARDORA_WARN("[bls]" fmt, ## __VA_ARGS__)
+#define BLS_ERROR(fmt, ...) SHARDORA_ERROR("[bls]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -159,4 +159,4 @@ static std::shared_ptr<libff::alt_bn128_G1> Proto2BlsPopProof(
 
 }  // namespace bls
 
-}  // namespace seth
+}  // namespace shardora

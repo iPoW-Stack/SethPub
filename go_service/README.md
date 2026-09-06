@@ -1,6 +1,6 @@
-# Seth Purchase Service - HTTPS Server with ECDSA Verification
+# Shardora Purchase Service - HTTPS Server with ECDSA Verification
 
-这是一个用 Go 语言实现的 HTTPS 服务，用于验证用户的购买凭证并通过 Seth 客户端向用户地址转账 100 个币。
+这是一个用 Go 语言实现的 HTTPS 服务，用于验证用户的购买凭证并通过 Shardora 客户端向用户地址转账 100 个币。
 
 ## 功能特性
 
@@ -15,7 +15,7 @@
 ```
 go_service/
 ├── main.go              # 主服务器代码
-├── seth_client.go       # Seth 区块链客户端
+├── shardora_client.go       # Shardora 区块链客户端
 ├── client_example.go    # 客户端示例代码
 ├── README.md           # 本文档
 └── go.mod              # Go 模块文件
@@ -25,7 +25,7 @@ go_service/
 
 ```bash
 cd go_service
-go mod init seth-purchase-service
+go mod init shardora-purchase-service
 go mod tidy
 ```
 
@@ -35,15 +35,15 @@ go mod tidy
 
 ```go
 port := 8443                                    // HTTPS 端口
-sethNodeIP := "127.0.0.1"                      // Seth 节点 IP
-sethNodePort := 13001                          // Seth 节点端口
+shardoraNodeIP := "127.0.0.1"                      // Shardora 节点 IP
+shardoraNodePort := 13001                          // Shardora 节点端口
 senderPrivateKey := "your_sender_private_key_hex"  // 发送者私钥（十六进制）
 ```
 
 ## 运行服务器
 
 ```bash
-go run main.go seth_client.go
+go run main.go shardora_client.go
 ```
 
 服务器将在 `https://localhost:8443` 启动。
@@ -66,7 +66,7 @@ go run main.go seth_client.go
 ```
 
 **字段说明**:
-- `address`: Seth 地址（十六进制编码，40 字符）
+- `address`: Shardora 地址（十六进制编码，40 字符）
 - `timestamp`: Unix 时间戳（秒）
 - `nonce`: 随机数（十六进制编码，防止重放）
 - `signature`: ECDSA 签名（十六进制编码，r||s 格式，64 字节）
@@ -144,11 +144,11 @@ func main() {
         return
     }
 
-    // Seth 地址（十六进制）
-    sethAddress := "1234567890abcdef1234567890abcdef12345678"
+    // Shardora 地址（十六进制）
+    shardoraAddress := "1234567890abcdef1234567890abcdef12345678"
 
     // 创建凭证
-    cred, err := client.CreateCredential(sethAddress)
+    cred, err := client.CreateCredential(shardoraAddress)
     if err != nil {
         fmt.Printf("Failed to create credential: %v\n", err)
         return
@@ -218,21 +218,21 @@ curl -k -X POST https://localhost:8443/purchase \
    - 签名验证失败
 
 4. **"Failed to transfer coins"**
-   - Seth 转账失败
+   - Shardora 转账失败
 
-## Seth 客户端集成
+## Shardora 客户端集成
 
-服务器使用 `SethClient` 与 Seth 区块链交互：
+服务器使用 `ShardoraClient` 与 Shardora 区块链交互：
 
 ```go
 // 创建客户端
-client := NewSethClient("127.0.0.1", 13001, "private_key_hex")
+client := NewShardoraClient("127.0.0.1", 13001, "private_key_hex")
 
 // 转账
 txHash, err := client.TransferCoins(toAddress, 100)
 ```
 
-### Seth API 端点
+### Shardora API 端点
 
 - **获取账户信息**: `GET http://node:port/api/account?address=xxx`
 - **发送交易**: `POST http://node:port/api/transaction`
@@ -280,7 +280,7 @@ go test -v
 ### 集成测试
 ```bash
 # 启动服务器
-go run main.go seth_client.go
+go run main.go shardora_client.go
 
 # 在另一个终端运行客户端
 go run client_example.go
@@ -306,11 +306,11 @@ Invalid signature
 ```
 **解决**: 检查消息格式、签名算法、公钥格式
 
-### 4. Seth 转账失败
+### 4. Shardora 转账失败
 ```
 Failed to transfer coins
 ```
-**解决**: 检查 Seth 节点连接、账户余额、私钥配置
+**解决**: 检查 Shardora 节点连接、账户余额、私钥配置
 
 ## 许可证
 
@@ -326,5 +326,5 @@ Kiro AI Assistant
 - 初始版本
 - HTTPS 服务器
 - ECDSA 签名验证
-- Seth 客户端集成
+- Shardora 客户端集成
 - 防重放攻击

@@ -26,7 +26,7 @@
 #include "network/network_utils.h"
 #include "pools/tx_pool_manager.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -176,4 +176,4 @@ TEST_F(TestToTxsPools, LoadLatestHeights_DbMiss_EarlyReturn) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

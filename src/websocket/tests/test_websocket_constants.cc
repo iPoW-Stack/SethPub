@@ -5,7 +5,7 @@
 
 #include "websocket/websocket_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace ws {
 namespace test {
 
@@ -49,4 +49,4 @@ TEST(WebSocketUtilsBranches, InvalidSentinelStringLengths) {
 
 }  // namespace test
 }  // namespace ws
-}  // namespace seth
+}  // namespace shardora

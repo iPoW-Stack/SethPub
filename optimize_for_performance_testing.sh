@@ -12,10 +12,10 @@ echo "=========================================="
 # 1. 禁用网络延迟
 echo ""
 echo "[1/4] 禁用网络延迟注入..."
-export SETH_NETWORK_ENABLED=0
-export SETH_NETWORK_DELAY_MS=0
-export SETH_NETWORK_JITTER_MS=0
-export SETH_NETWORK_LOSS_RATE=0
+export SHARDORA_NETWORK_ENABLED=0
+export SHARDORA_NETWORK_DELAY_MS=0
+export SHARDORA_NETWORK_JITTER_MS=0
+export SHARDORA_NETWORK_LOSS_RATE=0
 echo "✓ 网络延迟已禁用"
 
 # 2. 优化系统参数
@@ -50,16 +50,16 @@ fi
 # 3. 显示当前配置
 echo ""
 echo "[3/4] 当前配置:"
-echo "  SETH_NETWORK_ENABLED=$SETH_NETWORK_ENABLED"
-echo "  SETH_NETWORK_DELAY_MS=$SETH_NETWORK_DELAY_MS"
-echo "  SETH_NETWORK_JITTER_MS=$SETH_NETWORK_JITTER_MS"
-echo "  SETH_NETWORK_LOSS_RATE=$SETH_NETWORK_LOSS_RATE"
+echo "  SHARDORA_NETWORK_ENABLED=$SHARDORA_NETWORK_ENABLED"
+echo "  SHARDORA_NETWORK_DELAY_MS=$SHARDORA_NETWORK_DELAY_MS"
+echo "  SHARDORA_NETWORK_JITTER_MS=$SHARDORA_NETWORK_JITTER_MS"
+echo "  SHARDORA_NETWORK_LOSS_RATE=$SHARDORA_NETWORK_LOSS_RATE"
 
 # 4. 显示下一步
 echo ""
 echo "[4/4] 下一步:"
 echo "  1. 重新编译项目:"
-echo "     cd /root/seth/cbuild_Release"
+echo "     cd /root/shardora/cbuild_Release"
 echo "     make -j4"
 echo ""
 echo "  2. 运行部署脚本:"

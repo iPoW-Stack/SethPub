@@ -16,10 +16,10 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/elect.proto',
-  package='seth.elect.protobuf',
+  package='shardora.elect.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x12protos/elect.proto\x12\x13seth.elect.protobuf\"u\n\x0eVerifyVecValue\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x0c\n\x04z_c0\x18\x05 \x01(\x0c\x12\x0c\n\x04z_c1\x18\x06 \x01(\x0c\x12\x0f\n\x07valid_t\x18\x07 \x01(\r\"F\n\x0c\x42lsPublicKey\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\"=\n\x0b\x42lsPopProof\x12\x0e\n\x06sign_x\x18\x01 \x01(\x0c\x12\x0e\n\x06sign_y\x18\x02 \x01(\x0c\x12\x0e\n\x06sign_z\x18\x03 \x01(\x0c\"f\n\x0ePrevMemberInfo\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x1c\n\x10pool_idx_mod_num\x18\x05 \x01(\x05:\x02-1\"\x9b\x01\n\x0bPrevMembers\x12\x37\n\nbls_pubkey\x18\x01 \x03(\x0b\x32#.seth.elect.protobuf.PrevMemberInfo\x12\x19\n\x11prev_elect_height\x18\x02 \x01(\x04\x12\x38\n\rcommon_pubkey\x18\x03 \x01(\x0b\x32!.seth.elect.protobuf.BlsPublicKey\"s\n\x06member\x12\x0e\n\x06pubkey\x18\x01 \x01(\x0c\x12\x18\n\x10pool_idx_mod_num\x18\x02 \x01(\x05\x12\x15\n\rmining_amount\x18\x03 \x01(\x04\x12\x11\n\tfts_value\x18\x04 \x01(\x04\x12\x15\n\rconsensus_gap\x18\x05 \x01(\x04\"\xcb\x01\n\nElectBlock\x12\'\n\x02in\x18\x01 \x03(\x0b\x32\x1b.seth.elect.protobuf.member\x12\x36\n\x0cprev_members\x18\x02 \x01(\x0b\x32 .seth.elect.protobuf.PrevMembers\x12\x18\n\x10shard_network_id\x18\x03 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x04 \x01(\x04\x12\x16\n\x0e\x61ll_gas_amount\x18\x05 \x01(\x04\x12\x14\n\x0cgas_for_root\x18\x06 \x01(\x04\"Y\n\x13WaitingNodesMessage\x12\x14\n\x0cnodes_filter\x18\x01 \x03(\x04\x12\x18\n\x10waiting_shard_id\x18\x02 \x01(\r\x12\x12\n\nstoke_hash\x18\x03 \x01(\x0c\"i\n\x14WaitingNodeHeartbeat\x12\x11\n\tpublic_ip\x18\x01 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x02 \x01(\r\x12\x12\n\nnetwork_id\x18\x03 \x01(\r\x12\x15\n\rtimestamp_sec\x18\x04 \x01(\x04\"@\n\x15LeaderRotationMessage\x12\x11\n\tleader_id\x18\x01 \x01(\x0c\x12\x14\n\x0cpool_mod_num\x18\x02 \x01(\r\"9\n\x11SyncNodeStokeItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x18\n\x10synced_tm_height\x18\x02 \x01(\x04\"h\n\x14SyncNodeStokeRequest\x12\x39\n\tsync_item\x18\x01 \x03(\x0b\x32&.seth.elect.protobuf.SyncNodeStokeItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"3\n\x14SyncNodeStokeResItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x0f\n\x07\x62\x61lance\x18\x02 \x01(\x04\"h\n\x15SyncNodeStokeResponse\x12\x38\n\x05items\x18\x01 \x03(\x0b\x32).seth.elect.protobuf.SyncNodeStokeResItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"\x8b\x04\n\x0c\x45lectMessage\x12\x34\n\x0b\x65lect_block\x18\x01 \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12\x39\n\x10prev_elect_block\x18\x02 \x01(\x0b\x32\x1f.seth.elect.protobuf.ElectBlock\x12?\n\rwaiting_nodes\x18\x03 \x01(\x0b\x32(.seth.elect.protobuf.WaitingNodesMessage\x12\x14\n\x0cmember_index\x18\x04 \x01(\x05\x12\x0f\n\x07sign_ch\x18\x05 \x01(\x0c\x12\x10\n\x08sign_res\x18\x06 \x01(\x0c\x12\x44\n\x11waiting_heartbeat\x18\x07 \x01(\x0b\x32).seth.elect.protobuf.WaitingNodeHeartbeat\x12\x43\n\x0fleader_rotation\x18\x08 \x01(\x0b\x32*.seth.elect.protobuf.LeaderRotationMessage\x12\x41\n\x0esync_stoke_req\x18\t \x01(\x0b\x32).seth.elect.protobuf.SyncNodeStokeRequest\x12\x42\n\x0esync_stoke_res\x18\n \x01(\x0b\x32*.seth.elect.protobuf.SyncNodeStokeResponse')
+  serialized_pb=_b('\n\x12protos/elect.proto\x12\x13shardora.elect.protobuf\"u\n\x0eVerifyVecValue\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x0c\n\x04z_c0\x18\x05 \x01(\x0c\x12\x0c\n\x04z_c1\x18\x06 \x01(\x0c\x12\x0f\n\x07valid_t\x18\x07 \x01(\r\"F\n\x0c\x42lsPublicKey\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\"=\n\x0b\x42lsPopProof\x12\x0e\n\x06sign_x\x18\x01 \x01(\x0c\x12\x0e\n\x06sign_y\x18\x02 \x01(\x0c\x12\x0e\n\x06sign_z\x18\x03 \x01(\x0c\"f\n\x0ePrevMemberInfo\x12\x0c\n\x04x_c0\x18\x01 \x01(\x0c\x12\x0c\n\x04x_c1\x18\x02 \x01(\x0c\x12\x0c\n\x04y_c0\x18\x03 \x01(\x0c\x12\x0c\n\x04y_c1\x18\x04 \x01(\x0c\x12\x1c\n\x10pool_idx_mod_num\x18\x05 \x01(\x05:\x02-1\"\x9b\x01\n\x0bPrevMembers\x12\x37\n\nbls_pubkey\x18\x01 \x03(\x0b\x32#.shardora.elect.protobuf.PrevMemberInfo\x12\x19\n\x11prev_elect_height\x18\x02 \x01(\x04\x12\x38\n\rcommon_pubkey\x18\x03 \x01(\x0b\x32!.shardora.elect.protobuf.BlsPublicKey\"s\n\x06member\x12\x0e\n\x06pubkey\x18\x01 \x01(\x0c\x12\x18\n\x10pool_idx_mod_num\x18\x02 \x01(\x05\x12\x15\n\rmining_amount\x18\x03 \x01(\x04\x12\x11\n\tfts_value\x18\x04 \x01(\x04\x12\x15\n\rconsensus_gap\x18\x05 \x01(\x04\"\xcb\x01\n\nElectBlock\x12\'\n\x02in\x18\x01 \x03(\x0b\x32\x1b.shardora.elect.protobuf.member\x12\x36\n\x0cprev_members\x18\x02 \x01(\x0b\x32 .shardora.elect.protobuf.PrevMembers\x12\x18\n\x10shard_network_id\x18\x03 \x01(\r\x12\x14\n\x0c\x65lect_height\x18\x04 \x01(\x04\x12\x16\n\x0e\x61ll_gas_amount\x18\x05 \x01(\x04\x12\x14\n\x0cgas_for_root\x18\x06 \x01(\x04\"Y\n\x13WaitingNodesMessage\x12\x14\n\x0cnodes_filter\x18\x01 \x03(\x04\x12\x18\n\x10waiting_shard_id\x18\x02 \x01(\r\x12\x12\n\nstoke_hash\x18\x03 \x01(\x0c\"i\n\x14WaitingNodeHeartbeat\x12\x11\n\tpublic_ip\x18\x01 \x01(\x0c\x12\x13\n\x0bpublic_port\x18\x02 \x01(\r\x12\x12\n\nnetwork_id\x18\x03 \x01(\r\x12\x15\n\rtimestamp_sec\x18\x04 \x01(\x04\"@\n\x15LeaderRotationMessage\x12\x11\n\tleader_id\x18\x01 \x01(\x0c\x12\x14\n\x0cpool_mod_num\x18\x02 \x01(\r\"9\n\x11SyncNodeStokeItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x18\n\x10synced_tm_height\x18\x02 \x01(\x04\"h\n\x14SyncNodeStokeRequest\x12\x39\n\tsync_item\x18\x01 \x03(\x0b\x32&.shardora.elect.protobuf.SyncNodeStokeItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"3\n\x14SyncNodeStokeResItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x0f\n\x07\x62\x61lance\x18\x02 \x01(\x04\"h\n\x15SyncNodeStokeResponse\x12\x38\n\x05items\x18\x01 \x03(\x0b\x32).shardora.elect.protobuf.SyncNodeStokeResItem\x12\x15\n\rnow_tm_height\x18\x02 \x01(\x04\"\x8b\x04\n\x0c\x45lectMessage\x12\x34\n\x0b\x65lect_block\x18\x01 \x01(\x0b\x32\x1f.shardora.elect.protobuf.ElectBlock\x12\x39\n\x10prev_elect_block\x18\x02 \x01(\x0b\x32\x1f.shardora.elect.protobuf.ElectBlock\x12?\n\rwaiting_nodes\x18\x03 \x01(\x0b\x32(.shardora.elect.protobuf.WaitingNodesMessage\x12\x14\n\x0cmember_index\x18\x04 \x01(\x05\x12\x0f\n\x07sign_ch\x18\x05 \x01(\x0c\x12\x10\n\x08sign_res\x18\x06 \x01(\x0c\x12\x44\n\x11waiting_heartbeat\x18\x07 \x01(\x0b\x32).shardora.elect.protobuf.WaitingNodeHeartbeat\x12\x43\n\x0fleader_rotation\x18\x08 \x01(\x0b\x32*.shardora.elect.protobuf.LeaderRotationMessage\x12\x41\n\x0esync_stoke_req\x18\t \x01(\x0b\x32).shardora.elect.protobuf.SyncNodeStokeRequest\x12\x42\n\x0esync_stoke_res\x18\n \x01(\x0b\x32*.shardora.elect.protobuf.SyncNodeStokeResponse')
 )
 
 
@@ -27,55 +27,55 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _VERIFYVECVALUE = _descriptor.Descriptor(
   name='VerifyVecValue',
-  full_name='seth.elect.protobuf.VerifyVecValue',
+  full_name='shardora.elect.protobuf.VerifyVecValue',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='x_c0', full_name='seth.elect.protobuf.VerifyVecValue.x_c0', index=0,
+      name='x_c0', full_name='shardora.elect.protobuf.VerifyVecValue.x_c0', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='x_c1', full_name='seth.elect.protobuf.VerifyVecValue.x_c1', index=1,
+      name='x_c1', full_name='shardora.elect.protobuf.VerifyVecValue.x_c1', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c0', full_name='seth.elect.protobuf.VerifyVecValue.y_c0', index=2,
+      name='y_c0', full_name='shardora.elect.protobuf.VerifyVecValue.y_c0', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c1', full_name='seth.elect.protobuf.VerifyVecValue.y_c1', index=3,
+      name='y_c1', full_name='shardora.elect.protobuf.VerifyVecValue.y_c1', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='z_c0', full_name='seth.elect.protobuf.VerifyVecValue.z_c0', index=4,
+      name='z_c0', full_name='shardora.elect.protobuf.VerifyVecValue.z_c0', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='z_c1', full_name='seth.elect.protobuf.VerifyVecValue.z_c1', index=5,
+      name='z_c1', full_name='shardora.elect.protobuf.VerifyVecValue.z_c1', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='valid_t', full_name='seth.elect.protobuf.VerifyVecValue.valid_t', index=6,
+      name='valid_t', full_name='shardora.elect.protobuf.VerifyVecValue.valid_t', index=6,
       number=7, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -100,34 +100,34 @@ _VERIFYVECVALUE = _descriptor.Descriptor(
 
 _BLSPUBLICKEY = _descriptor.Descriptor(
   name='BlsPublicKey',
-  full_name='seth.elect.protobuf.BlsPublicKey',
+  full_name='shardora.elect.protobuf.BlsPublicKey',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='x_c0', full_name='seth.elect.protobuf.BlsPublicKey.x_c0', index=0,
+      name='x_c0', full_name='shardora.elect.protobuf.BlsPublicKey.x_c0', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='x_c1', full_name='seth.elect.protobuf.BlsPublicKey.x_c1', index=1,
+      name='x_c1', full_name='shardora.elect.protobuf.BlsPublicKey.x_c1', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c0', full_name='seth.elect.protobuf.BlsPublicKey.y_c0', index=2,
+      name='y_c0', full_name='shardora.elect.protobuf.BlsPublicKey.y_c0', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c1', full_name='seth.elect.protobuf.BlsPublicKey.y_c1', index=3,
+      name='y_c1', full_name='shardora.elect.protobuf.BlsPublicKey.y_c1', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -152,27 +152,27 @@ _BLSPUBLICKEY = _descriptor.Descriptor(
 
 _BLSPOPPROOF = _descriptor.Descriptor(
   name='BlsPopProof',
-  full_name='seth.elect.protobuf.BlsPopProof',
+  full_name='shardora.elect.protobuf.BlsPopProof',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sign_x', full_name='seth.elect.protobuf.BlsPopProof.sign_x', index=0,
+      name='sign_x', full_name='shardora.elect.protobuf.BlsPopProof.sign_x', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sign_y', full_name='seth.elect.protobuf.BlsPopProof.sign_y', index=1,
+      name='sign_y', full_name='shardora.elect.protobuf.BlsPopProof.sign_y', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sign_z', full_name='seth.elect.protobuf.BlsPopProof.sign_z', index=2,
+      name='sign_z', full_name='shardora.elect.protobuf.BlsPopProof.sign_z', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -197,41 +197,41 @@ _BLSPOPPROOF = _descriptor.Descriptor(
 
 _PREVMEMBERINFO = _descriptor.Descriptor(
   name='PrevMemberInfo',
-  full_name='seth.elect.protobuf.PrevMemberInfo',
+  full_name='shardora.elect.protobuf.PrevMemberInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='x_c0', full_name='seth.elect.protobuf.PrevMemberInfo.x_c0', index=0,
+      name='x_c0', full_name='shardora.elect.protobuf.PrevMemberInfo.x_c0', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='x_c1', full_name='seth.elect.protobuf.PrevMemberInfo.x_c1', index=1,
+      name='x_c1', full_name='shardora.elect.protobuf.PrevMemberInfo.x_c1', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c0', full_name='seth.elect.protobuf.PrevMemberInfo.y_c0', index=2,
+      name='y_c0', full_name='shardora.elect.protobuf.PrevMemberInfo.y_c0', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='y_c1', full_name='seth.elect.protobuf.PrevMemberInfo.y_c1', index=3,
+      name='y_c1', full_name='shardora.elect.protobuf.PrevMemberInfo.y_c1', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pool_idx_mod_num', full_name='seth.elect.protobuf.PrevMemberInfo.pool_idx_mod_num', index=4,
+      name='pool_idx_mod_num', full_name='shardora.elect.protobuf.PrevMemberInfo.pool_idx_mod_num', index=4,
       number=5, type=5, cpp_type=1, label=1,
       has_default_value=True, default_value=-1,
       message_type=None, enum_type=None, containing_type=None,
@@ -256,27 +256,27 @@ _PREVMEMBERINFO = _descriptor.Descriptor(
 
 _PREVMEMBERS = _descriptor.Descriptor(
   name='PrevMembers',
-  full_name='seth.elect.protobuf.PrevMembers',
+  full_name='shardora.elect.protobuf.PrevMembers',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='bls_pubkey', full_name='seth.elect.protobuf.PrevMembers.bls_pubkey', index=0,
+      name='bls_pubkey', full_name='shardora.elect.protobuf.PrevMembers.bls_pubkey', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='prev_elect_height', full_name='seth.elect.protobuf.PrevMembers.prev_elect_height', index=1,
+      name='prev_elect_height', full_name='shardora.elect.protobuf.PrevMembers.prev_elect_height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='common_pubkey', full_name='seth.elect.protobuf.PrevMembers.common_pubkey', index=2,
+      name='common_pubkey', full_name='shardora.elect.protobuf.PrevMembers.common_pubkey', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -301,41 +301,41 @@ _PREVMEMBERS = _descriptor.Descriptor(
 
 _MEMBER = _descriptor.Descriptor(
   name='member',
-  full_name='seth.elect.protobuf.member',
+  full_name='shardora.elect.protobuf.member',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pubkey', full_name='seth.elect.protobuf.member.pubkey', index=0,
+      name='pubkey', full_name='shardora.elect.protobuf.member.pubkey', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pool_idx_mod_num', full_name='seth.elect.protobuf.member.pool_idx_mod_num', index=1,
+      name='pool_idx_mod_num', full_name='shardora.elect.protobuf.member.pool_idx_mod_num', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mining_amount', full_name='seth.elect.protobuf.member.mining_amount', index=2,
+      name='mining_amount', full_name='shardora.elect.protobuf.member.mining_amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='fts_value', full_name='seth.elect.protobuf.member.fts_value', index=3,
+      name='fts_value', full_name='shardora.elect.protobuf.member.fts_value', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='consensus_gap', full_name='seth.elect.protobuf.member.consensus_gap', index=4,
+      name='consensus_gap', full_name='shardora.elect.protobuf.member.consensus_gap', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -360,48 +360,48 @@ _MEMBER = _descriptor.Descriptor(
 
 _ELECTBLOCK = _descriptor.Descriptor(
   name='ElectBlock',
-  full_name='seth.elect.protobuf.ElectBlock',
+  full_name='shardora.elect.protobuf.ElectBlock',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='in', full_name='seth.elect.protobuf.ElectBlock.in', index=0,
+      name='in', full_name='shardora.elect.protobuf.ElectBlock.in', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='prev_members', full_name='seth.elect.protobuf.ElectBlock.prev_members', index=1,
+      name='prev_members', full_name='shardora.elect.protobuf.ElectBlock.prev_members', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='shard_network_id', full_name='seth.elect.protobuf.ElectBlock.shard_network_id', index=2,
+      name='shard_network_id', full_name='shardora.elect.protobuf.ElectBlock.shard_network_id', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='elect_height', full_name='seth.elect.protobuf.ElectBlock.elect_height', index=3,
+      name='elect_height', full_name='shardora.elect.protobuf.ElectBlock.elect_height', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='all_gas_amount', full_name='seth.elect.protobuf.ElectBlock.all_gas_amount', index=4,
+      name='all_gas_amount', full_name='shardora.elect.protobuf.ElectBlock.all_gas_amount', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='gas_for_root', full_name='seth.elect.protobuf.ElectBlock.gas_for_root', index=5,
+      name='gas_for_root', full_name='shardora.elect.protobuf.ElectBlock.gas_for_root', index=5,
       number=6, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -426,27 +426,27 @@ _ELECTBLOCK = _descriptor.Descriptor(
 
 _WAITINGNODESMESSAGE = _descriptor.Descriptor(
   name='WaitingNodesMessage',
-  full_name='seth.elect.protobuf.WaitingNodesMessage',
+  full_name='shardora.elect.protobuf.WaitingNodesMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='nodes_filter', full_name='seth.elect.protobuf.WaitingNodesMessage.nodes_filter', index=0,
+      name='nodes_filter', full_name='shardora.elect.protobuf.WaitingNodesMessage.nodes_filter', index=0,
       number=1, type=4, cpp_type=4, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='waiting_shard_id', full_name='seth.elect.protobuf.WaitingNodesMessage.waiting_shard_id', index=1,
+      name='waiting_shard_id', full_name='shardora.elect.protobuf.WaitingNodesMessage.waiting_shard_id', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='stoke_hash', full_name='seth.elect.protobuf.WaitingNodesMessage.stoke_hash', index=2,
+      name='stoke_hash', full_name='shardora.elect.protobuf.WaitingNodesMessage.stoke_hash', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -471,34 +471,34 @@ _WAITINGNODESMESSAGE = _descriptor.Descriptor(
 
 _WAITINGNODEHEARTBEAT = _descriptor.Descriptor(
   name='WaitingNodeHeartbeat',
-  full_name='seth.elect.protobuf.WaitingNodeHeartbeat',
+  full_name='shardora.elect.protobuf.WaitingNodeHeartbeat',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='public_ip', full_name='seth.elect.protobuf.WaitingNodeHeartbeat.public_ip', index=0,
+      name='public_ip', full_name='shardora.elect.protobuf.WaitingNodeHeartbeat.public_ip', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='public_port', full_name='seth.elect.protobuf.WaitingNodeHeartbeat.public_port', index=1,
+      name='public_port', full_name='shardora.elect.protobuf.WaitingNodeHeartbeat.public_port', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='network_id', full_name='seth.elect.protobuf.WaitingNodeHeartbeat.network_id', index=2,
+      name='network_id', full_name='shardora.elect.protobuf.WaitingNodeHeartbeat.network_id', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp_sec', full_name='seth.elect.protobuf.WaitingNodeHeartbeat.timestamp_sec', index=3,
+      name='timestamp_sec', full_name='shardora.elect.protobuf.WaitingNodeHeartbeat.timestamp_sec', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -523,20 +523,20 @@ _WAITINGNODEHEARTBEAT = _descriptor.Descriptor(
 
 _LEADERROTATIONMESSAGE = _descriptor.Descriptor(
   name='LeaderRotationMessage',
-  full_name='seth.elect.protobuf.LeaderRotationMessage',
+  full_name='shardora.elect.protobuf.LeaderRotationMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='leader_id', full_name='seth.elect.protobuf.LeaderRotationMessage.leader_id', index=0,
+      name='leader_id', full_name='shardora.elect.protobuf.LeaderRotationMessage.leader_id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pool_mod_num', full_name='seth.elect.protobuf.LeaderRotationMessage.pool_mod_num', index=1,
+      name='pool_mod_num', full_name='shardora.elect.protobuf.LeaderRotationMessage.pool_mod_num', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -561,20 +561,20 @@ _LEADERROTATIONMESSAGE = _descriptor.Descriptor(
 
 _SYNCNODESTOKEITEM = _descriptor.Descriptor(
   name='SyncNodeStokeItem',
-  full_name='seth.elect.protobuf.SyncNodeStokeItem',
+  full_name='shardora.elect.protobuf.SyncNodeStokeItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='seth.elect.protobuf.SyncNodeStokeItem.id', index=0,
+      name='id', full_name='shardora.elect.protobuf.SyncNodeStokeItem.id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='synced_tm_height', full_name='seth.elect.protobuf.SyncNodeStokeItem.synced_tm_height', index=1,
+      name='synced_tm_height', full_name='shardora.elect.protobuf.SyncNodeStokeItem.synced_tm_height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -599,20 +599,20 @@ _SYNCNODESTOKEITEM = _descriptor.Descriptor(
 
 _SYNCNODESTOKEREQUEST = _descriptor.Descriptor(
   name='SyncNodeStokeRequest',
-  full_name='seth.elect.protobuf.SyncNodeStokeRequest',
+  full_name='shardora.elect.protobuf.SyncNodeStokeRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sync_item', full_name='seth.elect.protobuf.SyncNodeStokeRequest.sync_item', index=0,
+      name='sync_item', full_name='shardora.elect.protobuf.SyncNodeStokeRequest.sync_item', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='now_tm_height', full_name='seth.elect.protobuf.SyncNodeStokeRequest.now_tm_height', index=1,
+      name='now_tm_height', full_name='shardora.elect.protobuf.SyncNodeStokeRequest.now_tm_height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -637,20 +637,20 @@ _SYNCNODESTOKEREQUEST = _descriptor.Descriptor(
 
 _SYNCNODESTOKERESITEM = _descriptor.Descriptor(
   name='SyncNodeStokeResItem',
-  full_name='seth.elect.protobuf.SyncNodeStokeResItem',
+  full_name='shardora.elect.protobuf.SyncNodeStokeResItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='seth.elect.protobuf.SyncNodeStokeResItem.id', index=0,
+      name='id', full_name='shardora.elect.protobuf.SyncNodeStokeResItem.id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='balance', full_name='seth.elect.protobuf.SyncNodeStokeResItem.balance', index=1,
+      name='balance', full_name='shardora.elect.protobuf.SyncNodeStokeResItem.balance', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -675,20 +675,20 @@ _SYNCNODESTOKERESITEM = _descriptor.Descriptor(
 
 _SYNCNODESTOKERESPONSE = _descriptor.Descriptor(
   name='SyncNodeStokeResponse',
-  full_name='seth.elect.protobuf.SyncNodeStokeResponse',
+  full_name='shardora.elect.protobuf.SyncNodeStokeResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='items', full_name='seth.elect.protobuf.SyncNodeStokeResponse.items', index=0,
+      name='items', full_name='shardora.elect.protobuf.SyncNodeStokeResponse.items', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='now_tm_height', full_name='seth.elect.protobuf.SyncNodeStokeResponse.now_tm_height', index=1,
+      name='now_tm_height', full_name='shardora.elect.protobuf.SyncNodeStokeResponse.now_tm_height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -713,76 +713,76 @@ _SYNCNODESTOKERESPONSE = _descriptor.Descriptor(
 
 _ELECTMESSAGE = _descriptor.Descriptor(
   name='ElectMessage',
-  full_name='seth.elect.protobuf.ElectMessage',
+  full_name='shardora.elect.protobuf.ElectMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='elect_block', full_name='seth.elect.protobuf.ElectMessage.elect_block', index=0,
+      name='elect_block', full_name='shardora.elect.protobuf.ElectMessage.elect_block', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='prev_elect_block', full_name='seth.elect.protobuf.ElectMessage.prev_elect_block', index=1,
+      name='prev_elect_block', full_name='shardora.elect.protobuf.ElectMessage.prev_elect_block', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='waiting_nodes', full_name='seth.elect.protobuf.ElectMessage.waiting_nodes', index=2,
+      name='waiting_nodes', full_name='shardora.elect.protobuf.ElectMessage.waiting_nodes', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='member_index', full_name='seth.elect.protobuf.ElectMessage.member_index', index=3,
+      name='member_index', full_name='shardora.elect.protobuf.ElectMessage.member_index', index=3,
       number=4, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sign_ch', full_name='seth.elect.protobuf.ElectMessage.sign_ch', index=4,
+      name='sign_ch', full_name='shardora.elect.protobuf.ElectMessage.sign_ch', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sign_res', full_name='seth.elect.protobuf.ElectMessage.sign_res', index=5,
+      name='sign_res', full_name='shardora.elect.protobuf.ElectMessage.sign_res', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='waiting_heartbeat', full_name='seth.elect.protobuf.ElectMessage.waiting_heartbeat', index=6,
+      name='waiting_heartbeat', full_name='shardora.elect.protobuf.ElectMessage.waiting_heartbeat', index=6,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='leader_rotation', full_name='seth.elect.protobuf.ElectMessage.leader_rotation', index=7,
+      name='leader_rotation', full_name='shardora.elect.protobuf.ElectMessage.leader_rotation', index=7,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sync_stoke_req', full_name='seth.elect.protobuf.ElectMessage.sync_stoke_req', index=8,
+      name='sync_stoke_req', full_name='shardora.elect.protobuf.ElectMessage.sync_stoke_req', index=8,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sync_stoke_res', full_name='seth.elect.protobuf.ElectMessage.sync_stoke_res', index=9,
+      name='sync_stoke_res', full_name='shardora.elect.protobuf.ElectMessage.sync_stoke_res', index=9,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -837,105 +837,105 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 VerifyVecValue = _reflection.GeneratedProtocolMessageType('VerifyVecValue', (_message.Message,), dict(
   DESCRIPTOR = _VERIFYVECVALUE,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.VerifyVecValue)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.VerifyVecValue)
   ))
 _sym_db.RegisterMessage(VerifyVecValue)
 
 BlsPublicKey = _reflection.GeneratedProtocolMessageType('BlsPublicKey', (_message.Message,), dict(
   DESCRIPTOR = _BLSPUBLICKEY,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.BlsPublicKey)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.BlsPublicKey)
   ))
 _sym_db.RegisterMessage(BlsPublicKey)
 
 BlsPopProof = _reflection.GeneratedProtocolMessageType('BlsPopProof', (_message.Message,), dict(
   DESCRIPTOR = _BLSPOPPROOF,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.BlsPopProof)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.BlsPopProof)
   ))
 _sym_db.RegisterMessage(BlsPopProof)
 
 PrevMemberInfo = _reflection.GeneratedProtocolMessageType('PrevMemberInfo', (_message.Message,), dict(
   DESCRIPTOR = _PREVMEMBERINFO,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.PrevMemberInfo)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.PrevMemberInfo)
   ))
 _sym_db.RegisterMessage(PrevMemberInfo)
 
 PrevMembers = _reflection.GeneratedProtocolMessageType('PrevMembers', (_message.Message,), dict(
   DESCRIPTOR = _PREVMEMBERS,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.PrevMembers)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.PrevMembers)
   ))
 _sym_db.RegisterMessage(PrevMembers)
 
 member = _reflection.GeneratedProtocolMessageType('member', (_message.Message,), dict(
   DESCRIPTOR = _MEMBER,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.member)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.member)
   ))
 _sym_db.RegisterMessage(member)
 
 ElectBlock = _reflection.GeneratedProtocolMessageType('ElectBlock', (_message.Message,), dict(
   DESCRIPTOR = _ELECTBLOCK,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.ElectBlock)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.ElectBlock)
   ))
 _sym_db.RegisterMessage(ElectBlock)
 
 WaitingNodesMessage = _reflection.GeneratedProtocolMessageType('WaitingNodesMessage', (_message.Message,), dict(
   DESCRIPTOR = _WAITINGNODESMESSAGE,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.WaitingNodesMessage)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.WaitingNodesMessage)
   ))
 _sym_db.RegisterMessage(WaitingNodesMessage)
 
 WaitingNodeHeartbeat = _reflection.GeneratedProtocolMessageType('WaitingNodeHeartbeat', (_message.Message,), dict(
   DESCRIPTOR = _WAITINGNODEHEARTBEAT,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.WaitingNodeHeartbeat)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.WaitingNodeHeartbeat)
   ))
 _sym_db.RegisterMessage(WaitingNodeHeartbeat)
 
 LeaderRotationMessage = _reflection.GeneratedProtocolMessageType('LeaderRotationMessage', (_message.Message,), dict(
   DESCRIPTOR = _LEADERROTATIONMESSAGE,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.LeaderRotationMessage)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.LeaderRotationMessage)
   ))
 _sym_db.RegisterMessage(LeaderRotationMessage)
 
 SyncNodeStokeItem = _reflection.GeneratedProtocolMessageType('SyncNodeStokeItem', (_message.Message,), dict(
   DESCRIPTOR = _SYNCNODESTOKEITEM,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeItem)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeItem)
   ))
 _sym_db.RegisterMessage(SyncNodeStokeItem)
 
 SyncNodeStokeRequest = _reflection.GeneratedProtocolMessageType('SyncNodeStokeRequest', (_message.Message,), dict(
   DESCRIPTOR = _SYNCNODESTOKEREQUEST,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeRequest)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeRequest)
   ))
 _sym_db.RegisterMessage(SyncNodeStokeRequest)
 
 SyncNodeStokeResItem = _reflection.GeneratedProtocolMessageType('SyncNodeStokeResItem', (_message.Message,), dict(
   DESCRIPTOR = _SYNCNODESTOKERESITEM,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeResItem)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeResItem)
   ))
 _sym_db.RegisterMessage(SyncNodeStokeResItem)
 
 SyncNodeStokeResponse = _reflection.GeneratedProtocolMessageType('SyncNodeStokeResponse', (_message.Message,), dict(
   DESCRIPTOR = _SYNCNODESTOKERESPONSE,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.SyncNodeStokeResponse)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.SyncNodeStokeResponse)
   ))
 _sym_db.RegisterMessage(SyncNodeStokeResponse)
 
 ElectMessage = _reflection.GeneratedProtocolMessageType('ElectMessage', (_message.Message,), dict(
   DESCRIPTOR = _ELECTMESSAGE,
   __module__ = 'protos.elect_pb2'
-  # @@protoc_insertion_point(class_scope:seth.elect.protobuf.ElectMessage)
+  # @@protoc_insertion_point(class_scope:shardora.elect.protobuf.ElectMessage)
   ))
 _sym_db.RegisterMessage(ElectMessage)
 

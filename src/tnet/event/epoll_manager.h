@@ -7,7 +7,7 @@
 #include "tnet/event/event_handler.h"
 #include "tnet/event/io_event.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -37,4 +37,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

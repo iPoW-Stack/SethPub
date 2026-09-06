@@ -6,7 +6,7 @@
 #define private public
 #include "common/lof.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -271,4 +271,4 @@ TEST_F(TestLofExtended, KDistanceBothSkipConditions) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

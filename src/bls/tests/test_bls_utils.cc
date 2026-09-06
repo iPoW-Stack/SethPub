@@ -11,7 +11,7 @@
 #include "bls/bls_utils.h"
 #include "common/encode.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -180,4 +180,4 @@ TEST_F(TestBlsUtils, TimeBlockItemFields) {
 
 }  // namespace bls
 
-}  // namespace seth
+}  // namespace shardora

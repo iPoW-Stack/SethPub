@@ -20,7 +20,7 @@ import (
 
 // Test client to demonstrate credential creation and submission
 func main() {
-	fmt.Println("=== Seth Purchase Service Test Client ===\n")
+	fmt.Println("=== Shardora Purchase Service Test Client ===\n")
 
 	// 1. Generate ECDSA key pair
 	fmt.Println("1. Generating ECDSA key pair...")
@@ -44,8 +44,8 @@ func main() {
 	// 2. Create credential
 	fmt.Println("2. Creating purchase credential...")
 	
-	// Seth address to receive coins (example address)
-	sethAddress := "1234567890abcdef1234567890abcdef12345678"
+	// Shardora address to receive coins (example address)
+	shardoraAddress := "1234567890abcdef1234567890abcdef12345678"
 	
 	// Generate nonce
 	nonceBytes := make([]byte, 16)
@@ -58,13 +58,13 @@ func main() {
 	// Current timestamp
 	timestamp := time.Now().Unix()
 
-	fmt.Printf("   Address: %s\n", sethAddress)
+	fmt.Printf("   Address: %s\n", shardoraAddress)
 	fmt.Printf("   Timestamp: %d\n", timestamp)
 	fmt.Printf("   Nonce: %s\n\n", nonce)
 
 	// 3. Sign credential
 	fmt.Println("3. Signing credential...")
-	message := fmt.Sprintf("%s:%d:%s", sethAddress, timestamp, nonce)
+	message := fmt.Sprintf("%s:%d:%s", shardoraAddress, timestamp, nonce)
 	messageHash := sha256.Sum256([]byte(message))
 
 	r, s, err := ecdsa.Sign(rand.Reader, privKey, messageHash[:])
@@ -87,7 +87,7 @@ func main() {
 
 	// 4. Create credential JSON
 	credential := map[string]interface{}{
-		"address":    sethAddress,
+		"address":    shardoraAddress,
 		"timestamp":  timestamp,
 		"nonce":      nonce,
 		"signature":  signatureHex,
@@ -116,7 +116,7 @@ func main() {
 	resp, err := client.Post(serverURL, "application/json", bytes.NewBuffer(credJSON))
 	if err != nil {
 		fmt.Printf("Failed to send request: %v\n", err)
-		fmt.Println("   Make sure the server is running: go run main.go seth_client.go")
+		fmt.Println("   Make sure the server is running: go run main.go shardora_client.go")
 		return
 	}
 	defer resp.Body.Close()

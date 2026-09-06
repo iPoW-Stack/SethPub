@@ -29,7 +29,7 @@
 #include "init/init_utils.h"
 #include "security/ecdsa/sodium_private_key.h"
 
-namespace seth {
+namespace shardora {
 
 namespace init {
 
@@ -191,4 +191,4 @@ void Command::Help() {
 
 }  // namespace init
 
-}  // namespace seth
+}  // namespace shardora

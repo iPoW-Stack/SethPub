@@ -4,7 +4,7 @@
 #include <common/node_members.h>
 #include <consensus/hotstuff/view_block_chain.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -57,4 +57,4 @@ private:
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

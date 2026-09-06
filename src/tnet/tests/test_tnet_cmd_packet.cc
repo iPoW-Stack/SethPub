@@ -2,7 +2,7 @@
 
 #include "tnet/utils/cmd_packet.h"
 
-namespace seth {
+namespace shardora {
 namespace tnet {
 namespace test {
 
@@ -26,4 +26,4 @@ TEST(CmdPacketFactory, CreateCoversAllSwitchCases) {
 
 }  // namespace test
 }  // namespace tnet
-}  // namespace seth
+}  // namespace shardora

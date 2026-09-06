@@ -4,7 +4,7 @@
 
 #include "common/limit_heap.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -44,4 +44,4 @@ TEST(LimitHeapAdjustDeepBranches, PushAfterPopRebuildsHeap) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

@@ -19,7 +19,7 @@ update_nonce_con.wait_for(lock, std::chrono::milliseconds(30000));
 // 当获取新nonce时，立即同步到prikey_with_nonce
 if (nonce > prikey_with_nonce[addr]) {
     prikey_with_nonce[addr] = nonce;
-    SETH_INFO("[NONCE_UPDATE] Nonce synchronized for %s: old=%lu, new=%lu, next_send=%lu",
+    SHARDORA_INFO("[NONCE_UPDATE] Nonce synchronized for %s: old=%lu, new=%lu, next_send=%lu",
         common::Encode::HexEncode(addr).substr(0, 16).c_str(), old_nonce, nonce, nonce + 1);
 }
 ```

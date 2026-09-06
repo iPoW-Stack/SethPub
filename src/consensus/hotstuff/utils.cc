@@ -5,9 +5,9 @@
 #include "pools/tx_utils.h"
 #include "pools/tx_pool_manager.h"
 #include "protos/prefix_db.h"
-#include "sethvm/seth_host.h"
+#include "shardoravm/shardora_host.h"
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -29,7 +29,7 @@ std::string GetBlockHash(const view_block::protobuf::ViewBlockItem &view_block) 
     serialized.append(view_block.parent_hash());
     auto hash = common::Hash::keccak256(serialized);
 
-    SETH_DEBUG("get block hash: %s, sharding_id: %u, pool_index: %u, "
+    SHARDORA_DEBUG("get block hash: %s, sharding_id: %u, pool_index: %u, "
         "phash: %s, vss_random: %lu, height: %lu, "
         "timeblock_height: %lu, timestamp: %lu, msg: %s",
         common::Encode::HexEncode(hash).c_str(),
@@ -87,7 +87,7 @@ int CheckTransactionValid(
                 addr_info.addr(), 
                 tx_info.nonce(), 
                 tx_info.key())) {
-            SETH_DEBUG("pool statistic tag or statistic tx unique hash not exists to: %s, unique hash: %s, step: %d",
+            SHARDORA_DEBUG("pool statistic tag or statistic tx unique hash not exists to: %s, unique hash: %s, step: %d",
                 common::Encode::HexEncode(addr_info.addr()).c_str(),
                 common::Encode::HexEncode(tx_info.key()).c_str(),
                 (int32_t)tx_info.step());
@@ -95,19 +95,19 @@ int CheckTransactionValid(
         }
     }
 
-    sethvm::SethhainHost seth_host;
-    seth_host.parent_hash_ = parent_hash;
-    seth_host.view_block_chain_ = view_block_chain;
+    shardoravm::ShardorahainHost shardora_host;
+    shardora_host.parent_hash_ = parent_hash;
+    shardora_host.view_block_chain_ = view_block_chain;
     std::string val;
-    if (seth_host.GetKeyValue(tx_info.to(), tx_info.key(), &val) == sethvm::kSethvmSuccess) {
-        SETH_DEBUG("not user tx unique hash exists to: %s, unique hash: %s, step: %d",
+    if (shardora_host.GetKeyValue(tx_info.to(), tx_info.key(), &val) == shardoravm::kShardoravmSuccess) {
+        SHARDORA_DEBUG("not user tx unique hash exists to: %s, unique hash: %s, step: %d",
             common::Encode::HexEncode(tx_info.to()).c_str(),
             common::Encode::HexEncode(tx_info.key()).c_str(),
             (int32_t)tx_info.step());
         return 1;
     }
 
-    SETH_DEBUG("not user tx unique hash success to: %s, unique hash: %s",
+    SHARDORA_DEBUG("not user tx unique hash success to: %s, unique hash: %s",
         common::Encode::HexEncode(tx_info.to()).c_str(),
         common::Encode::HexEncode(tx_info.key()).c_str());
     return 0;
@@ -129,4 +129,4 @@ bool ViewBlockIsCheckedParentHash(
 
 } // namespace consensus
 
-} // namespace seth
+} // namespace shardora

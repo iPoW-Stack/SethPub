@@ -20,7 +20,7 @@ import argparse
 from typing import Dict, List, Any, Tuple
 
 sys.path.insert(0, os.path.dirname(__file__))
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link
 
 # ── Config ────────────────────────────────────────────────────────────────────
 HOST = "192.168.25.129"
@@ -52,7 +52,7 @@ def ok(receipt: Dict, label: str) -> None:
         raise RuntimeError(f"{label} FAILED status={status} msg={receipt.get('msg','')}")
 
 
-def fund(w3: SethWeb3Mock, addr: str, amount: int = INITIAL_BALANCE) -> None:
+def fund(w3: ShardoraWeb3Mock, addr: str, amount: int = INITIAL_BALANCE) -> None:
     bal = w3.client.get_balance(addr)
     if bal >= amount:
         return
@@ -100,7 +100,7 @@ def run_shard(shard: int) -> Dict[str, Any]:
     print(f"  SHARD {shard}  ({HOST}:{port})")
     print(f"{'='*60}")
 
-    w3 = SethWeb3Mock(HOST, port)
+    w3 = ShardoraWeb3Mock(HOST, port)
     results = {"shard": shard, "contracts": [], "errors": []}
 
     # ── Step 1: compile ────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ def run_shard(shard: int) -> Dict[str, Any]:
         buyer_addr2  = buyer_addrs[(ci + 1) % len(buyer_addrs)]
 
         try:
-            exchange = w3.seth.contract(abi=abi, bytecode=bytecode)
+            exchange = w3.shardora.contract(abi=abi, bytecode=bytecode)
             salt = secrets.token_hex(31) + f"{ci:02x}"
             exchange.deploy(
                 {"from": deployer_addr, "salt": salt, "args": [], "amount": 0},

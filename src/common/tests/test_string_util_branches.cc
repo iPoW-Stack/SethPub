@@ -4,7 +4,7 @@
 
 #include "common/string_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -67,4 +67,4 @@ TEST(StringUtilBranches, ToInt8RejectsOutOfRangeNegative) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

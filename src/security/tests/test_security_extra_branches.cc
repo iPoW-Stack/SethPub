@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include "security/security_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace security {
 namespace test {
 
@@ -107,4 +107,4 @@ TEST(SecurityUtilsExtraTest, DifferentNonceDifferentAddress) {
 
 }  // namespace test
 }  // namespace security
-}  // namespace seth
+}  // namespace shardora

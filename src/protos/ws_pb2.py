@@ -17,15 +17,15 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/ws.proto',
-  package='seth.ws.protobuf',
+  package='shardora.ws.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x0fprotos/ws.proto\x12\x10seth.ws.protobuf\"\xc6\x02\n\tTxMessage\x12\x0f\n\x07version\x18\x01 \x01(\r\x12\r\n\x05nonce\x18\x02 \x01(\x04\x12\x0e\n\x06pubkey\x18\x03 \x01(\x0c\x12\x11\n\tgas_limit\x18\x04 \x01(\x04\x12\x11\n\tgas_price\x18\x05 \x01(\x04\x12\x0b\n\x03key\x18\x06 \x01(\x0c\x12\r\n\x05value\x18\x07 \x01(\x0c\x12\n\n\x02to\x18\x08 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\t \x01(\x04\x12\x35\n\x04step\x18\n \x01(\x0e\x32\x1a.seth.ws.protobuf.StepType:\x0bkNormalFrom\x12\x18\n\x10\x63ontract_prefund\x18\x0b \x01(\x04\x12\x15\n\rcontract_code\x18\x0c \x01(\x0c\x12\x16\n\x0e\x63ontract_input\x18\r \x01(\x0c\x12\r\n\x05signr\x18\x0e \x01(\x0c\x12\r\n\x05signs\x18\x0f \x01(\x0c\x12\r\n\x05signv\x18\x10 \x01(\x0c\"z\n\tOrderInfo\x12\r\n\x05\x62uyer\x18\x01 \x01(\x0c\x12(\n\x06status\x18\x02 \x01(\x0e\x32\x18.seth.ws.protobuf.Status\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\x0e\n\x06seller\x18\x04 \x01(\x0c\x12\x14\n\x0c\x63reate_tm_ms\x18\x05 \x01(\x04\"\x89\x01\n\x0eReceivableInfo\x12+\n\x04type\x18\x01 \x01(\x0e\x32\x1d.seth.ws.protobuf.ReceiveType\x12\x0c\n\x04name\x18\x02 \x01(\x0c\x12\n\n\x02id\x18\x03 \x01(\x0c\x12\x11\n\tuser_name\x18\x04 \x01(\x0c\x12\r\n\x05other\x18\x05 \x01(\x0c\x12\x0e\n\x06qrcode\x18\x06 \x01(\x0c\"G\n\x0fReceivableArray\x12\x34\n\nreceivable\x18\x01 \x03(\x0b\x32 .seth.ws.protobuf.ReceivableInfo\"\x8d\x04\n\x08SellInfo\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\r\n\x05\x62uyer\x18\x02 \x01(\x0c\x12\x10\n\x08\x63ontract\x18\x03 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x04\x12\x35\n\nreceivable\x18\x05 \x01(\x0b\x32!.seth.ws.protobuf.ReceivableArray\x12\x0b\n\x03\x61ll\x18\x06 \x01(\x04\x12\r\n\x05price\x18\x07 \x01(\x04\x12\x10\n\x08mchecked\x18\x08 \x01(\r\x12\x10\n\x08schecked\x18\t \x01(\r\x12\x10\n\x08reported\x18\n \x01(\r\x12\x0f\n\x07orderId\x18\x0b \x01(\x04\x12\x0e\n\x06height\x18\x0c \x01(\x04\x12\x11\n\ttimestamp\x18\r \x01(\x04\x12\x10\n\x08username\x18\x0e \x01(\x0c\x12\x0e\n\x06status\x18\x0f \x01(\x05\x12\x17\n\x0fpurchase_amount\x18\x10 \x01(\x04\x12\x18\n\x10\x63reate_timestamp\x18\x11 \x01(\x04\x12\x12\n\nmin_amount\x18\x12 \x01(\x04\x12\x12\n\nmax_amount\x18\x13 \x01(\x04\x12\x0b\n\x03now\x18\x14 \x01(\x04\x12\x10\n\x08is_order\x18\x15 \x01(\x08\x12(\n\x06\x61ppeal\x18\x16 \x01(\x0b\x32\x18.seth.ws.protobuf.Appeal\x12\x0e\n\x06\x63redit\x18\x17 \x01(\x05\x12-\n\x0bpeer_appeal\x18\x18 \x01(\x0b\x32\x18.seth.ws.protobuf.Appeal\"9\n\x08NewOrder\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x04\x12\r\n\x05\x62uyer\x18\x03 \x01(\x0c\"S\n\x06\x41ppeal\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\r\n\x05\x62uyer\x18\x02 \x01(\x0c\x12\x0c\n\x04type\x18\x03 \x01(\x05\x12\x0f\n\x07\x63ontent\x18\x04 \x01(\x0c\x12\x0b\n\x03pic\x18\x05 \x01(\x0c\"\x85\x01\n\x07NewSell\x12\x15\n\rprotocol_addr\x18\x01 \x01(\x0c\x12\x0e\n\x06seller\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\r\n\x05price\x18\x04 \x01(\x04\x12\x34\n\nreceivable\x18\x05 \x03(\x0b\x32 .seth.ws.protobuf.ReceivableInfo\"3\n\x0b\x42uyerReport\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x14\n\x0creports_info\x18\x02 \x01(\x0c\"\x19\n\x07GetSell\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\"\xe9\x02\n\nC2cMessage\x12\'\n\x04sell\x18\x01 \x01(\x0b\x32\x19.seth.ws.protobuf.NewSell\x12)\n\x05order\x18\x02 \x01(\x0b\x32\x1a.seth.ws.protobuf.NewOrder\x12-\n\x06report\x18\x03 \x01(\x0b\x32\x1d.seth.ws.protobuf.BuyerReport\x12)\n\x05sells\x18\x04 \x03(\x0b\x32\x1a.seth.ws.protobuf.SellInfo\x12+\n\x08get_sell\x18\x05 \x01(\x0b\x32\x19.seth.ws.protobuf.GetSell\x12\x0f\n\x07prefund\x18\x06 \x01(\x04\x12\x10\n\x08\x63\x32\x63_addr\x18\x07 \x01(\x0c\x12\x33\n\x0fuser_order_info\x18\x08 \x01(\x0b\x32\x1a.seth.ws.protobuf.SellInfo\x12(\n\x06\x61ppeal\x18\t \x01(\x0b\x32\x18.seth.ws.protobuf.Appeal\"=\n\nStatusInfo\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\x0c\x12\x0e\n\x06msg_id\x18\x03 \x01(\x04\"\xa3\x02\n\x08InitInfo\x12\x0e\n\x06pubkey\x18\x01 \x01(\x0c\x12\x10\n\x08platform\x18\x02 \x01(\x0c\x12\x0f\n\x07version\x18\x03 \x01(\x0c\x12\x0f\n\x07pk_hash\x18\x04 \x01(\x0c\x12.\n\x03tag\x18\x05 \x01(\x0e\x32!.seth.ws.protobuf.InitInfoTagType\x12\'\n\x02tx\x18\x06 \x01(\x0b\x32\x1b.seth.ws.protobuf.TxMessage\x12\x11\n\ttx_height\x18\x07 \x01(\x04\x12)\n\x03\x63\x32\x63\x18\x08 \x01(\x0b\x32\x1c.seth.ws.protobuf.C2cMessage\x12,\n\x06status\x18\t \x01(\x0b\x32\x1c.seth.ws.protobuf.StatusInfo\x12\x0e\n\x06msg_id\x18\n \x01(\x04\"\x88\x01\n\x08WsTxItem\x12\x0c\n\x04\x66rom\x18\x01 \x01(\x0c\x12\n\n\x02to\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\x0f\n\x07\x62\x61lance\x18\x04 \x01(\x04\x12\x0e\n\x06height\x18\x05 \x01(\x04\x12\x0e\n\x06to_add\x18\x06 \x01(\r\x12\x11\n\ttimestamp\x18\x07 \x01(\x04\x12\x0e\n\x06status\x18\x08 \x01(\x05\";\n\x10WsTxItemResponse\x12\'\n\x03txs\x18\x01 \x03(\x0b\x32\x1a.seth.ws.protobuf.WsTxItem\"A\n\rBandwidthItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x11\n\tbandwidth\x18\x02 \x01(\x04\x12\x11\n\ttimestamp\x18\x03 \x01(\x04\"=\n\rBandwidthInfo\x12,\n\x03\x62ws\x18\x01 \x03(\x0b\x32\x1f.seth.ws.protobuf.BandwidthItem\"\x91\x01\n\tWsMessage\x12\'\n\x03txs\x18\x01 \x03(\x0b\x32\x1a.seth.ws.protobuf.WsTxItem\x12,\n\x03\x62ws\x18\x02 \x03(\x0b\x32\x1f.seth.ws.protobuf.BandwidthItem\x12-\n\tinit_info\x18\x03 \x01(\x0b\x32\x1a.seth.ws.protobuf.InitInfo*\xf0\x02\n\x08StepType\x12\x0f\n\x0bkNormalFrom\x10\x00\x12\r\n\tkNormalTo\x10\x01\x12\x1c\n\x18kConsensusRootElectShard\x10\x02\x12\x1b\n\x17kConsensusRootTimeBlock\x10\x03\x12!\n\x1dkConsensusCreateGenesisAcount\x10\x04\x12\x16\n\x12kConsensusLocalTos\x10\x05\x12\x13\n\x0fkCreateContract\x10\x06\x12\x17\n\x13kContractGasPrefund\x10\x07\x12\x13\n\x0fkContractExcute\x10\x08\x12\x16\n\x12kRootCreateAddress\x10\t\x12#\n\x1fkRootCreateAddressCrossSharding\x10\x0b\x12\x0e\n\nkStatistic\x10\x0c\x12\x0e\n\nkJoinElect\x10\r\x12\x12\n\x0ekCreateLibrary\x10\x0e\x12\n\n\x06kCross\x10\x0f\x12\x0e\n\nkRootCross\x10\x10*\xef\x02\n\x0fInitInfoTagType\x12\x11\n\rkNoneResponse\x10\x00\x12\x12\n\x0ekResponseNodes\x10\x01\x12\x14\n\x10kResponseBalance\x10\x02\x12\x13\n\x0fkResponseTxList\x10\x03\x12\x1b\n\x17kResponseOutOfBindwidth\x10\x04\x12\x10\n\x0ckTransaction\x10\x05\x12\x0e\n\nkC2cTxList\x10\x06\x12\x14\n\x10kC2cUserSellInfo\x10\x07\x12\x0f\n\x0bkC2cNewSell\x10\x08\x12\x10\n\x0ckC2cNewOrder\x10\t\x12\x0f\n\x0bkC2cConfirm\x10\n\x12\x0f\n\x0bkC2cPrefund\x10\x0b\x12\x14\n\x10kC2cRefreshLocal\x10\x0c\x12\x13\n\x0fkC2cCancelOrder\x10\r\x12\x12\n\x0ekC2cCancelSell\x10\x0e\x12\x16\n\x12kC2cManagerRecover\x10\x0f\x12\x19\n\x15kC2cManagerCancelSell\x10\x10*\x92\x01\n\x0bReceiveType\x12\x0b\n\x07kAlipay\x10\x00\x12\x0e\n\nkWeChatPay\x10\x01\x12\x0b\n\x07kPaypal\x10\x02\x12\r\n\tkBandCard\x10\x03\x12\x0f\n\x0bkCreditCard\x10\x04\x12\x0c\n\x08kBitcoin\x10\x05\x12\x08\n\x04kEth\x10\x06\x12\t\n\x05kUsdt\x10\x07\x12\t\n\x05kUsdc\x10\x08\x12\x0b\n\x07kUnkown\x10\t*\xfb\x04\n\x06Status\x12\x0c\n\x08kDefault\x10\x00\x12\x0e\n\nkConfirmed\x10\x01\x12\r\n\tkReported\x10\x02\x12\x10\n\x0ckSellWaiting\x10\x03\x12\x11\n\rkSellReleased\x10\x04\x12\x16\n\x12kSellWaitingCreate\x10\x05\x12\x10\n\x0ckSellCreated\x10\x06\x12\x17\n\x13kSellWaitingConfirm\x10\x07\x12\x10\n\x0ckSellTimeout\x10\x08\x12\x12\n\x0ekOrderCanceled\x10\t\x12\x1b\n\x17kSellUserWaitingRelease\x10\n\x12\x15\n\x11kSellUserReleased\x10\x0b\x12\x1e\n\x1akSellManagerWaitingRelease\x10\x0c\x12\x18\n\x14kSellManagerReleased\x10\r\x12\x10\n\x0ckSellPrefund\x10\x0e\x12\x17\n\x13kSellWaitingPrefund\x10\x0f\x12\x19\n\x15kSellWaitingConfirmTx\x10\x10\x12\x1e\n\x1akSellForceReleaseWaitingTx\x10\x11\x12\x16\n\x12kSellForceReleased\x10\x12\x12\x14\n\x10kReportedByOrder\x10\x13\x12\x17\n\x13kSellTxPrefundError\x10}\x12\x16\n\x12kSellTxCreateError\x10~\x12\x1b\n\x17kSellTxUserReleaseError\x10\x7f\x12\x1f\n\x1akSellTxManagerReleaseError\x10\x80\x01\x12\x1f\n\x1akSellWaitingConfirmTxError\x10\x81\x01\x12$\n\x1fkSellForceReleaseWaitingTxError\x10\x82\x01')
+  serialized_pb=_b('\n\x0fprotos/ws.proto\x12\x10shardora.ws.protobuf\"\xc6\x02\n\tTxMessage\x12\x0f\n\x07version\x18\x01 \x01(\r\x12\r\n\x05nonce\x18\x02 \x01(\x04\x12\x0e\n\x06pubkey\x18\x03 \x01(\x0c\x12\x11\n\tgas_limit\x18\x04 \x01(\x04\x12\x11\n\tgas_price\x18\x05 \x01(\x04\x12\x0b\n\x03key\x18\x06 \x01(\x0c\x12\r\n\x05value\x18\x07 \x01(\x0c\x12\n\n\x02to\x18\x08 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\t \x01(\x04\x12\x35\n\x04step\x18\n \x01(\x0e\x32\x1a.shardora.ws.protobuf.StepType:\x0bkNormalFrom\x12\x18\n\x10\x63ontract_prefund\x18\x0b \x01(\x04\x12\x15\n\rcontract_code\x18\x0c \x01(\x0c\x12\x16\n\x0e\x63ontract_input\x18\r \x01(\x0c\x12\r\n\x05signr\x18\x0e \x01(\x0c\x12\r\n\x05signs\x18\x0f \x01(\x0c\x12\r\n\x05signv\x18\x10 \x01(\x0c\"z\n\tOrderInfo\x12\r\n\x05\x62uyer\x18\x01 \x01(\x0c\x12(\n\x06status\x18\x02 \x01(\x0e\x32\x18.shardora.ws.protobuf.Status\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\x0e\n\x06seller\x18\x04 \x01(\x0c\x12\x14\n\x0c\x63reate_tm_ms\x18\x05 \x01(\x04\"\x89\x01\n\x0eReceivableInfo\x12+\n\x04type\x18\x01 \x01(\x0e\x32\x1d.shardora.ws.protobuf.ReceiveType\x12\x0c\n\x04name\x18\x02 \x01(\x0c\x12\n\n\x02id\x18\x03 \x01(\x0c\x12\x11\n\tuser_name\x18\x04 \x01(\x0c\x12\r\n\x05other\x18\x05 \x01(\x0c\x12\x0e\n\x06qrcode\x18\x06 \x01(\x0c\"G\n\x0fReceivableArray\x12\x34\n\nreceivable\x18\x01 \x03(\x0b\x32 .shardora.ws.protobuf.ReceivableInfo\"\x8d\x04\n\x08SellInfo\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\r\n\x05\x62uyer\x18\x02 \x01(\x0c\x12\x10\n\x08\x63ontract\x18\x03 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x04 \x01(\x04\x12\x35\n\nreceivable\x18\x05 \x01(\x0b\x32!.shardora.ws.protobuf.ReceivableArray\x12\x0b\n\x03\x61ll\x18\x06 \x01(\x04\x12\r\n\x05price\x18\x07 \x01(\x04\x12\x10\n\x08mchecked\x18\x08 \x01(\r\x12\x10\n\x08schecked\x18\t \x01(\r\x12\x10\n\x08reported\x18\n \x01(\r\x12\x0f\n\x07orderId\x18\x0b \x01(\x04\x12\x0e\n\x06height\x18\x0c \x01(\x04\x12\x11\n\ttimestamp\x18\r \x01(\x04\x12\x10\n\x08username\x18\x0e \x01(\x0c\x12\x0e\n\x06status\x18\x0f \x01(\x05\x12\x17\n\x0fpurchase_amount\x18\x10 \x01(\x04\x12\x18\n\x10\x63reate_timestamp\x18\x11 \x01(\x04\x12\x12\n\nmin_amount\x18\x12 \x01(\x04\x12\x12\n\nmax_amount\x18\x13 \x01(\x04\x12\x0b\n\x03now\x18\x14 \x01(\x04\x12\x10\n\x08is_order\x18\x15 \x01(\x08\x12(\n\x06\x61ppeal\x18\x16 \x01(\x0b\x32\x18.shardora.ws.protobuf.Appeal\x12\x0e\n\x06\x63redit\x18\x17 \x01(\x05\x12-\n\x0bpeer_appeal\x18\x18 \x01(\x0b\x32\x18.shardora.ws.protobuf.Appeal\"9\n\x08NewOrder\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x04\x12\r\n\x05\x62uyer\x18\x03 \x01(\x0c\"S\n\x06\x41ppeal\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\r\n\x05\x62uyer\x18\x02 \x01(\x0c\x12\x0c\n\x04type\x18\x03 \x01(\x05\x12\x0f\n\x07\x63ontent\x18\x04 \x01(\x0c\x12\x0b\n\x03pic\x18\x05 \x01(\x0c\"\x85\x01\n\x07NewSell\x12\x15\n\rprotocol_addr\x18\x01 \x01(\x0c\x12\x0e\n\x06seller\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\r\n\x05price\x18\x04 \x01(\x04\x12\x34\n\nreceivable\x18\x05 \x03(\x0b\x32 .shardora.ws.protobuf.ReceivableInfo\"3\n\x0b\x42uyerReport\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x14\n\x0creports_info\x18\x02 \x01(\x0c\"\x19\n\x07GetSell\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\"\xe9\x02\n\nC2cMessage\x12\'\n\x04sell\x18\x01 \x01(\x0b\x32\x19.shardora.ws.protobuf.NewSell\x12)\n\x05order\x18\x02 \x01(\x0b\x32\x1a.shardora.ws.protobuf.NewOrder\x12-\n\x06report\x18\x03 \x01(\x0b\x32\x1d.shardora.ws.protobuf.BuyerReport\x12)\n\x05sells\x18\x04 \x03(\x0b\x32\x1a.shardora.ws.protobuf.SellInfo\x12+\n\x08get_sell\x18\x05 \x01(\x0b\x32\x19.shardora.ws.protobuf.GetSell\x12\x0f\n\x07prefund\x18\x06 \x01(\x04\x12\x10\n\x08\x63\x32\x63_addr\x18\x07 \x01(\x0c\x12\x33\n\x0fuser_order_info\x18\x08 \x01(\x0b\x32\x1a.shardora.ws.protobuf.SellInfo\x12(\n\x06\x61ppeal\x18\t \x01(\x0b\x32\x18.shardora.ws.protobuf.Appeal\"=\n\nStatusInfo\x12\x0e\n\x06status\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\x0c\x12\x0e\n\x06msg_id\x18\x03 \x01(\x04\"\xa3\x02\n\x08InitInfo\x12\x0e\n\x06pubkey\x18\x01 \x01(\x0c\x12\x10\n\x08platform\x18\x02 \x01(\x0c\x12\x0f\n\x07version\x18\x03 \x01(\x0c\x12\x0f\n\x07pk_hash\x18\x04 \x01(\x0c\x12.\n\x03tag\x18\x05 \x01(\x0e\x32!.shardora.ws.protobuf.InitInfoTagType\x12\'\n\x02tx\x18\x06 \x01(\x0b\x32\x1b.shardora.ws.protobuf.TxMessage\x12\x11\n\ttx_height\x18\x07 \x01(\x04\x12)\n\x03\x63\x32\x63\x18\x08 \x01(\x0b\x32\x1c.shardora.ws.protobuf.C2cMessage\x12,\n\x06status\x18\t \x01(\x0b\x32\x1c.shardora.ws.protobuf.StatusInfo\x12\x0e\n\x06msg_id\x18\n \x01(\x04\"\x88\x01\n\x08WsTxItem\x12\x0c\n\x04\x66rom\x18\x01 \x01(\x0c\x12\n\n\x02to\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\x0f\n\x07\x62\x61lance\x18\x04 \x01(\x04\x12\x0e\n\x06height\x18\x05 \x01(\x04\x12\x0e\n\x06to_add\x18\x06 \x01(\r\x12\x11\n\ttimestamp\x18\x07 \x01(\x04\x12\x0e\n\x06status\x18\x08 \x01(\x05\";\n\x10WsTxItemResponse\x12\'\n\x03txs\x18\x01 \x03(\x0b\x32\x1a.shardora.ws.protobuf.WsTxItem\"A\n\rBandwidthItem\x12\n\n\x02id\x18\x01 \x01(\x0c\x12\x11\n\tbandwidth\x18\x02 \x01(\x04\x12\x11\n\ttimestamp\x18\x03 \x01(\x04\"=\n\rBandwidthInfo\x12,\n\x03\x62ws\x18\x01 \x03(\x0b\x32\x1f.shardora.ws.protobuf.BandwidthItem\"\x91\x01\n\tWsMessage\x12\'\n\x03txs\x18\x01 \x03(\x0b\x32\x1a.shardora.ws.protobuf.WsTxItem\x12,\n\x03\x62ws\x18\x02 \x03(\x0b\x32\x1f.shardora.ws.protobuf.BandwidthItem\x12-\n\tinit_info\x18\x03 \x01(\x0b\x32\x1a.shardora.ws.protobuf.InitInfo*\xf0\x02\n\x08StepType\x12\x0f\n\x0bkNormalFrom\x10\x00\x12\r\n\tkNormalTo\x10\x01\x12\x1c\n\x18kConsensusRootElectShard\x10\x02\x12\x1b\n\x17kConsensusRootTimeBlock\x10\x03\x12!\n\x1dkConsensusCreateGenesisAcount\x10\x04\x12\x16\n\x12kConsensusLocalTos\x10\x05\x12\x13\n\x0fkCreateContract\x10\x06\x12\x17\n\x13kContractGasPrefund\x10\x07\x12\x13\n\x0fkContractExcute\x10\x08\x12\x16\n\x12kRootCreateAddress\x10\t\x12#\n\x1fkRootCreateAddressCrossSharding\x10\x0b\x12\x0e\n\nkStatistic\x10\x0c\x12\x0e\n\nkJoinElect\x10\r\x12\x12\n\x0ekCreateLibrary\x10\x0e\x12\n\n\x06kCross\x10\x0f\x12\x0e\n\nkRootCross\x10\x10*\xef\x02\n\x0fInitInfoTagType\x12\x11\n\rkNoneResponse\x10\x00\x12\x12\n\x0ekResponseNodes\x10\x01\x12\x14\n\x10kResponseBalance\x10\x02\x12\x13\n\x0fkResponseTxList\x10\x03\x12\x1b\n\x17kResponseOutOfBindwidth\x10\x04\x12\x10\n\x0ckTransaction\x10\x05\x12\x0e\n\nkC2cTxList\x10\x06\x12\x14\n\x10kC2cUserSellInfo\x10\x07\x12\x0f\n\x0bkC2cNewSell\x10\x08\x12\x10\n\x0ckC2cNewOrder\x10\t\x12\x0f\n\x0bkC2cConfirm\x10\n\x12\x0f\n\x0bkC2cPrefund\x10\x0b\x12\x14\n\x10kC2cRefreshLocal\x10\x0c\x12\x13\n\x0fkC2cCancelOrder\x10\r\x12\x12\n\x0ekC2cCancelSell\x10\x0e\x12\x16\n\x12kC2cManagerRecover\x10\x0f\x12\x19\n\x15kC2cManagerCancelSell\x10\x10*\x92\x01\n\x0bReceiveType\x12\x0b\n\x07kAlipay\x10\x00\x12\x0e\n\nkWeChatPay\x10\x01\x12\x0b\n\x07kPaypal\x10\x02\x12\r\n\tkBandCard\x10\x03\x12\x0f\n\x0bkCreditCard\x10\x04\x12\x0c\n\x08kBitcoin\x10\x05\x12\x08\n\x04kEth\x10\x06\x12\t\n\x05kUsdt\x10\x07\x12\t\n\x05kUsdc\x10\x08\x12\x0b\n\x07kUnkown\x10\t*\xfb\x04\n\x06Status\x12\x0c\n\x08kDefault\x10\x00\x12\x0e\n\nkConfirmed\x10\x01\x12\r\n\tkReported\x10\x02\x12\x10\n\x0ckSellWaiting\x10\x03\x12\x11\n\rkSellReleased\x10\x04\x12\x16\n\x12kSellWaitingCreate\x10\x05\x12\x10\n\x0ckSellCreated\x10\x06\x12\x17\n\x13kSellWaitingConfirm\x10\x07\x12\x10\n\x0ckSellTimeout\x10\x08\x12\x12\n\x0ekOrderCanceled\x10\t\x12\x1b\n\x17kSellUserWaitingRelease\x10\n\x12\x15\n\x11kSellUserReleased\x10\x0b\x12\x1e\n\x1akSellManagerWaitingRelease\x10\x0c\x12\x18\n\x14kSellManagerReleased\x10\r\x12\x10\n\x0ckSellPrefund\x10\x0e\x12\x17\n\x13kSellWaitingPrefund\x10\x0f\x12\x19\n\x15kSellWaitingConfirmTx\x10\x10\x12\x1e\n\x1akSellForceReleaseWaitingTx\x10\x11\x12\x16\n\x12kSellForceReleased\x10\x12\x12\x14\n\x10kReportedByOrder\x10\x13\x12\x17\n\x13kSellTxPrefundError\x10}\x12\x16\n\x12kSellTxCreateError\x10~\x12\x1b\n\x17kSellTxUserReleaseError\x10\x7f\x12\x1f\n\x1akSellTxManagerReleaseError\x10\x80\x01\x12\x1f\n\x1akSellWaitingConfirmTxError\x10\x81\x01\x12$\n\x1fkSellForceReleaseWaitingTxError\x10\x82\x01')
 )
 
 _STEPTYPE = _descriptor.EnumDescriptor(
   name='StepType',
-  full_name='seth.ws.protobuf.StepType',
+  full_name='shardora.ws.protobuf.StepType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -104,7 +104,7 @@ _sym_db.RegisterEnumDescriptor(_STEPTYPE)
 StepType = enum_type_wrapper.EnumTypeWrapper(_STEPTYPE)
 _INITINFOTAGTYPE = _descriptor.EnumDescriptor(
   name='InitInfoTagType',
-  full_name='seth.ws.protobuf.InitInfoTagType',
+  full_name='shardora.ws.protobuf.InitInfoTagType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -187,7 +187,7 @@ _sym_db.RegisterEnumDescriptor(_INITINFOTAGTYPE)
 InitInfoTagType = enum_type_wrapper.EnumTypeWrapper(_INITINFOTAGTYPE)
 _RECEIVETYPE = _descriptor.EnumDescriptor(
   name='ReceiveType',
-  full_name='seth.ws.protobuf.ReceiveType',
+  full_name='shardora.ws.protobuf.ReceiveType',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -242,7 +242,7 @@ _sym_db.RegisterEnumDescriptor(_RECEIVETYPE)
 ReceiveType = enum_type_wrapper.EnumTypeWrapper(_RECEIVETYPE)
 _STATUS = _descriptor.EnumDescriptor(
   name='Status',
-  full_name='seth.ws.protobuf.Status',
+  full_name='shardora.ws.protobuf.Status',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -433,118 +433,118 @@ kSellForceReleaseWaitingTxError = 130
 
 _TXMESSAGE = _descriptor.Descriptor(
   name='TxMessage',
-  full_name='seth.ws.protobuf.TxMessage',
+  full_name='shardora.ws.protobuf.TxMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='version', full_name='seth.ws.protobuf.TxMessage.version', index=0,
+      name='version', full_name='shardora.ws.protobuf.TxMessage.version', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='nonce', full_name='seth.ws.protobuf.TxMessage.nonce', index=1,
+      name='nonce', full_name='shardora.ws.protobuf.TxMessage.nonce', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pubkey', full_name='seth.ws.protobuf.TxMessage.pubkey', index=2,
+      name='pubkey', full_name='shardora.ws.protobuf.TxMessage.pubkey', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='gas_limit', full_name='seth.ws.protobuf.TxMessage.gas_limit', index=3,
+      name='gas_limit', full_name='shardora.ws.protobuf.TxMessage.gas_limit', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='gas_price', full_name='seth.ws.protobuf.TxMessage.gas_price', index=4,
+      name='gas_price', full_name='shardora.ws.protobuf.TxMessage.gas_price', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='key', full_name='seth.ws.protobuf.TxMessage.key', index=5,
+      name='key', full_name='shardora.ws.protobuf.TxMessage.key', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='seth.ws.protobuf.TxMessage.value', index=6,
+      name='value', full_name='shardora.ws.protobuf.TxMessage.value', index=6,
       number=7, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='to', full_name='seth.ws.protobuf.TxMessage.to', index=7,
+      name='to', full_name='shardora.ws.protobuf.TxMessage.to', index=7,
       number=8, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.ws.protobuf.TxMessage.amount', index=8,
+      name='amount', full_name='shardora.ws.protobuf.TxMessage.amount', index=8,
       number=9, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='step', full_name='seth.ws.protobuf.TxMessage.step', index=9,
+      name='step', full_name='shardora.ws.protobuf.TxMessage.step', index=9,
       number=10, type=14, cpp_type=8, label=1,
       has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='contract_prefund', full_name='seth.ws.protobuf.TxMessage.contract_prefund', index=10,
+      name='contract_prefund', full_name='shardora.ws.protobuf.TxMessage.contract_prefund', index=10,
       number=11, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='contract_code', full_name='seth.ws.protobuf.TxMessage.contract_code', index=11,
+      name='contract_code', full_name='shardora.ws.protobuf.TxMessage.contract_code', index=11,
       number=12, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='contract_input', full_name='seth.ws.protobuf.TxMessage.contract_input', index=12,
+      name='contract_input', full_name='shardora.ws.protobuf.TxMessage.contract_input', index=12,
       number=13, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='signr', full_name='seth.ws.protobuf.TxMessage.signr', index=13,
+      name='signr', full_name='shardora.ws.protobuf.TxMessage.signr', index=13,
       number=14, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='signs', full_name='seth.ws.protobuf.TxMessage.signs', index=14,
+      name='signs', full_name='shardora.ws.protobuf.TxMessage.signs', index=14,
       number=15, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='signv', full_name='seth.ws.protobuf.TxMessage.signv', index=15,
+      name='signv', full_name='shardora.ws.protobuf.TxMessage.signv', index=15,
       number=16, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -569,41 +569,41 @@ _TXMESSAGE = _descriptor.Descriptor(
 
 _ORDERINFO = _descriptor.Descriptor(
   name='OrderInfo',
-  full_name='seth.ws.protobuf.OrderInfo',
+  full_name='shardora.ws.protobuf.OrderInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='buyer', full_name='seth.ws.protobuf.OrderInfo.buyer', index=0,
+      name='buyer', full_name='shardora.ws.protobuf.OrderInfo.buyer', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.ws.protobuf.OrderInfo.status', index=1,
+      name='status', full_name='shardora.ws.protobuf.OrderInfo.status', index=1,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.ws.protobuf.OrderInfo.amount', index=2,
+      name='amount', full_name='shardora.ws.protobuf.OrderInfo.amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.OrderInfo.seller', index=3,
+      name='seller', full_name='shardora.ws.protobuf.OrderInfo.seller', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='create_tm_ms', full_name='seth.ws.protobuf.OrderInfo.create_tm_ms', index=4,
+      name='create_tm_ms', full_name='shardora.ws.protobuf.OrderInfo.create_tm_ms', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -628,48 +628,48 @@ _ORDERINFO = _descriptor.Descriptor(
 
 _RECEIVABLEINFO = _descriptor.Descriptor(
   name='ReceivableInfo',
-  full_name='seth.ws.protobuf.ReceivableInfo',
+  full_name='shardora.ws.protobuf.ReceivableInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='type', full_name='seth.ws.protobuf.ReceivableInfo.type', index=0,
+      name='type', full_name='shardora.ws.protobuf.ReceivableInfo.type', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='name', full_name='seth.ws.protobuf.ReceivableInfo.name', index=1,
+      name='name', full_name='shardora.ws.protobuf.ReceivableInfo.name', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='id', full_name='seth.ws.protobuf.ReceivableInfo.id', index=2,
+      name='id', full_name='shardora.ws.protobuf.ReceivableInfo.id', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='user_name', full_name='seth.ws.protobuf.ReceivableInfo.user_name', index=3,
+      name='user_name', full_name='shardora.ws.protobuf.ReceivableInfo.user_name', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='other', full_name='seth.ws.protobuf.ReceivableInfo.other', index=4,
+      name='other', full_name='shardora.ws.protobuf.ReceivableInfo.other', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='qrcode', full_name='seth.ws.protobuf.ReceivableInfo.qrcode', index=5,
+      name='qrcode', full_name='shardora.ws.protobuf.ReceivableInfo.qrcode', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -694,13 +694,13 @@ _RECEIVABLEINFO = _descriptor.Descriptor(
 
 _RECEIVABLEARRAY = _descriptor.Descriptor(
   name='ReceivableArray',
-  full_name='seth.ws.protobuf.ReceivableArray',
+  full_name='shardora.ws.protobuf.ReceivableArray',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='receivable', full_name='seth.ws.protobuf.ReceivableArray.receivable', index=0,
+      name='receivable', full_name='shardora.ws.protobuf.ReceivableArray.receivable', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -725,174 +725,174 @@ _RECEIVABLEARRAY = _descriptor.Descriptor(
 
 _SELLINFO = _descriptor.Descriptor(
   name='SellInfo',
-  full_name='seth.ws.protobuf.SellInfo',
+  full_name='shardora.ws.protobuf.SellInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.SellInfo.seller', index=0,
+      name='seller', full_name='shardora.ws.protobuf.SellInfo.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='buyer', full_name='seth.ws.protobuf.SellInfo.buyer', index=1,
+      name='buyer', full_name='shardora.ws.protobuf.SellInfo.buyer', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='contract', full_name='seth.ws.protobuf.SellInfo.contract', index=2,
+      name='contract', full_name='shardora.ws.protobuf.SellInfo.contract', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.ws.protobuf.SellInfo.amount', index=3,
+      name='amount', full_name='shardora.ws.protobuf.SellInfo.amount', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='receivable', full_name='seth.ws.protobuf.SellInfo.receivable', index=4,
+      name='receivable', full_name='shardora.ws.protobuf.SellInfo.receivable', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='all', full_name='seth.ws.protobuf.SellInfo.all', index=5,
+      name='all', full_name='shardora.ws.protobuf.SellInfo.all', index=5,
       number=6, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='price', full_name='seth.ws.protobuf.SellInfo.price', index=6,
+      name='price', full_name='shardora.ws.protobuf.SellInfo.price', index=6,
       number=7, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mchecked', full_name='seth.ws.protobuf.SellInfo.mchecked', index=7,
+      name='mchecked', full_name='shardora.ws.protobuf.SellInfo.mchecked', index=7,
       number=8, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='schecked', full_name='seth.ws.protobuf.SellInfo.schecked', index=8,
+      name='schecked', full_name='shardora.ws.protobuf.SellInfo.schecked', index=8,
       number=9, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='reported', full_name='seth.ws.protobuf.SellInfo.reported', index=9,
+      name='reported', full_name='shardora.ws.protobuf.SellInfo.reported', index=9,
       number=10, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='orderId', full_name='seth.ws.protobuf.SellInfo.orderId', index=10,
+      name='orderId', full_name='shardora.ws.protobuf.SellInfo.orderId', index=10,
       number=11, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='height', full_name='seth.ws.protobuf.SellInfo.height', index=11,
+      name='height', full_name='shardora.ws.protobuf.SellInfo.height', index=11,
       number=12, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='seth.ws.protobuf.SellInfo.timestamp', index=12,
+      name='timestamp', full_name='shardora.ws.protobuf.SellInfo.timestamp', index=12,
       number=13, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='username', full_name='seth.ws.protobuf.SellInfo.username', index=13,
+      name='username', full_name='shardora.ws.protobuf.SellInfo.username', index=13,
       number=14, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.ws.protobuf.SellInfo.status', index=14,
+      name='status', full_name='shardora.ws.protobuf.SellInfo.status', index=14,
       number=15, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='purchase_amount', full_name='seth.ws.protobuf.SellInfo.purchase_amount', index=15,
+      name='purchase_amount', full_name='shardora.ws.protobuf.SellInfo.purchase_amount', index=15,
       number=16, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='create_timestamp', full_name='seth.ws.protobuf.SellInfo.create_timestamp', index=16,
+      name='create_timestamp', full_name='shardora.ws.protobuf.SellInfo.create_timestamp', index=16,
       number=17, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='min_amount', full_name='seth.ws.protobuf.SellInfo.min_amount', index=17,
+      name='min_amount', full_name='shardora.ws.protobuf.SellInfo.min_amount', index=17,
       number=18, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='max_amount', full_name='seth.ws.protobuf.SellInfo.max_amount', index=18,
+      name='max_amount', full_name='shardora.ws.protobuf.SellInfo.max_amount', index=18,
       number=19, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='now', full_name='seth.ws.protobuf.SellInfo.now', index=19,
+      name='now', full_name='shardora.ws.protobuf.SellInfo.now', index=19,
       number=20, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='is_order', full_name='seth.ws.protobuf.SellInfo.is_order', index=20,
+      name='is_order', full_name='shardora.ws.protobuf.SellInfo.is_order', index=20,
       number=21, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='appeal', full_name='seth.ws.protobuf.SellInfo.appeal', index=21,
+      name='appeal', full_name='shardora.ws.protobuf.SellInfo.appeal', index=21,
       number=22, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='credit', full_name='seth.ws.protobuf.SellInfo.credit', index=22,
+      name='credit', full_name='shardora.ws.protobuf.SellInfo.credit', index=22,
       number=23, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='peer_appeal', full_name='seth.ws.protobuf.SellInfo.peer_appeal', index=23,
+      name='peer_appeal', full_name='shardora.ws.protobuf.SellInfo.peer_appeal', index=23,
       number=24, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -917,27 +917,27 @@ _SELLINFO = _descriptor.Descriptor(
 
 _NEWORDER = _descriptor.Descriptor(
   name='NewOrder',
-  full_name='seth.ws.protobuf.NewOrder',
+  full_name='shardora.ws.protobuf.NewOrder',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.NewOrder.seller', index=0,
+      name='seller', full_name='shardora.ws.protobuf.NewOrder.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.ws.protobuf.NewOrder.amount', index=1,
+      name='amount', full_name='shardora.ws.protobuf.NewOrder.amount', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='buyer', full_name='seth.ws.protobuf.NewOrder.buyer', index=2,
+      name='buyer', full_name='shardora.ws.protobuf.NewOrder.buyer', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -962,41 +962,41 @@ _NEWORDER = _descriptor.Descriptor(
 
 _APPEAL = _descriptor.Descriptor(
   name='Appeal',
-  full_name='seth.ws.protobuf.Appeal',
+  full_name='shardora.ws.protobuf.Appeal',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.Appeal.seller', index=0,
+      name='seller', full_name='shardora.ws.protobuf.Appeal.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='buyer', full_name='seth.ws.protobuf.Appeal.buyer', index=1,
+      name='buyer', full_name='shardora.ws.protobuf.Appeal.buyer', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='type', full_name='seth.ws.protobuf.Appeal.type', index=2,
+      name='type', full_name='shardora.ws.protobuf.Appeal.type', index=2,
       number=3, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='content', full_name='seth.ws.protobuf.Appeal.content', index=3,
+      name='content', full_name='shardora.ws.protobuf.Appeal.content', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pic', full_name='seth.ws.protobuf.Appeal.pic', index=4,
+      name='pic', full_name='shardora.ws.protobuf.Appeal.pic', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -1021,41 +1021,41 @@ _APPEAL = _descriptor.Descriptor(
 
 _NEWSELL = _descriptor.Descriptor(
   name='NewSell',
-  full_name='seth.ws.protobuf.NewSell',
+  full_name='shardora.ws.protobuf.NewSell',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='protocol_addr', full_name='seth.ws.protobuf.NewSell.protocol_addr', index=0,
+      name='protocol_addr', full_name='shardora.ws.protobuf.NewSell.protocol_addr', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.NewSell.seller', index=1,
+      name='seller', full_name='shardora.ws.protobuf.NewSell.seller', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.ws.protobuf.NewSell.amount', index=2,
+      name='amount', full_name='shardora.ws.protobuf.NewSell.amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='price', full_name='seth.ws.protobuf.NewSell.price', index=3,
+      name='price', full_name='shardora.ws.protobuf.NewSell.price', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='receivable', full_name='seth.ws.protobuf.NewSell.receivable', index=4,
+      name='receivable', full_name='shardora.ws.protobuf.NewSell.receivable', index=4,
       number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1080,20 +1080,20 @@ _NEWSELL = _descriptor.Descriptor(
 
 _BUYERREPORT = _descriptor.Descriptor(
   name='BuyerReport',
-  full_name='seth.ws.protobuf.BuyerReport',
+  full_name='shardora.ws.protobuf.BuyerReport',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.BuyerReport.seller', index=0,
+      name='seller', full_name='shardora.ws.protobuf.BuyerReport.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='reports_info', full_name='seth.ws.protobuf.BuyerReport.reports_info', index=1,
+      name='reports_info', full_name='shardora.ws.protobuf.BuyerReport.reports_info', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -1118,13 +1118,13 @@ _BUYERREPORT = _descriptor.Descriptor(
 
 _GETSELL = _descriptor.Descriptor(
   name='GetSell',
-  full_name='seth.ws.protobuf.GetSell',
+  full_name='shardora.ws.protobuf.GetSell',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.ws.protobuf.GetSell.seller', index=0,
+      name='seller', full_name='shardora.ws.protobuf.GetSell.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -1149,69 +1149,69 @@ _GETSELL = _descriptor.Descriptor(
 
 _C2CMESSAGE = _descriptor.Descriptor(
   name='C2cMessage',
-  full_name='seth.ws.protobuf.C2cMessage',
+  full_name='shardora.ws.protobuf.C2cMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sell', full_name='seth.ws.protobuf.C2cMessage.sell', index=0,
+      name='sell', full_name='shardora.ws.protobuf.C2cMessage.sell', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='order', full_name='seth.ws.protobuf.C2cMessage.order', index=1,
+      name='order', full_name='shardora.ws.protobuf.C2cMessage.order', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='report', full_name='seth.ws.protobuf.C2cMessage.report', index=2,
+      name='report', full_name='shardora.ws.protobuf.C2cMessage.report', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sells', full_name='seth.ws.protobuf.C2cMessage.sells', index=3,
+      name='sells', full_name='shardora.ws.protobuf.C2cMessage.sells', index=3,
       number=4, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='get_sell', full_name='seth.ws.protobuf.C2cMessage.get_sell', index=4,
+      name='get_sell', full_name='shardora.ws.protobuf.C2cMessage.get_sell', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='prefund', full_name='seth.ws.protobuf.C2cMessage.prefund', index=5,
+      name='prefund', full_name='shardora.ws.protobuf.C2cMessage.prefund', index=5,
       number=6, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='c2c_addr', full_name='seth.ws.protobuf.C2cMessage.c2c_addr', index=6,
+      name='c2c_addr', full_name='shardora.ws.protobuf.C2cMessage.c2c_addr', index=6,
       number=7, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='user_order_info', full_name='seth.ws.protobuf.C2cMessage.user_order_info', index=7,
+      name='user_order_info', full_name='shardora.ws.protobuf.C2cMessage.user_order_info', index=7,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='appeal', full_name='seth.ws.protobuf.C2cMessage.appeal', index=8,
+      name='appeal', full_name='shardora.ws.protobuf.C2cMessage.appeal', index=8,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1236,27 +1236,27 @@ _C2CMESSAGE = _descriptor.Descriptor(
 
 _STATUSINFO = _descriptor.Descriptor(
   name='StatusInfo',
-  full_name='seth.ws.protobuf.StatusInfo',
+  full_name='shardora.ws.protobuf.StatusInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.ws.protobuf.StatusInfo.status', index=0,
+      name='status', full_name='shardora.ws.protobuf.StatusInfo.status', index=0,
       number=1, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='message', full_name='seth.ws.protobuf.StatusInfo.message', index=1,
+      name='message', full_name='shardora.ws.protobuf.StatusInfo.message', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='msg_id', full_name='seth.ws.protobuf.StatusInfo.msg_id', index=2,
+      name='msg_id', full_name='shardora.ws.protobuf.StatusInfo.msg_id', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1281,76 +1281,76 @@ _STATUSINFO = _descriptor.Descriptor(
 
 _INITINFO = _descriptor.Descriptor(
   name='InitInfo',
-  full_name='seth.ws.protobuf.InitInfo',
+  full_name='shardora.ws.protobuf.InitInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pubkey', full_name='seth.ws.protobuf.InitInfo.pubkey', index=0,
+      name='pubkey', full_name='shardora.ws.protobuf.InitInfo.pubkey', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='platform', full_name='seth.ws.protobuf.InitInfo.platform', index=1,
+      name='platform', full_name='shardora.ws.protobuf.InitInfo.platform', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='version', full_name='seth.ws.protobuf.InitInfo.version', index=2,
+      name='version', full_name='shardora.ws.protobuf.InitInfo.version', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pk_hash', full_name='seth.ws.protobuf.InitInfo.pk_hash', index=3,
+      name='pk_hash', full_name='shardora.ws.protobuf.InitInfo.pk_hash', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tag', full_name='seth.ws.protobuf.InitInfo.tag', index=4,
+      name='tag', full_name='shardora.ws.protobuf.InitInfo.tag', index=4,
       number=5, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tx', full_name='seth.ws.protobuf.InitInfo.tx', index=5,
+      name='tx', full_name='shardora.ws.protobuf.InitInfo.tx', index=5,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tx_height', full_name='seth.ws.protobuf.InitInfo.tx_height', index=6,
+      name='tx_height', full_name='shardora.ws.protobuf.InitInfo.tx_height', index=6,
       number=7, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='c2c', full_name='seth.ws.protobuf.InitInfo.c2c', index=7,
+      name='c2c', full_name='shardora.ws.protobuf.InitInfo.c2c', index=7,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.ws.protobuf.InitInfo.status', index=8,
+      name='status', full_name='shardora.ws.protobuf.InitInfo.status', index=8,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='msg_id', full_name='seth.ws.protobuf.InitInfo.msg_id', index=9,
+      name='msg_id', full_name='shardora.ws.protobuf.InitInfo.msg_id', index=9,
       number=10, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1375,62 +1375,62 @@ _INITINFO = _descriptor.Descriptor(
 
 _WSTXITEM = _descriptor.Descriptor(
   name='WsTxItem',
-  full_name='seth.ws.protobuf.WsTxItem',
+  full_name='shardora.ws.protobuf.WsTxItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='from', full_name='seth.ws.protobuf.WsTxItem.from', index=0,
+      name='from', full_name='shardora.ws.protobuf.WsTxItem.from', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='to', full_name='seth.ws.protobuf.WsTxItem.to', index=1,
+      name='to', full_name='shardora.ws.protobuf.WsTxItem.to', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.ws.protobuf.WsTxItem.amount', index=2,
+      name='amount', full_name='shardora.ws.protobuf.WsTxItem.amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='balance', full_name='seth.ws.protobuf.WsTxItem.balance', index=3,
+      name='balance', full_name='shardora.ws.protobuf.WsTxItem.balance', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='height', full_name='seth.ws.protobuf.WsTxItem.height', index=4,
+      name='height', full_name='shardora.ws.protobuf.WsTxItem.height', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='to_add', full_name='seth.ws.protobuf.WsTxItem.to_add', index=5,
+      name='to_add', full_name='shardora.ws.protobuf.WsTxItem.to_add', index=5,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='seth.ws.protobuf.WsTxItem.timestamp', index=6,
+      name='timestamp', full_name='shardora.ws.protobuf.WsTxItem.timestamp', index=6,
       number=7, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.ws.protobuf.WsTxItem.status', index=7,
+      name='status', full_name='shardora.ws.protobuf.WsTxItem.status', index=7,
       number=8, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1455,13 +1455,13 @@ _WSTXITEM = _descriptor.Descriptor(
 
 _WSTXITEMRESPONSE = _descriptor.Descriptor(
   name='WsTxItemResponse',
-  full_name='seth.ws.protobuf.WsTxItemResponse',
+  full_name='shardora.ws.protobuf.WsTxItemResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='txs', full_name='seth.ws.protobuf.WsTxItemResponse.txs', index=0,
+      name='txs', full_name='shardora.ws.protobuf.WsTxItemResponse.txs', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1486,27 +1486,27 @@ _WSTXITEMRESPONSE = _descriptor.Descriptor(
 
 _BANDWIDTHITEM = _descriptor.Descriptor(
   name='BandwidthItem',
-  full_name='seth.ws.protobuf.BandwidthItem',
+  full_name='shardora.ws.protobuf.BandwidthItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='seth.ws.protobuf.BandwidthItem.id', index=0,
+      name='id', full_name='shardora.ws.protobuf.BandwidthItem.id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bandwidth', full_name='seth.ws.protobuf.BandwidthItem.bandwidth', index=1,
+      name='bandwidth', full_name='shardora.ws.protobuf.BandwidthItem.bandwidth', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='timestamp', full_name='seth.ws.protobuf.BandwidthItem.timestamp', index=2,
+      name='timestamp', full_name='shardora.ws.protobuf.BandwidthItem.timestamp', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1531,13 +1531,13 @@ _BANDWIDTHITEM = _descriptor.Descriptor(
 
 _BANDWIDTHINFO = _descriptor.Descriptor(
   name='BandwidthInfo',
-  full_name='seth.ws.protobuf.BandwidthInfo',
+  full_name='shardora.ws.protobuf.BandwidthInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='bws', full_name='seth.ws.protobuf.BandwidthInfo.bws', index=0,
+      name='bws', full_name='shardora.ws.protobuf.BandwidthInfo.bws', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1562,27 +1562,27 @@ _BANDWIDTHINFO = _descriptor.Descriptor(
 
 _WSMESSAGE = _descriptor.Descriptor(
   name='WsMessage',
-  full_name='seth.ws.protobuf.WsMessage',
+  full_name='shardora.ws.protobuf.WsMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='txs', full_name='seth.ws.protobuf.WsMessage.txs', index=0,
+      name='txs', full_name='shardora.ws.protobuf.WsMessage.txs', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bws', full_name='seth.ws.protobuf.WsMessage.bws', index=1,
+      name='bws', full_name='shardora.ws.protobuf.WsMessage.bws', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='init_info', full_name='seth.ws.protobuf.WsMessage.init_info', index=2,
+      name='init_info', full_name='shardora.ws.protobuf.WsMessage.init_info', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1655,126 +1655,126 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 TxMessage = _reflection.GeneratedProtocolMessageType('TxMessage', (_message.Message,), dict(
   DESCRIPTOR = _TXMESSAGE,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.TxMessage)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.TxMessage)
   ))
 _sym_db.RegisterMessage(TxMessage)
 
 OrderInfo = _reflection.GeneratedProtocolMessageType('OrderInfo', (_message.Message,), dict(
   DESCRIPTOR = _ORDERINFO,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.OrderInfo)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.OrderInfo)
   ))
 _sym_db.RegisterMessage(OrderInfo)
 
 ReceivableInfo = _reflection.GeneratedProtocolMessageType('ReceivableInfo', (_message.Message,), dict(
   DESCRIPTOR = _RECEIVABLEINFO,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.ReceivableInfo)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.ReceivableInfo)
   ))
 _sym_db.RegisterMessage(ReceivableInfo)
 
 ReceivableArray = _reflection.GeneratedProtocolMessageType('ReceivableArray', (_message.Message,), dict(
   DESCRIPTOR = _RECEIVABLEARRAY,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.ReceivableArray)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.ReceivableArray)
   ))
 _sym_db.RegisterMessage(ReceivableArray)
 
 SellInfo = _reflection.GeneratedProtocolMessageType('SellInfo', (_message.Message,), dict(
   DESCRIPTOR = _SELLINFO,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.SellInfo)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.SellInfo)
   ))
 _sym_db.RegisterMessage(SellInfo)
 
 NewOrder = _reflection.GeneratedProtocolMessageType('NewOrder', (_message.Message,), dict(
   DESCRIPTOR = _NEWORDER,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.NewOrder)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.NewOrder)
   ))
 _sym_db.RegisterMessage(NewOrder)
 
 Appeal = _reflection.GeneratedProtocolMessageType('Appeal', (_message.Message,), dict(
   DESCRIPTOR = _APPEAL,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.Appeal)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.Appeal)
   ))
 _sym_db.RegisterMessage(Appeal)
 
 NewSell = _reflection.GeneratedProtocolMessageType('NewSell', (_message.Message,), dict(
   DESCRIPTOR = _NEWSELL,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.NewSell)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.NewSell)
   ))
 _sym_db.RegisterMessage(NewSell)
 
 BuyerReport = _reflection.GeneratedProtocolMessageType('BuyerReport', (_message.Message,), dict(
   DESCRIPTOR = _BUYERREPORT,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.BuyerReport)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.BuyerReport)
   ))
 _sym_db.RegisterMessage(BuyerReport)
 
 GetSell = _reflection.GeneratedProtocolMessageType('GetSell', (_message.Message,), dict(
   DESCRIPTOR = _GETSELL,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.GetSell)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.GetSell)
   ))
 _sym_db.RegisterMessage(GetSell)
 
 C2cMessage = _reflection.GeneratedProtocolMessageType('C2cMessage', (_message.Message,), dict(
   DESCRIPTOR = _C2CMESSAGE,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.C2cMessage)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.C2cMessage)
   ))
 _sym_db.RegisterMessage(C2cMessage)
 
 StatusInfo = _reflection.GeneratedProtocolMessageType('StatusInfo', (_message.Message,), dict(
   DESCRIPTOR = _STATUSINFO,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.StatusInfo)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.StatusInfo)
   ))
 _sym_db.RegisterMessage(StatusInfo)
 
 InitInfo = _reflection.GeneratedProtocolMessageType('InitInfo', (_message.Message,), dict(
   DESCRIPTOR = _INITINFO,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.InitInfo)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.InitInfo)
   ))
 _sym_db.RegisterMessage(InitInfo)
 
 WsTxItem = _reflection.GeneratedProtocolMessageType('WsTxItem', (_message.Message,), dict(
   DESCRIPTOR = _WSTXITEM,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.WsTxItem)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.WsTxItem)
   ))
 _sym_db.RegisterMessage(WsTxItem)
 
 WsTxItemResponse = _reflection.GeneratedProtocolMessageType('WsTxItemResponse', (_message.Message,), dict(
   DESCRIPTOR = _WSTXITEMRESPONSE,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.WsTxItemResponse)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.WsTxItemResponse)
   ))
 _sym_db.RegisterMessage(WsTxItemResponse)
 
 BandwidthItem = _reflection.GeneratedProtocolMessageType('BandwidthItem', (_message.Message,), dict(
   DESCRIPTOR = _BANDWIDTHITEM,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.BandwidthItem)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.BandwidthItem)
   ))
 _sym_db.RegisterMessage(BandwidthItem)
 
 BandwidthInfo = _reflection.GeneratedProtocolMessageType('BandwidthInfo', (_message.Message,), dict(
   DESCRIPTOR = _BANDWIDTHINFO,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.BandwidthInfo)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.BandwidthInfo)
   ))
 _sym_db.RegisterMessage(BandwidthInfo)
 
 WsMessage = _reflection.GeneratedProtocolMessageType('WsMessage', (_message.Message,), dict(
   DESCRIPTOR = _WSMESSAGE,
   __module__ = 'protos.ws_pb2'
-  # @@protoc_insertion_point(class_scope:seth.ws.protobuf.WsMessage)
+  # @@protoc_insertion_point(class_scope:shardora.ws.protobuf.WsMessage)
   ))
 _sym_db.RegisterMessage(WsMessage)
 

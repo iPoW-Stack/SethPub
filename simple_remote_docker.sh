@@ -15,7 +15,7 @@
 #   bash simple_remote_docker.sh 1 192.168.1.10,192.168.1.11 3
 #   bash simple_remote_docker.sh 1 10.0.0.1 3 '' Release
 #
-# SETH_PKG_DIR, SETH_STAGING, USE_PKG_TAR, SETH_NO_ROOT_PKG_FALLBACK, etc. pass through to docker/arm64/simple_remote_docker.sh (see docker/arm64/README.md).
+# SHARDORA_PKG_DIR, SHARDORA_STAGING, USE_PKG_TAR, SHARDORA_NO_ROOT_PKG_FALLBACK, etc. pass through to docker/arm64/simple_remote_docker.sh (see docker/arm64/README.md).
 # For no nested Docker, use simple_remote_in_container.sh (same env keys apply to that script).
 #
 set -euo pipefail

@@ -5,13 +5,13 @@ end_shard=${3:-}
 PASSWORD=${4:-"Xf4aGbTaYYY!"}
 TARGET=${5:-}
 FIRST_NODE_COUNT="$each_nodes_count"
-NODE_SSH_PORT="${SETH_REMOTE_NODE_SSH_PORT:-${SETH_REMOTE_SSH_PORT:-22}}"
-REMOTE_FAIL_FILE="/tmp/seth_remote_fail.$$"
-#export SETH_REMOTE_SSH_PORT="$NODE_SSH_PORT"
-export SETH_REMOTE_PASSWORD="${PASSWORD:-${SETH_REMOTE_PASSWORD:-}}"
+NODE_SSH_PORT="${SHARDORA_REMOTE_NODE_SSH_PORT:-${SHARDORA_REMOTE_SSH_PORT:-22}}"
+REMOTE_FAIL_FILE="/tmp/shardora_remote_fail.$$"
+#export SHARDORA_REMOTE_SSH_PORT="$NODE_SSH_PORT"
+export SHARDORA_REMOTE_PASSWORD="${PASSWORD:-${SHARDORA_REMOTE_PASSWORD:-}}"
 export REMOTE_FAIL_FILE
 REMOTE_PIDS=()
-export SETH_ROOT=/root/seth
+export SHARDORA_ROOT=/root/shardora
 CODE_PATH=`pwd`
 node_ips_array=(${node_ips//,/ })
 nodes_count=0
@@ -87,7 +87,7 @@ wait_remote_pids() {
     #fi
 }
 
-bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true; pkill -9 seth 2>/dev/null || true; systemctl list-units --type=service --all 'seth@*' --no-legend 2>/dev/null | awk '{print \$1}' | while read -r u; do [ -n \"\$u\" ] && systemctl stop \"\$u\" 2>/dev/null; [ -n \"\$u\" ] && systemctl disable \"\$u\" 2>/dev/null; done; systemctl daemon-reload; systemctl reset-failed"
+bash cmd.sh $2 "sudo tc qdisc del dev eth0 root 2>/dev/null || true; pkill -9 shardora 2>/dev/null || true; systemctl list-units --type=service --all 'shardora@*' --no-legend 2>/dev/null | awk '{print \$1}' | while read -r u; do [ -n \"\$u\" ] && systemctl stop \"\$u\" 2>/dev/null; [ -n \"\$u\" ] && systemctl disable \"\$u\" 2>/dev/null; done; systemctl daemon-reload; systemctl reset-failed"
 init() {
     tmp_ips=(${node_ips//-/ })
     tmp_ips_len=(${#tmp_ips[*]})
@@ -152,7 +152,7 @@ init() {
         echo "remote node password is required when node_host is not local" >&2
         exit 1
     fi
-    export SETH_REMOTE_PASSWORD="$PASSWORD"
+    export SHARDORA_REMOTE_PASSWORD="$PASSWORD"
 
     if [ "$TARGET" == "" ]; then
         TARGET=Release
@@ -162,39 +162,39 @@ init() {
         rm -rf ./pkgs
     fi
 
-    killall -9 seth
+    killall -9 shardora
     killall -9 txcli
 
-    bash build.sh seth $TARGET
+    bash build.sh shardora $TARGET
     sudo rm -rf /root/nodes
     sudo cp -rf ./nodes_local /root/nodes
-    rm -rf /root/nodes/*/seth /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
+    rm -rf /root/nodes/*/shardora /root/nodes/*/core* /root/nodes/*/log/* /root/nodes/*/*db*
 
-    cp -rf ./nodes_local/seth/conf/GeoLite2-City.mmdb /root/nodes/seth
-    cp -rf ./nodes_local/seth/conf/log4cpp.properties /root/nodes/seth/conf
-    mkdir -p /root/nodes/seth/log
+    cp -rf ./nodes_local/shardora/conf/GeoLite2-City.mmdb /root/nodes/shardora
+    cp -rf ./nodes_local/shardora/conf/log4cpp.properties /root/nodes/shardora/conf
+    mkdir -p /root/nodes/shardora/log
 
 
-    sudo cp -rf ./cbuild_$TARGET/seth /root/nodes/seth
+    sudo cp -rf ./cbuild_$TARGET/shardora /root/nodes/shardora
     if [[ "$each_nodes_count" -eq "" ]]; then
         each_nodes_count=4
     fi
 
 
     nodes_count=$(($nodes_count - $each_nodes_count + $FIRST_NODE_COUNT))
-    shard3_node_count=`wc -l /root/seth/shards3 | awk -F' ' '{print $1}'`
+    shard3_node_count=`wc -l /root/shardora/shards3 | awk -F' ' '{print $1}'`
     if [ "$shard3_node_count" != "$nodes_count" ]; then
         echo "new shard nodes file will create."
-        rm -rf /root/seth/shards*
-        rm -rf /root/seth/init_accounts*
+        rm -rf /root/shardora/shards*
+        rm -rf /root/shardora/init_accounts*
     fi
 
     echo "node count: " $nodes_count
-    rm -rf /root/nodes/seth/latest_blocks
+    rm -rf /root/nodes/shardora/latest_blocks
 }
 
 apply_pkg_conf_placeholders() {
-    local conf_path='/root/nodes/seth/pkg/temp/conf/seth.conf'
+    local conf_path='/root/nodes/shardora/pkg/temp/conf/shardora.conf'
     if [ ! -f "$conf_path" ]; then
         echo "ERROR: missing $conf_path" >&2
         exit 1
@@ -215,7 +215,7 @@ apply_pkg_conf_placeholders() {
 
     BOOTSTRAP_FILE=/tmp/bootstrap_data.tmp FOR_CK_VALUE=false "$pybin" - <<'PY'
 import os
-conf_path = '/root/nodes/seth/pkg/temp/conf/seth.conf'
+conf_path = '/root/nodes/shardora/pkg/temp/conf/shardora.conf'
 with open(os.environ['BOOTSTRAP_FILE'], 'r', encoding='utf-8') as f:
     bootstrap_val = f.read()
 with open(conf_path, 'r', encoding='utf-8') as f:
@@ -235,8 +235,8 @@ PY
 
 sync_shards_for_genesis() {
     for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
-        if [ -f "/root/seth/shards${shard_id}" ]; then
-            cp -f "/root/seth/shards${shard_id}" "/root/nodes/seth/shards${shard_id}"
+        if [ -f "/root/shardora/shards${shard_id}" ]; then
+            cp -f "/root/shardora/shards${shard_id}" "/root/nodes/shardora/shards${shard_id}"
         fi
     done
 }
@@ -245,48 +245,48 @@ sync_shards_for_genesis() {
 # and shards. Keep them identical and never ship encrypted init_accounts to pkg.
 sync_init_accounts_from_shards() {
     for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
-        if [ -f "/root/seth/shards${shard_id}" ]; then
-            cp -f "/root/seth/shards${shard_id}" "/root/seth/init_accounts${shard_id}"
-            if [ -d "/root/nodes/seth" ]; then
-                cp -f "/root/seth/shards${shard_id}" "/root/nodes/seth/init_accounts${shard_id}"
+        if [ -f "/root/shardora/shards${shard_id}" ]; then
+            cp -f "/root/shardora/shards${shard_id}" "/root/shardora/init_accounts${shard_id}"
+            if [ -d "/root/nodes/shardora" ]; then
+                cp -f "/root/shardora/shards${shard_id}" "/root/nodes/shardora/init_accounts${shard_id}"
             fi
         fi
     done
 }
 
 copy_pkg_account_files() {
-    local seth_bin="/root/seth/cbuild_${TARGET}/seth"
+    local shardora_bin="/root/shardora/cbuild_${TARGET}/shardora"
     for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
-        if [ ! -f "/root/seth/shards${shard_id}" ]; then
-            echo "ERROR: missing /root/seth/shards${shard_id}" >&2
+        if [ ! -f "/root/shardora/shards${shard_id}" ]; then
+            echo "ERROR: missing /root/shardora/shards${shard_id}" >&2
             exit 1
         fi
-        "$seth_bin" -A "/root/seth/shards${shard_id}" -D "/root/nodes/seth/pkg/shards${shard_id}"
-        cp -f "/root/seth/shards${shard_id}" "/root/nodes/seth/pkg/init_accounts${shard_id}"
+        "$shardora_bin" -A "/root/shardora/shards${shard_id}" -D "/root/nodes/shardora/pkg/shards${shard_id}"
+        cp -f "/root/shardora/shards${shard_id}" "/root/nodes/shardora/pkg/init_accounts${shard_id}"
     done
 }
 
 refresh_genesis_databases() {
-    local genesis_bin="/root/nodes/seth/seth"
+    local genesis_bin="/root/nodes/shardora/shardora"
     if [ ! -x "$genesis_bin" ]; then
-        genesis_bin="/root/seth/cbuild_${TARGET}/seth"
+        genesis_bin="/root/shardora/cbuild_${TARGET}/shardora"
     fi
     if [ ! -x "$genesis_bin" ]; then
-        echo "ERROR: seth binary not found for genesis refresh" >&2
+        echo "ERROR: shardora binary not found for genesis refresh" >&2
         exit 1
     fi
     sync_shards_for_genesis
     sync_init_accounts_from_shards
     # Wipe stale genesis dbs so init_accounts/shards changes are written back.
-    rm -rf /root/nodes/seth/shard_db_* /root/nodes/seth/root_db
-    rm -f /root/nodes/seth/root_blocks /root/nodes/seth/latest_blocks
+    rm -rf /root/nodes/shardora/shard_db_* /root/nodes/shardora/root_db
+    rm -f /root/nodes/shardora/root_blocks /root/nodes/shardora/latest_blocks
     echo "refresh genesis db: nodes=$nodes_count shards=2..$end_shard"
-    cd /root/nodes/seth && "$genesis_bin" -U -N "$nodes_count" -E 4
-    cd /root/nodes/seth && "$genesis_bin" -S 3 -N "$nodes_count" -E 4
+    cd /root/nodes/shardora && "$genesis_bin" -U -N "$nodes_count" -E 4
+    cd /root/nodes/shardora && "$genesis_bin" -S 3 -N "$nodes_count" -E 4
     for ((shard_id=2; shard_id<=end_shard; shard_id++)); do
-        if [ -f "/root/nodes/seth/shards${shard_id}" ]; then
-            cp -f "/root/nodes/seth/shards${shard_id}" "/root/seth/shards${shard_id}"
-            cp -f "/root/seth/shards${shard_id}" "/root/seth/init_accounts${shard_id}"
+        if [ -f "/root/nodes/shardora/shards${shard_id}" ]; then
+            cp -f "/root/nodes/shardora/shards${shard_id}" "/root/shardora/shards${shard_id}"
+            cp -f "/root/shardora/shards${shard_id}" "/root/shardora/init_accounts${shard_id}"
         fi
     done
 }
@@ -298,9 +298,9 @@ get_bootstrap() {
         i=1
         for ip in "${node_ips_array[@]}"; do
             for ((j=0; j<$each_nodes_count;j++)); do
-                local shard_file="/root/seth/shards${shard_id}"
+                local shard_file="/root/shardora/shards${shard_id}"
                 if [ ! -f "$shard_file" ]; then
-                    shard_file="/root/nodes/seth/pkg/shards${shard_id}"
+                    shard_file="/root/nodes/shardora/pkg/shards${shard_id}"
                 fi
                 tmppubkey=`sed -n "$i""p" "$shard_file" | awk -F'\t' '{print $2}'`
                 if [ -z "$tmppubkey" ]; then
@@ -341,43 +341,43 @@ get_bootstrap() {
 }
 
 make_package() {
-    mkdir -p /root/seth/pkgs
-    rm -rf /root/nodes/seth/pkg
-    if [ -d "/root/seth/pkgs/$node_hash" ]; then
-        cd /root/seth/ && bash build.sh seth $TARGET
-        cd /root/seth/cbuild_$TARGET && make txcli
-        cp -rf /root/seth/cbuild_$TARGET/seth /root/seth/pkgs/$node_hash/seth
-        cp -rf /root/seth/pkgs/$node_hash /root/nodes/seth/pkg
-        rm -rf /root/nodes/seth/pkg/temp
-        cp -rf /root/nodes/temp /root/nodes/seth/pkg
+    mkdir -p /root/shardora/pkgs
+    rm -rf /root/nodes/shardora/pkg
+    if [ -d "/root/shardora/pkgs/$node_hash" ]; then
+        cd /root/shardora/ && bash build.sh shardora $TARGET
+        cd /root/shardora/cbuild_$TARGET && make txcli
+        cp -rf /root/shardora/cbuild_$TARGET/shardora /root/shardora/pkgs/$node_hash/shardora
+        cp -rf /root/shardora/pkgs/$node_hash /root/nodes/shardora/pkg
+        rm -rf /root/nodes/shardora/pkg/temp
+        cp -rf /root/nodes/temp /root/nodes/shardora/pkg
         # Always refresh scripts so latest placeholder substitutions take effect.
-        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
-        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
+        cp /root/shardora/temp_cmd.sh /root/nodes/shardora/pkg
+        cp /root/shardora/start_cmd.sh /root/nodes/shardora/pkg
         copy_pkg_account_files
         refresh_genesis_databases
-        cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
-        cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg/
+        cp -rf /root/nodes/shardora/shard_db_2 /root/nodes/shardora/pkg/shard_db_2
+        cp -rf /root/nodes/shardora/shard_db_3 /root/nodes/shardora/pkg/
     else
         refresh_genesis_databases
-        cd /root/nodes/seth && ./seth -C
-        cd /root/seth/cbuild_$TARGET && make txcli
+        cd /root/nodes/shardora && ./shardora -C
+        cd /root/shardora/cbuild_$TARGET && make txcli
 
-        mkdir /root/nodes/seth/pkg
-        cp /root/nodes/seth/seth /root/nodes/seth/pkg
-        cp /root/nodes/seth/conf/GeoLite2-City.mmdb /root/nodes/seth/pkg
-        cp /root/nodes/seth/conf/log4cpp.properties /root/nodes/seth/pkg
+        mkdir /root/nodes/shardora/pkg
+        cp /root/nodes/shardora/shardora /root/nodes/shardora/pkg
+        cp /root/nodes/shardora/conf/GeoLite2-City.mmdb /root/nodes/shardora/pkg
+        cp /root/nodes/shardora/conf/log4cpp.properties /root/nodes/shardora/pkg
         copy_pkg_account_files
-        cp /root/seth/temp_cmd.sh /root/nodes/seth/pkg
-        cp /root/seth/start_cmd.sh /root/nodes/seth/pkg
-        cp -rf /root/nodes/seth/shard_db_2 /root/nodes/seth/pkg/shard_db_2
-        cp -rf /root/nodes/seth/shard_db_3 /root/nodes/seth/pkg
-        cp -rf /root/nodes/temp /root/nodes/seth/pkg
-        cp -rf /root/seth/gdb/* /root/nodes/seth/pkg
-        cp -rf /root/nodes/seth/pkg /root/seth/pkgs/$node_hash
+        cp /root/shardora/temp_cmd.sh /root/nodes/shardora/pkg
+        cp /root/shardora/start_cmd.sh /root/nodes/shardora/pkg
+        cp -rf /root/nodes/shardora/shard_db_2 /root/nodes/shardora/pkg/shard_db_2
+        cp -rf /root/nodes/shardora/shard_db_3 /root/nodes/shardora/pkg
+        cp -rf /root/nodes/temp /root/nodes/shardora/pkg
+        cp -rf /root/shardora/gdb/* /root/nodes/shardora/pkg
+        cp -rf /root/nodes/shardora/pkg /root/shardora/pkgs/$node_hash
     fi
 
     get_bootstrap
-    cd /root/nodes/seth/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
+    cd /root/nodes/shardora/ && tar -zcvf pkg.tar.gz ./pkg > /dev/null 2>&1
 }
 
 check_cmd_finished() {
@@ -394,7 +394,7 @@ clear_command() {
     start_pos=1
     for ip in "${node_ips_array[@]}"; do
         (
-            run_on_node "$ip" "cd /root && rm -rf pkg* && (killall -9 seth 2>/dev/null || true)" ||
+            run_on_node "$ip" "cd /root && rm -rf pkg* && (killall -9 shardora 2>/dev/null || true)" ||
                 record_remote_failure "clear command failed on $ip:$NODE_SSH_PORT"
         ) &
         REMOTE_PIDS+=($!)
@@ -420,7 +420,7 @@ scp_package() {
     run_cmd_count=0
     for ip in "${node_ips_array[@]}"; do
         (
-            copy_to_node "$ip" "/root/nodes/seth/pkg.tar.gz" "/root/pkg.tar.gz" ||
+            copy_to_node "$ip" "/root/nodes/shardora/pkg.tar.gz" "/root/pkg.tar.gz" ||
                 record_remote_failure "scp package failed on $ip:$NODE_SSH_PORT"
         ) &
         REMOTE_PIDS+=($!)
@@ -505,16 +505,16 @@ init_mining_dir() {
     mkdir -p $mining_path/conf
     mkdir -p $mining_path/log
 
-    cp -rf /root/nodes/seth/pkg/shard_db_3 $mining_path/db
-    cp /root/nodes/seth/pkg/GeoLite2-City.mmdb $mining_path/conf/
-    cat <<EOF > $mining_path/conf/seth.conf_temp
+    cp -rf /root/nodes/shardora/pkg/shard_db_3 $mining_path/db
+    cp /root/nodes/shardora/pkg/GeoLite2-City.mmdb $mining_path/conf/
+    cat <<EOF > $mining_path/conf/shardora.conf_temp
 [db]
 path = "./db"
 
 [log]
-path = "log/seth.log"
+path = "log/shardora.log"
 
-[seth]
+[shardora]
 bootstrap = ${bootstrap}
 prikey = REPLACE_PRIVATE_KEY
 local_ip = REPLACE_LOCAL_IP

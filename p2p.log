@@ -44,7 +44,7 @@ shard B 收到跨分片调用 kConsensusLocalTos
   └→ to_tx_local_item.cc::CreateLocalToTx
        └─ has_base_root_address() → HandleCrossShardBase
             ├─ GetKeyValue(kCrossShardSystemExecutor, "xsb:"+base_addr, &bytecode)
-            ├─ bytecode 为空 → SETH_ERROR 返回（合约尚未广播到本分片）
+            ├─ bytecode 为空 → SHARDORA_ERROR 返回（合约尚未广播到本分片）
             └─ 懒部署分身合约：写 bytecode + 存储槽，执行 EVM 调用
 ```
 
@@ -79,11 +79,11 @@ shard B 收到跨分片调用 kConsensusLocalTos
 // MergeToPrev 前检测 CrossShardBase
 std::string xsb_runtime_code;
 {
-    evmc::address new_addr_evmc = sethvm::StrToEvmcAddr(block_tx.to());
-    evmc::bytes32 sentinel = seth_host.get_storage(new_addr_evmc, sethvm::kIsCrossShardBaseSlot);
+    evmc::address new_addr_evmc = shardoravm::StrToEvmcAddr(block_tx.to());
+    evmc::bytes32 sentinel = shardora_host.get_storage(new_addr_evmc, shardoravm::kIsCrossShardBaseSlot);
     if (sentinel.bytes[31] == 1) {
-        auto c2_it = seth_host.create2_accounts_.find(new_addr_evmc);
-        if (c2_it != seth_host.create2_accounts_.end() && !c2_it->second.code.empty()) {
+        auto c2_it = shardora_host.create2_accounts_.find(new_addr_evmc);
+        if (c2_it != shardora_host.create2_accounts_.end() && !c2_it->second.code.empty()) {
             xsb_runtime_code = std::string(c2_it->second.code.begin(), c2_it->second.code.end());
         }
     }
@@ -105,7 +105,7 @@ if (!to_item.runtime_bytecode().empty()) {
         std::string fan_key = to_item.des() + std::to_string(s);
         auto copy = std::make_shared<...>(to_item);
         copy->set_des_sharding_id(s);
-        seth_host.cross_to_map_[fan_key] = copy;
+        shardora_host.cross_to_map_[fan_key] = copy;
     }
 } else {
     // 普通单分片路由（原逻辑）
@@ -131,7 +131,7 @@ if (amount <= 0 && library_bytes().empty() && runtime_bytecode().empty()) {
 // CrossShardBase 创建：存 bytecode 到本地全局 KV
 if (!to_tx_item.runtime_bytecode().empty()) {
     const std::string sys_str(kCrossShardSystemExecutor.bytes, 20);
-    seth_host.SaveKeyValue(sys_str, "xsb:" + addr, to_tx_item.runtime_bytecode());
+    shardora_host.SaveKeyValue(sys_str, "xsb:" + addr, to_tx_item.runtime_bytecode());
 }
 ```
 
@@ -139,9 +139,9 @@ HandleCrossShardBase：
 ```cpp
 // 从 KV 读取 bytecode（不从跨分片 TX 消息中获取）
 std::string bytecode;
-seth_host.GetKeyValue(sys_str, "xsb:" + base_raw, &bytecode);
+shardora_host.GetKeyValue(sys_str, "xsb:" + base_raw, &bytecode);
 if (bytecode.empty()) {
-    SETH_ERROR("bytecode not in registry for base=%s", ...);
+    SHARDORA_ERROR("bytecode not in registry for base=%s", ...);
     return;
 }
 // 懒部署分身合约...
@@ -161,11 +161,11 @@ if (bytecode.empty()) {
 ---
 
 ## 关键常量位置
-- `kCrossShardSystemExecutor`：src/sethvm/host_journal_stack.h
-- `kIsCrossShardBaseSlot`：src/sethvm/host_journal_stack.h
-- `DeriveShardAddress`：src/sethvm/host_journal_stack.h
-- `kCrossShardBaseGasMultiplier`：src/sethvm/host_journal_stack.h
+- `kCrossShardSystemExecutor`：src/shardoravm/host_journal_stack.h
+- `kIsCrossShardBaseSlot`：src/shardoravm/host_journal_stack.h
+- `DeriveShardAddress`：src/shardoravm/host_journal_stack.h
+- `kCrossShardBaseGasMultiplier`：src/shardoravm/host_journal_stack.h
 
 ## 全局 KV 接口
-- `seth_host.SaveKeyValue(id, key, val)` — 写
-- `seth_host.GetKeyValue(id, key, &val)` — 读，返回 kSethvmSuccess 或错误码
+- `shardora_host.SaveKeyValue(id, key, val)` — 写
+- `shardora_host.GetKeyValue(id, key, &val)` — 读，返回 kShardoravmSuccess 或错误码

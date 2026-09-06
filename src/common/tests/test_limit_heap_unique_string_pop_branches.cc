@@ -5,7 +5,7 @@
 #define private public
 #include "common/limit_heap.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -25,4 +25,4 @@ TEST(LimitHeapUniqueStringPopBranches, PopErasesUniqueKeySoValueCanReenter) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

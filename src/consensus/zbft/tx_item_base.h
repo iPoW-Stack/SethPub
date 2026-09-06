@@ -8,7 +8,7 @@
 #include "protos/prefix_db.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
@@ -31,11 +31,11 @@ protected:
     virtual int HandleTx(
             uint32_t tx_index,
             view_block::protobuf::ViewBlockItem& view_block,
-            sethvm::SethhainHost& seth_host,
+            shardoravm::ShardorahainHost& shardora_host,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             block::protobuf::BlockTx& block_tx) {
         uint32_t status_code = 0;
-        // seth_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
+        // shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), std::string((char*)&status_code, sizeof(status_code)));
         return consensus::kConsensusSuccess;
     }
 
@@ -50,34 +50,34 @@ protected:
     }
 
     virtual void InitHost(
-            sethvm::SethhainHost& seth_host, 
+            shardoravm::ShardorahainHost& shardora_host, 
             const block::protobuf::BlockTx& tx, 
             uint64_t gas_limit, 
             uint64_t gas_price, 
             view_block::protobuf::ViewBlockItem& view_block) {
-        sethvm::Uint64ToEvmcBytes32(
-            seth_host.tx_context_.tx_gas_price,
+        shardoravm::Uint64ToEvmcBytes32(
+            shardora_host.tx_context_.tx_gas_price,
             gas_price);
-        seth_host.contract_mgr_ = contract_mgr_;
-        seth_host.my_address_ = tx.to();
-        seth_host.recorded_selfdestructs_ = nullptr;
-        seth_host.gas_more_ = 0lu;
-        seth_host.create_bytes_code_ = "";
-        seth_host.contract_to_call_dirty_ = false;
-        seth_host.recorded_logs_.clear();
-        seth_host.to_account_value_.clear();
-        seth_host.view_ = view_block.qc().view();
-        seth_host.tx_context_.block_gas_limit = gas_limit;
-        seth_host.tx_context_.block_number = view_block.block_info().height();
-        seth_host.tx_context_.block_timestamp = view_block.block_info().timestamp();
+        shardora_host.contract_mgr_ = contract_mgr_;
+        shardora_host.my_address_ = tx.to();
+        shardora_host.recorded_selfdestructs_ = nullptr;
+        shardora_host.gas_more_ = 0lu;
+        shardora_host.create_bytes_code_ = "";
+        shardora_host.contract_to_call_dirty_ = false;
+        shardora_host.recorded_logs_.clear();
+        shardora_host.to_account_value_.clear();
+        shardora_host.view_ = view_block.qc().view();
+        shardora_host.tx_context_.block_gas_limit = gas_limit;
+        shardora_host.tx_context_.block_number = view_block.block_info().height();
+        shardora_host.tx_context_.block_timestamp = view_block.block_info().timestamp();
         uint64_t chain_id = hotstuff::kGlobalChainId;
-        sethvm::Uint64ToEvmcBytes32(
-            seth_host.tx_context_.chain_id,
+        shardoravm::Uint64ToEvmcBytes32(
+            shardora_host.tx_context_.chain_id,
             chain_id);
-        SETH_DEBUG("init host, block number: %lu, timestamp: %lu, gas limit: %lu, "
+        SHARDORA_DEBUG("init host, block number: %lu, timestamp: %lu, gas limit: %lu, "
             "gas price: %lu, from: %s, to: %s",
-            seth_host.tx_context_.block_number, seth_host.tx_context_.block_timestamp,
-            seth_host.tx_context_.block_gas_limit, gas_price,
+            shardora_host.tx_context_.block_number, shardora_host.tx_context_.block_timestamp,
+            shardora_host.tx_context_.block_gas_limit, gas_price,
             common::Encode::HexEncode(tx.from()).c_str(),
             common::Encode::HexEncode(tx.to()).c_str());
     }
@@ -127,33 +127,33 @@ protected:
     }
 
     int GetTempAccountBalance(
-            sethvm::SethhainHost& seth_host,
+            shardoravm::ShardorahainHost& shardora_host,
             const std::string& id,
             hotstuff::BalanceAndNonceMap& acc_balance_map,
             uint64_t* balance,
             uint64_t* nonce) {
         auto iter = acc_balance_map.find(id);
         if (iter == acc_balance_map.end()) {
-            protos::AddressInfoPtr acc_info = seth_host.view_block_chain_->ChainGetAccountInfo(id);
+            protos::AddressInfoPtr acc_info = shardora_host.view_block_chain_->ChainGetAccountInfo(id);
             if (acc_info == nullptr) {
-                SETH_DEBUG("account addres not exists[%s]", common::Encode::HexEncode(id).c_str());
+                SHARDORA_DEBUG("account addres not exists[%s]", common::Encode::HexEncode(id).c_str());
                 return consensus::kConsensusAccountNotExists;
             }
 
             if (acc_info->destructed()) {
-                SETH_DEBUG("contract destructed: %s", common::Encode::HexEncode(id).c_str());
+                SHARDORA_DEBUG("contract destructed: %s", common::Encode::HexEncode(id).c_str());
                 return consensus::kConsensusAccountNotExists;
             }
 
             acc_balance_map[id] = std::make_shared<address::protobuf::AddressInfo>(*acc_info);
             *balance = acc_info->balance();
             *nonce = acc_info->nonce();
-            SETH_DEBUG("success get temp account balance from lru map: %s, balance: %lu, nonce: %lu",
+            SHARDORA_DEBUG("success get temp account balance from lru map: %s, balance: %lu, nonce: %lu",
                 common::Encode::HexEncode(id).c_str(), *balance, *nonce);
         } else {
             *balance = iter->second->balance();
             *nonce = iter->second->nonce();
-            SETH_DEBUG("success get temp account balance from temp map: %s, balance: %lu, nonce: %lu",
+            SHARDORA_DEBUG("success get temp account balance from temp map: %s, balance: %lu, nonce: %lu",
                 common::Encode::HexEncode(id).c_str(), *balance, *nonce);
         }
 
@@ -168,7 +168,7 @@ protected:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora
 
 
 

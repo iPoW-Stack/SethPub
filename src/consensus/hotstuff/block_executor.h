@@ -6,7 +6,7 @@
 #include <network/network_utils.h>
 #include <protos/block.pb.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -21,7 +21,7 @@ public:
             const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            sethvm::SethhainHost& seth_host) = 0;
+            shardoravm::ShardorahainHost& shardora_host) = 0;
 };
 
 class ShardBlockExecutor : public IBlockExecutor {
@@ -39,7 +39,7 @@ public:
             const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            sethvm::SethhainHost& seth_host);
+            shardoravm::ShardorahainHost& shardora_host);
 private:
     std::shared_ptr<db::DbWriteBatch> db_batch_ = nullptr;
     std::shared_ptr<security::Security> security_ptr_ = nullptr;    
@@ -60,7 +60,7 @@ public:
             const std::shared_ptr<consensus::WaitingTxsItem>& txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            sethvm::SethhainHost& seth_host);
+            shardoravm::ShardorahainHost& shardora_host);
 private:
     std::shared_ptr<db::DbWriteBatch> db_batch_ = nullptr;
     std::shared_ptr<security::Security> security_ptr_ = nullptr;
@@ -69,17 +69,17 @@ private:
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            sethvm::SethhainHost& seth_host);
+            shardoravm::ShardorahainHost& shardora_host);
     Status RootCreateAccountAddressBlock(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            sethvm::SethhainHost& seth_host);
+            shardoravm::ShardorahainHost& shardora_host);
     Status RootCreateElectConsensusShardBlock(
             const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
             view_block::protobuf::ViewBlockItem* view_block,
             BalanceAndNonceMap& balance_map,
-            sethvm::SethhainHost& seth_host);        
+            shardoravm::ShardorahainHost& shardora_host);        
 };
 
 class BlockExecutorFactory {
@@ -97,5 +97,5 @@ public:
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora
 

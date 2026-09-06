@@ -2,7 +2,7 @@
 
 #include "tnet/event/event_handler.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -21,7 +21,7 @@ public:
         return event_handler_;
     }
 
-    void Sethandler(EventHandler* handler) {
+    void Shardoraandler(EventHandler* handler) {
         event_handler_ = handler;
     }
 
@@ -70,4 +70,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

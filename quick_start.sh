@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Seth HTTPS 服务器快速启动脚本
+# Shardora HTTPS 服务器快速启动脚本
 # 自动完成依赖安装、编译和启动
 
 set -e
@@ -144,7 +144,7 @@ build_project() {
     # 编译
     echo_info "开始编译（这可能需要几分钟）..."
     local cpu_cores=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-    make seth -j$cpu_cores || {
+    make shardora -j$cpu_cores || {
         echo_error "编译失败"
         exit 1
     }
@@ -157,18 +157,18 @@ build_project() {
 run_tests() {
     echo_info "运行基本测试..."
     
-    if [ ! -f "build/seth" ]; then
-        echo_error "找不到可执行文件 build/seth"
+    if [ ! -f "build/shardora" ]; then
+        echo_error "找不到可执行文件 build/shardora"
         exit 1
     fi
     
     # 检查依赖库
     if [[ "$OS" == "macos" ]]; then
-        otool -L build/seth | grep -E "(ssl|crypto)" > /dev/null || {
+        otool -L build/shardora | grep -E "(ssl|crypto)" > /dev/null || {
             echo_warn "警告: 未检测到 OpenSSL 库链接"
         }
     else
-        ldd build/seth | grep -E "(ssl|crypto)" > /dev/null || {
+        ldd build/shardora | grep -E "(ssl|crypto)" > /dev/null || {
             echo_warn "警告: 未检测到 OpenSSL 库链接"
         }
     fi
@@ -185,11 +185,11 @@ start_server() {
     
     echo ""
     echo "=========================================="
-    echo "Seth HTTPS 服务器已准备就绪"
+    echo "Shardora HTTPS 服务器已准备就绪"
     echo "=========================================="
     echo ""
     echo "启动服务器:"
-    echo "  cd build && ./seth"
+    echo "  cd build && ./shardora"
     echo ""
     echo "测试连接:"
     echo "  curl -k https://localhost:8080/query_init"
@@ -198,7 +198,7 @@ start_server() {
     echo "  python3 test_https_client.py"
     echo ""
     echo "查看日志:"
-    echo "  tail -f build/seth.log"
+    echo "  tail -f build/shardora.log"
     echo ""
     echo "=========================================="
 }
@@ -207,7 +207,7 @@ start_server() {
 main() {
     echo ""
     echo "=========================================="
-    echo "Seth HTTPS 服务器快速启动"
+    echo "Shardora HTTPS 服务器快速启动"
     echo "=========================================="
     echo ""
     

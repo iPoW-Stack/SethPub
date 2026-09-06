@@ -3,7 +3,7 @@
 #include "common/utils.h"
 #include "security/ecdsa/public_key.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -27,4 +27,4 @@ private:
 
 };  // namespace security
 
-};  // namespace seth
+};  // namespace shardora

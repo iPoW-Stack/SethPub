@@ -6,7 +6,7 @@ no_build=$2
 sh gen_docker_files.sh $target $no_build
 
 target_lower=$(echo $target | tr '[:upper:]' '[:lower:]')
-image_name="seth-image-${target_lower}"
+image_name="shardora-image-${target_lower}"
 
 echo "Building image ${image_name}"
 

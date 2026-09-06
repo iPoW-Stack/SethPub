@@ -7,7 +7,7 @@ contract TestToken is CrossShardBase {
     constructor(address systemExecutor)
         CrossShardBase(systemExecutor) {}
 
-    // tx.origin/msg.sender may be 0 in Seth constructor, so _baseInit is a no-op.
+    // tx.origin/msg.sender may be 0 in Shardora constructor, so _baseInit is a no-op.
     // Call mint() explicitly after deployment.
     function _baseInit() internal override {}
 

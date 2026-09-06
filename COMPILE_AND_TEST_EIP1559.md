@@ -20,14 +20,14 @@ This happens because the C++ server is still using the OLD code that doesn't pro
 ### Step 1: Recompile C++ Code
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 ```
 
 **Expected output**: Should compile successfully without errors. Look for:
 ```
 [ 99%] Building CXX object ...
-[100%] Linking CXX executable seth
+[100%] Linking CXX executable shardora
 ```
 
 **If compilation fails**, check for:
@@ -35,33 +35,33 @@ make -j$(nproc)
 - Missing dependencies
 - Run `make clean` first, then `make -j$(nproc)` again
 
-### Step 2: Restart Seth Node
+### Step 2: Restart Shardora Node
 
 ```bash
 # Stop the current node
-pkill -f seth
+pkill -f shardora
 
 # Wait a moment for it to fully stop
 sleep 2
 
 # Start the node (adjust command based on your setup)
-cd /root/seth
+cd /root/shardora
 ./start_node.sh
 # OR
-nohup ./build/seth --config=./config.json > logs/seth.log 2>&1 &
+nohup ./build/shardora --config=./config.json > logs/shardora.log 2>&1 &
 ```
 
 **Verify node is running**:
 ```bash
-ps aux | grep seth
-# Should show the seth process running
+ps aux | grep shardora
+# Should show the shardora process running
 ```
 
 ### Step 3: Monitor Server Logs (Optional but Recommended)
 
 Open a second terminal and run:
 ```bash
-tail -f /root/seth/logs/seth.log | grep -E "EIP-1559|eth_sendRawTransaction|signing"
+tail -f /root/shardora/logs/shardora.log | grep -E "EIP-1559|eth_sendRawTransaction|signing"
 ```
 
 This will show you the C++ side's signing hash calculation for comparison with Python.
@@ -69,7 +69,7 @@ This will show you the C++ side's signing hash calculation for comparison with P
 ### Step 4: Run EIP-1559 Tests
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 test_eip1559.py
 ```
 
@@ -138,15 +138,15 @@ keccak256(0x02 || RLP([chainId, nonce, 1, 2, gasLimit, to, value, data, accessLi
 
 1. **Verify compilation actually happened**:
    ```bash
-   ls -lh /root/seth/build/seth
+   ls -lh /root/shardora/build/shardora
    # Check the timestamp - should be recent (just now)
    ```
 
 2. **Make sure you restarted the node**:
    ```bash
-   ps aux | grep seth
+   ps aux | grep shardora
    # Kill any old processes
-   pkill -f seth
+   pkill -f shardora
    # Start fresh
    ```
 

@@ -5,7 +5,7 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'clipy')))
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link, to_checksum_address
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link, to_checksum_address
 
 # 1. 合约源码 (Solidity)
 ARS_SOL_SOURCE = """
@@ -164,7 +164,7 @@ def run_comprehensive_ars_demo():
     IP, PORT = "127.0.0.1", 23001
     PRIV_KEY = "71e571862c0e4aefa87a3c16057a62c8331991a11746ab7ff8c6b6418e73b2f6"
     
-    w3 = SethWeb3Mock(IP, PORT)
+    w3 = ShardoraWeb3Mock(IP, PORT)
     MY_ADDR = w3.client.get_address(PRIV_KEY)
     print(f"[*] Operator Address: {MY_ADDR}")
 
@@ -174,7 +174,7 @@ def run_comprehensive_ars_demo():
     
     # Constructor parameters
     init_param = b"initial_pbc_system_parameters"
-    ars_contract = w3.seth.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
+    ars_contract = w3.shardora.contract(abi=abi, bytecode=bytecode, sender_address=MY_ADDR).deploy({
         'from': MY_ADDR,
         'salt': secrets.token_hex(32),
         'args': [init_param]

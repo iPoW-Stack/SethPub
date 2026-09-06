@@ -2,7 +2,7 @@
 
 #include "common/lof.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -24,4 +24,4 @@ TEST(LofPointBranches, SubscriptReadWrite) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

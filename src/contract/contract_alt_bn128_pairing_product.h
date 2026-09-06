@@ -3,7 +3,7 @@
 #include "contract/contract_interface.h"
 #include "common/tick.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -24,4 +24,4 @@ private:
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

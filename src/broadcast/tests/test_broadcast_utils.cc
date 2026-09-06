@@ -6,7 +6,7 @@
 #include "broadcast/broadcast_utils.h"
 #include "protos/transport.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace broadcast {
 
@@ -146,4 +146,4 @@ TEST_F(TestBroadcastUtils, LayerRangeCustom) {
 
 }  // namespace broadcast
 
-}  // namespace seth
+}  // namespace shardora

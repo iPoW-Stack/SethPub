@@ -1,6 +1,6 @@
 #include "common/limit_heap.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -31,4 +31,4 @@ uint64_t MinHeapUniqueVal(const int32_t& val) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

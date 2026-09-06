@@ -9,7 +9,7 @@
 #include "protos/address.pb.h"
 #include "protos/pools.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace block {
 namespace test {
 
@@ -126,4 +126,4 @@ TEST(BlockUtilsExtraTest, AddressTypeConstants) {
 
 }  // namespace test
 }  // namespace block
-}  // namespace seth
+}  // namespace shardora

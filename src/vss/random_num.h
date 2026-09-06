@@ -12,7 +12,7 @@
 #include "protos/vss.pb.h"
 #include "vss/vss_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
 
@@ -43,7 +43,7 @@ public:
         valid_ = true;
     }
 
-    void Sethash(const std::string& id, uint64_t hash_num) {
+    void Shardoraash(const std::string& id, uint64_t hash_num) {
         // owner has came
         if (valid_ || is_local_ || !owner_id_.empty()) {
             return;
@@ -106,4 +106,4 @@ typedef std::shared_ptr<RandomNum> RandomNumPtr;
 
 }  // namespace vss
 
-}  // namespace seth
+}  // namespace shardora

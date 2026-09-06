@@ -7,7 +7,7 @@
 #include "dht/dht_utils.h"
 #include "dht/dht_key.h"
 
-namespace seth {
+namespace shardora {
 
 namespace dht {
 
@@ -143,4 +143,4 @@ TEST_F(TestNode, Constants) {
 
 }  // namespace dht
 
-}  // namespace seth
+}  // namespace shardora

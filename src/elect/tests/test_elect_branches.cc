@@ -5,7 +5,7 @@
 #include "elect/elect_utils.h"
 #include "common/hash.h"
 
-namespace seth {
+namespace shardora {
 namespace elect {
 namespace test {
 
@@ -106,4 +106,4 @@ TEST(ElectConstantsExtraTest, JoinAndTolerateTimings) {
 
 }  // namespace test
 }  // namespace elect
-}  // namespace seth
+}  // namespace shardora

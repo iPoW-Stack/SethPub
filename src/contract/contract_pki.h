@@ -8,7 +8,7 @@
 #include "pki/pki_ib_agka.h"
 #include "pki/param.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -30,42 +30,42 @@ public:
         evmc_result* res);
         
     int PkiExtract(
-            const seth::contract::CallParameters& param, 
+            const shardora::contract::CallParameters& param, 
             const std::string& key, 
             const std::string& value) {
         return protocol_->PkiExtract(param, key, value);
     }
 
     int IbExtract(
-            const seth::contract::CallParameters& param, 
+            const shardora::contract::CallParameters& param, 
             const std::string& key, 
             const std::string& value) {
         return protocol_->IbExtract(param, key, value);
     }
 
     int EncKeyGen(
-            const seth::contract::CallParameters& param, 
+            const shardora::contract::CallParameters& param, 
             const std::string& key, 
             const std::string& value) {
         return protocol_->EncKeyGen(param, key, value);
     }
 
     int DecKeyGen(
-            const seth::contract::CallParameters& param, 
+            const shardora::contract::CallParameters& param, 
             const std::string& key, 
             const std::string& value) {
         return protocol_->DecKeyGen(param, key, value);
     }
 
     int Enc(
-            const seth::contract::CallParameters& param, 
+            const shardora::contract::CallParameters& param, 
             const std::string& key, 
             const std::string& value) {
         return protocol_->Enc(param, key, value);
     }
 
     int Dec(
-            const seth::contract::CallParameters& param, 
+            const shardora::contract::CallParameters& param, 
             const std::string& key, 
             const std::string& value) {
         return protocol_->Dec(param, key, value);
@@ -79,4 +79,4 @@ private:
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

@@ -1,13 +1,13 @@
 #include "consensus/zbft/from_tx_item.h"
 
-namespace seth {
+namespace shardora {
 
 namespace consensus {
 
 int FromTxItem::HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& pre_seth_host,
+        shardoravm::ShardorahainHost& pre_shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx) {
     uint64_t gas_used = 0;
@@ -16,7 +16,7 @@ int FromTxItem::HandleTx(
     uint64_t from_nonce = 0;
     uint64_t to_balance = 0;
     auto& from = address_info->addr();
-    int balance_status = GetTempAccountBalance(pre_seth_host, from, acc_balance_map, &from_balance, &from_nonce);
+    int balance_status = GetTempAccountBalance(pre_shardora_host, from, acc_balance_map, &from_balance, &from_nonce);
     auto src_banalce = from_balance;
     if (balance_status != kConsensusSuccess) {
         block_tx.set_status(balance_status);
@@ -25,11 +25,11 @@ int FromTxItem::HandleTx(
         return kConsensusSuccess;
     }
 
-    sethvm::SethhainHost seth_host;
-    seth_host.view_block_chain_ = pre_seth_host.view_block_chain_;
-    seth_host.tx_context_ = pre_seth_host.tx_context_;
-    seth_host.pre_seth_host_ = &pre_seth_host;
-    InitHost(seth_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
+    shardoravm::ShardorahainHost shardora_host;
+    shardora_host.view_block_chain_ = pre_shardora_host.view_block_chain_;
+    shardora_host.tx_context_ = pre_shardora_host.tx_context_;
+    shardora_host.pre_shardora_host_ = &pre_shardora_host;
+    InitHost(shardora_host, block_tx, block_tx.gas_limit(), block_tx.gas_price(), view_block);
     do  {
         gas_used = consensus::kTransferGas; // Transfer transaction fee calculation
         if (from_nonce + 1 != block_tx.nonce()) {
@@ -41,7 +41,7 @@ int FromTxItem::HandleTx(
         if (tx_info->has_key()) {
             gas_used += consensus::CalcKvStorageGas(
                 tx_info->key().size(), tx_info->value().size(), true);
-            seth_host.SaveKeyValue(block_tx.from(), tx_info->key(), tx_info->value());
+            shardora_host.SaveKeyValue(block_tx.from(), tx_info->key(), tx_info->value());
             block_tx.set_key(tx_info->key());
             block_tx.set_value(tx_info->value());
         }
@@ -49,14 +49,14 @@ int FromTxItem::HandleTx(
         // Insufficient balance
         if (from_balance < block_tx.gas_limit()  * block_tx.gas_price()) {
             block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-            SETH_DEBUG("balance error: %lu, %lu, %lu", from_balance, block_tx.gas_limit(), block_tx.gas_price());
+            SHARDORA_DEBUG("balance error: %lu, %lu, %lu", from_balance, block_tx.gas_limit(), block_tx.gas_price());
             break;
         }
 
         // gas limit is set too small
         if (block_tx.gas_limit() < gas_used) {
             block_tx.set_status(consensus::kConsensusUserSetGasLimitError);
-            SETH_DEBUG("1 balance error: %lu, %lu, %lu", from_balance, block_tx.gas_limit(), gas_used);
+            SHARDORA_DEBUG("1 balance error: %lu, %lu, %lu", from_balance, block_tx.gas_limit(), gas_used);
             break;
         }
     } while (0);
@@ -70,12 +70,12 @@ int FromTxItem::HandleTx(
             } else {
                 from_balance -= gas_used * block_tx.gas_price();
                 block_tx.set_status(consensus::kConsensusAccountBalanceError);
-                SETH_ERROR("leader balance error: %llu, %llu", from_balance, dec_amount);
+                SHARDORA_ERROR("leader balance error: %llu, %llu", from_balance, dec_amount);
             }
         } else {
             from_balance = 0;
             block_tx.set_status(consensus::kConsensusAccountBalanceError);
-            SETH_ERROR("leader balance error: %llu, %llu",
+            SHARDORA_ERROR("leader balance error: %llu, %llu",
                 from_balance, gas_used * block_tx.gas_price());
         }
     } else {
@@ -88,15 +88,15 @@ int FromTxItem::HandleTx(
 
     uint32_t status_code = block_tx.status();
     if (block_tx.status() == kConsensusSuccess) {
-        seth_host.MergeToPrev();
-        auto iter = pre_seth_host.cross_to_map_.find(block_tx.to());
+        shardora_host.MergeToPrev();
+        auto iter = pre_shardora_host.cross_to_map_.find(block_tx.to());
         std::shared_ptr<pools::protobuf::ToTxMessageItem> to_item_ptr;
-        if (iter == pre_seth_host.cross_to_map_.end()) {
+        if (iter == pre_shardora_host.cross_to_map_.end()) {
             to_item_ptr = std::make_shared<pools::protobuf::ToTxMessageItem>();
             to_item_ptr->set_des(block_tx.to());
             to_item_ptr->set_amount(block_tx.amount());
-            pre_seth_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
-            SETH_DEBUG("success add cross to shard array: %s, %lu",
+            pre_shardora_host.cross_to_map_[to_item_ptr->des()] = to_item_ptr;
+            SHARDORA_DEBUG("success add cross to shard array: %s, %lu",
                 common::Encode::HexEncode(block_tx.to()).c_str(),
                 block_tx.amount());
         } else {
@@ -104,7 +104,7 @@ int FromTxItem::HandleTx(
             to_item_ptr->set_amount(block_tx.amount() + to_item_ptr->amount());
         }
     } else {
-        SETH_DEBUG("failed add cross to shard array: %s, %lu, nonce: %lu, status: %d",
+        SHARDORA_DEBUG("failed add cross to shard array: %s, %lu, nonce: %lu, status: %d",
             common::Encode::HexEncode(block_tx.to()).c_str(),
             block_tx.amount(),
             block_tx.nonce(),
@@ -114,14 +114,14 @@ int FromTxItem::HandleTx(
     block::protobuf::TxHashStatus tx_hash_status;
     tx_hash_status.set_status(block_tx.status());
     auto status_val = tx_hash_status.SerializeAsString();
-    pre_seth_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
+    pre_shardora_host.SaveKeyValue("tx", block_tx.tx_hash(), status_val);
 
     // Deduct the amount from the source account
     acc_balance_map[from]->set_balance(from_balance);
     acc_balance_map[from]->set_nonce(block_tx.nonce());
     acc_balance_map[from]->set_latest_height(view_block.block_info().height());
     acc_balance_map[from]->set_tx_index(tx_index);
-    SETH_DEBUG("success add addr: %s, value: %s, nonce: %lu, balance: %lu, status: %d", 
+    SHARDORA_DEBUG("success add addr: %s, value: %s, nonce: %lu, balance: %lu, status: %d", 
         common::Encode::HexEncode(from).c_str(), 
         ProtobufToJson(*(acc_balance_map[from])).c_str(),
         block_tx.nonce(),
@@ -129,7 +129,7 @@ int FromTxItem::HandleTx(
         status_code);
     block_tx.set_balance(from_balance);
     block_tx.set_gas_used(gas_used);
-    // SETH_DEBUG("handle tx success: %s, %lu, %lu, status: %d, from: %s, to: %s, amount: %lu, src_banalce: %lu, %u_%u_%lu, height: %lu",
+    // SHARDORA_DEBUG("handle tx success: %s, %lu, %lu, status: %d, from: %s, to: %s, amount: %lu, src_banalce: %lu, %u_%u_%lu, height: %lu",
     //     common::Encode::HexEncode(block_tx.gid()).c_str(),
     //     block_tx.balance(),
     //     block_tx.gas_used(),
@@ -148,4 +148,4 @@ int FromTxItem::HandleTx(
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

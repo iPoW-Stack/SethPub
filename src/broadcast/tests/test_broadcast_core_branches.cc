@@ -3,7 +3,7 @@
 #include "dht/base_dht.h"
 #include "broadcast/broadcast.h"
 
-namespace seth {
+namespace shardora {
 namespace broadcast {
 namespace test {
 
@@ -53,5 +53,5 @@ TEST(TestBroadcastCoreBranches, SendCoversEmptyAndNonEmptyNodeLoop) {
 
 }  // namespace test
 }  // namespace broadcast
-}  // namespace seth
+}  // namespace shardora
 

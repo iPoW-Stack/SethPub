@@ -11,7 +11,7 @@ Fixed signature verification for EIP-1559 transactions in three components:
 
 ```bash
 # Navigate to build directory
-cd /root/seth/build
+cd /root/shardora/build
 
 # Clean previous build (optional, recommended)
 make clean
@@ -24,15 +24,15 @@ make -j$(nproc)
 
 - ✅ No errors related to `security::VerifyEthSignature()`
 - ✅ All three modified files compile successfully
-- ✅ Binary `seth` is generated
+- ✅ Binary `shardora` is generated
 
 ## Testing Steps
 
-### 1. Start Seth Node
+### 1. Start Shardora Node
 
 ```bash
-cd /root/seth
-./seth -g -f -s -d
+cd /root/shardora
+./shardora -g -f -s -d
 ```
 
 Wait for the node to start and show "Server started" message.
@@ -42,7 +42,7 @@ Wait for the node to start and show "Server started" message.
 In a new terminal:
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 test_eip1559.py
 ```
 
@@ -65,7 +65,7 @@ Status: 100012 (kTxInvalidSignature)
 ### 4. Check Server Logs
 
 ```bash
-# In the Seth node terminal, you should see:
+# In the Shardora node terminal, you should see:
 [http_handler.cc][EthJsonRpc] eth_sendRawTransaction: tx_hash=0x..., step=0, from=..., to=..., value=...
 [tx_pool_manager.cc][TmpFirewallCheckMessage] ETH tx passed firewall check, from: ...
 ```
@@ -79,7 +79,7 @@ Status: 100012 (kTxInvalidSignature)
 ## Verification Checklist
 
 - [ ] Code compiles without errors
-- [ ] Seth node starts successfully
+- [ ] Shardora node starts successfully
 - [ ] EIP-1559 transaction is accepted (no signature error)
 - [ ] Transaction appears in logs with correct from/to/value
 - [ ] No "signature verification failed" errors in any component

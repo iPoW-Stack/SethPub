@@ -3,9 +3,9 @@
 #include "common/split.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
-#include "sethvm/seth_host.h"
+#include "shardoravm/shardora_host.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -22,4 +22,4 @@ int ContractPki::call(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

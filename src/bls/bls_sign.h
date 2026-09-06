@@ -7,7 +7,7 @@
 
 #include "bls/bls_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 
@@ -58,4 +58,4 @@ private:
 
 };  // namespace bls
 
-};  // namespace seth
+};  // namespace shardora

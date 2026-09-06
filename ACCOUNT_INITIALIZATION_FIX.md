@@ -124,7 +124,7 @@ failed check tx nonce not exists in db: ..., 35, db nonce: 0
 
 ## 验证方法
 
-1. 编译项目：`./build.sh seth`
+1. 编译项目：`./build.sh shardora`
 2. 运行压测：`./txcli 0 3 0 <ip> <port>`
 3. 观察日志：
    - 应该看到 "Initializing accounts on blockchain..." 消息

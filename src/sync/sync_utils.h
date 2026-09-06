@@ -7,7 +7,7 @@
 #include "common/log.h"
 #include "protos/block.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace sync {
 
@@ -49,4 +49,4 @@ static const uint32_t kPoolHeightPairCount = 2u * (common::kImmutablePoolSize + 
 
 }  // namespace sync
 
-}  // namespace seth
+}  // namespace shardora

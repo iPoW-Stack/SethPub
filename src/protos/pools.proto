@@ -2,7 +2,7 @@ syntax = "proto2";
 
 import "protos/bls.proto";
 import "protos/elect.proto";
-package seth.pools.protobuf;
+package shardora.pools.protobuf;
 
 enum StepType {
     kNormalFrom = 0;  // User direct transfer
@@ -191,6 +191,6 @@ message TxMessage {
     // When set, this tx was submitted via eth_sendRawTransaction.
     // Contains the original RLP-encoded signed transaction bytes.
     // Signature verification uses the ETH signing hash (EIP-155)
-    // instead of the Seth-native hash format.
+    // instead of the Shardora-native hash format.
     optional bytes eth_raw_tx = 18;
 }

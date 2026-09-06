@@ -18,10 +18,10 @@ from protos import pools_pb2 as protos_dot_pools__pb2
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/hotstuff.proto',
-  package='seth.hotstuff.protobuf',
+  package='shardora.hotstuff.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x15protos/hotstuff.proto\x12\x16seth.hotstuff.protobuf\x1a\x17protos/view_block.proto\x1a\x12protos/pools.proto\"u\n\tTxPropose\x12;\n\x07tx_type\x18\x01 \x01(\x0e\x32\x1d.seth.pools.protobuf.StepType:\x0bkNormalFrom\x12+\n\x03txs\x18\x02 \x03(\x0b\x32\x1e.seth.pools.protobuf.TxMessage\"\xf7\x02\n\x0fHotstuffMessage\x12\x0c\n\x04type\x18\x01 \x01(\r\x12\x33\n\x07pro_msg\x18\x02 \x01(\x0b\x32\".seth.hotstuff.protobuf.ProposeMsg\x12\x31\n\x08vote_msg\x18\x03 \x01(\x0b\x32\x1f.seth.hotstuff.protobuf.VoteMsg\x12\x37\n\x0bnewview_msg\x18\x04 \x01(\x0b\x32\".seth.hotstuff.protobuf.NewViewMsg\x12\x45\n\x13pre_reset_timer_msg\x18\x05 \x01(\x0b\x32(.seth.hotstuff.protobuf.PreResetTimerMsg\x12>\n\x0freset_timer_msg\x18\x06 \x01(\x0b\x32%.seth.hotstuff.protobuf.ResetTimerMsg\x12\x0e\n\x06net_id\x18\x07 \x01(\r\x12\x1e\n\npool_index\x18\x08 \x01(\r:\n4294967295\"\x8a\x01\n\nNewViewMsg\x12,\n\x02tc\x18\x01 \x01(\x0b\x32 .seth.view_block.protobuf.QcItem\x12\x38\n\x07qc_view\x18\x02 \x01(\x0b\x32\'.seth.view_block.protobuf.ViewBlockItem\x12\x14\n\x0c\x65lect_height\x18\x03 \x01(\x04\"\xc3\x01\n\nProposeMsg\x12\x14\n\x0c\x65lect_height\x18\x01 \x01(\x04\x12:\n\tview_item\x18\x02 \x01(\x0b\x32\'.seth.view_block.protobuf.ViewBlockItem\x12,\n\x02tc\x18\x03 \x01(\x0b\x32 .seth.view_block.protobuf.QcItem\x12\x35\n\ntx_propose\x18\x04 \x01(\x0b\x32!.seth.hotstuff.protobuf.TxPropose\"\x8c\x02\n\x07VoteMsg\x12\x13\n\x0breplica_idx\x18\x01 \x01(\r\x12\x17\n\x0fview_block_hash\x18\x02 \x01(\x0c\x12\x0c\n\x04view\x18\x03 \x01(\x04\x12\x14\n\x0c\x65lect_height\x18\x04 \x01(\x04\x12\x0e\n\x06sign_x\x18\x05 \x01(\x0c\x12\x0e\n\x06sign_y\x18\x06 \x01(\x0c\x12;\n\x0bpartial_sig\x18\x07 \x01(\x0b\x32&.seth.view_block.protobuf.AggregateSig\x12+\n\x03txs\x18\x08 \x03(\x0b\x32\x1e.seth.pools.protobuf.TxMessage\x12\x12\n\nleader_idx\x18\t \x01(\r\x12\x11\n\ttm_height\x18\n \x01(\x04\"k\n\x10PreResetTimerMsg\x12\x13\n\x0breplica_idx\x18\x01 \x01(\r\x12+\n\x03txs\x18\x02 \x03(\x0b\x32\x1e.seth.pools.protobuf.TxMessage\x12\x15\n\rhas_single_tx\x18\x03 \x01(\x08\"#\n\rResetTimerMsg\x12\x12\n\nleader_idx\x18\x01 \x01(\r')
+  serialized_pb=_b('\n\x15protos/hotstuff.proto\x12\x16shardora.hotstuff.protobuf\x1a\x17protos/view_block.proto\x1a\x12protos/pools.proto\"u\n\tTxPropose\x12;\n\x07tx_type\x18\x01 \x01(\x0e\x32\x1d.shardora.pools.protobuf.StepType:\x0bkNormalFrom\x12+\n\x03txs\x18\x02 \x03(\x0b\x32\x1e.shardora.pools.protobuf.TxMessage\"\xf7\x02\n\x0fHotstuffMessage\x12\x0c\n\x04type\x18\x01 \x01(\r\x12\x33\n\x07pro_msg\x18\x02 \x01(\x0b\x32\".shardora.hotstuff.protobuf.ProposeMsg\x12\x31\n\x08vote_msg\x18\x03 \x01(\x0b\x32\x1f.shardora.hotstuff.protobuf.VoteMsg\x12\x37\n\x0bnewview_msg\x18\x04 \x01(\x0b\x32\".shardora.hotstuff.protobuf.NewViewMsg\x12\x45\n\x13pre_reset_timer_msg\x18\x05 \x01(\x0b\x32(.shardora.hotstuff.protobuf.PreResetTimerMsg\x12>\n\x0freset_timer_msg\x18\x06 \x01(\x0b\x32%.shardora.hotstuff.protobuf.ResetTimerMsg\x12\x0e\n\x06net_id\x18\x07 \x01(\r\x12\x1e\n\npool_index\x18\x08 \x01(\r:\n4294967295\"\x8a\x01\n\nNewViewMsg\x12,\n\x02tc\x18\x01 \x01(\x0b\x32 .shardora.view_block.protobuf.QcItem\x12\x38\n\x07qc_view\x18\x02 \x01(\x0b\x32\'.shardora.view_block.protobuf.ViewBlockItem\x12\x14\n\x0c\x65lect_height\x18\x03 \x01(\x04\"\xc3\x01\n\nProposeMsg\x12\x14\n\x0c\x65lect_height\x18\x01 \x01(\x04\x12:\n\tview_item\x18\x02 \x01(\x0b\x32\'.shardora.view_block.protobuf.ViewBlockItem\x12,\n\x02tc\x18\x03 \x01(\x0b\x32 .shardora.view_block.protobuf.QcItem\x12\x35\n\ntx_propose\x18\x04 \x01(\x0b\x32!.shardora.hotstuff.protobuf.TxPropose\"\x8c\x02\n\x07VoteMsg\x12\x13\n\x0breplica_idx\x18\x01 \x01(\r\x12\x17\n\x0fview_block_hash\x18\x02 \x01(\x0c\x12\x0c\n\x04view\x18\x03 \x01(\x04\x12\x14\n\x0c\x65lect_height\x18\x04 \x01(\x04\x12\x0e\n\x06sign_x\x18\x05 \x01(\x0c\x12\x0e\n\x06sign_y\x18\x06 \x01(\x0c\x12;\n\x0bpartial_sig\x18\x07 \x01(\x0b\x32&.shardora.view_block.protobuf.AggregateSig\x12+\n\x03txs\x18\x08 \x03(\x0b\x32\x1e.shardora.pools.protobuf.TxMessage\x12\x12\n\nleader_idx\x18\t \x01(\r\x12\x11\n\ttm_height\x18\n \x01(\x04\"k\n\x10PreResetTimerMsg\x12\x13\n\x0breplica_idx\x18\x01 \x01(\r\x12+\n\x03txs\x18\x02 \x03(\x0b\x32\x1e.shardora.pools.protobuf.TxMessage\x12\x15\n\rhas_single_tx\x18\x03 \x01(\x08\"#\n\rResetTimerMsg\x12\x12\n\nleader_idx\x18\x01 \x01(\r')
   ,
   dependencies=[protos_dot_view__block__pb2.DESCRIPTOR,protos_dot_pools__pb2.DESCRIPTOR,])
 
@@ -30,20 +30,20 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _TXPROPOSE = _descriptor.Descriptor(
   name='TxPropose',
-  full_name='seth.hotstuff.protobuf.TxPropose',
+  full_name='shardora.hotstuff.protobuf.TxPropose',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='tx_type', full_name='seth.hotstuff.protobuf.TxPropose.tx_type', index=0,
+      name='tx_type', full_name='shardora.hotstuff.protobuf.TxPropose.tx_type', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=True, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='txs', full_name='seth.hotstuff.protobuf.TxPropose.txs', index=1,
+      name='txs', full_name='shardora.hotstuff.protobuf.TxPropose.txs', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -68,62 +68,62 @@ _TXPROPOSE = _descriptor.Descriptor(
 
 _HOTSTUFFMESSAGE = _descriptor.Descriptor(
   name='HotstuffMessage',
-  full_name='seth.hotstuff.protobuf.HotstuffMessage',
+  full_name='shardora.hotstuff.protobuf.HotstuffMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='type', full_name='seth.hotstuff.protobuf.HotstuffMessage.type', index=0,
+      name='type', full_name='shardora.hotstuff.protobuf.HotstuffMessage.type', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pro_msg', full_name='seth.hotstuff.protobuf.HotstuffMessage.pro_msg', index=1,
+      name='pro_msg', full_name='shardora.hotstuff.protobuf.HotstuffMessage.pro_msg', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='vote_msg', full_name='seth.hotstuff.protobuf.HotstuffMessage.vote_msg', index=2,
+      name='vote_msg', full_name='shardora.hotstuff.protobuf.HotstuffMessage.vote_msg', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='newview_msg', full_name='seth.hotstuff.protobuf.HotstuffMessage.newview_msg', index=3,
+      name='newview_msg', full_name='shardora.hotstuff.protobuf.HotstuffMessage.newview_msg', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pre_reset_timer_msg', full_name='seth.hotstuff.protobuf.HotstuffMessage.pre_reset_timer_msg', index=4,
+      name='pre_reset_timer_msg', full_name='shardora.hotstuff.protobuf.HotstuffMessage.pre_reset_timer_msg', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='reset_timer_msg', full_name='seth.hotstuff.protobuf.HotstuffMessage.reset_timer_msg', index=5,
+      name='reset_timer_msg', full_name='shardora.hotstuff.protobuf.HotstuffMessage.reset_timer_msg', index=5,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='net_id', full_name='seth.hotstuff.protobuf.HotstuffMessage.net_id', index=6,
+      name='net_id', full_name='shardora.hotstuff.protobuf.HotstuffMessage.net_id', index=6,
       number=7, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pool_index', full_name='seth.hotstuff.protobuf.HotstuffMessage.pool_index', index=7,
+      name='pool_index', full_name='shardora.hotstuff.protobuf.HotstuffMessage.pool_index', index=7,
       number=8, type=13, cpp_type=3, label=1,
       has_default_value=True, default_value=4294967295,
       message_type=None, enum_type=None, containing_type=None,
@@ -148,27 +148,27 @@ _HOTSTUFFMESSAGE = _descriptor.Descriptor(
 
 _NEWVIEWMSG = _descriptor.Descriptor(
   name='NewViewMsg',
-  full_name='seth.hotstuff.protobuf.NewViewMsg',
+  full_name='shardora.hotstuff.protobuf.NewViewMsg',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='tc', full_name='seth.hotstuff.protobuf.NewViewMsg.tc', index=0,
+      name='tc', full_name='shardora.hotstuff.protobuf.NewViewMsg.tc', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='qc_view', full_name='seth.hotstuff.protobuf.NewViewMsg.qc_view', index=1,
+      name='qc_view', full_name='shardora.hotstuff.protobuf.NewViewMsg.qc_view', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='elect_height', full_name='seth.hotstuff.protobuf.NewViewMsg.elect_height', index=2,
+      name='elect_height', full_name='shardora.hotstuff.protobuf.NewViewMsg.elect_height', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -193,34 +193,34 @@ _NEWVIEWMSG = _descriptor.Descriptor(
 
 _PROPOSEMSG = _descriptor.Descriptor(
   name='ProposeMsg',
-  full_name='seth.hotstuff.protobuf.ProposeMsg',
+  full_name='shardora.hotstuff.protobuf.ProposeMsg',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='elect_height', full_name='seth.hotstuff.protobuf.ProposeMsg.elect_height', index=0,
+      name='elect_height', full_name='shardora.hotstuff.protobuf.ProposeMsg.elect_height', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='view_item', full_name='seth.hotstuff.protobuf.ProposeMsg.view_item', index=1,
+      name='view_item', full_name='shardora.hotstuff.protobuf.ProposeMsg.view_item', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tc', full_name='seth.hotstuff.protobuf.ProposeMsg.tc', index=2,
+      name='tc', full_name='shardora.hotstuff.protobuf.ProposeMsg.tc', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tx_propose', full_name='seth.hotstuff.protobuf.ProposeMsg.tx_propose', index=3,
+      name='tx_propose', full_name='shardora.hotstuff.protobuf.ProposeMsg.tx_propose', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -245,76 +245,76 @@ _PROPOSEMSG = _descriptor.Descriptor(
 
 _VOTEMSG = _descriptor.Descriptor(
   name='VoteMsg',
-  full_name='seth.hotstuff.protobuf.VoteMsg',
+  full_name='shardora.hotstuff.protobuf.VoteMsg',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='replica_idx', full_name='seth.hotstuff.protobuf.VoteMsg.replica_idx', index=0,
+      name='replica_idx', full_name='shardora.hotstuff.protobuf.VoteMsg.replica_idx', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='view_block_hash', full_name='seth.hotstuff.protobuf.VoteMsg.view_block_hash', index=1,
+      name='view_block_hash', full_name='shardora.hotstuff.protobuf.VoteMsg.view_block_hash', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='view', full_name='seth.hotstuff.protobuf.VoteMsg.view', index=2,
+      name='view', full_name='shardora.hotstuff.protobuf.VoteMsg.view', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='elect_height', full_name='seth.hotstuff.protobuf.VoteMsg.elect_height', index=3,
+      name='elect_height', full_name='shardora.hotstuff.protobuf.VoteMsg.elect_height', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sign_x', full_name='seth.hotstuff.protobuf.VoteMsg.sign_x', index=4,
+      name='sign_x', full_name='shardora.hotstuff.protobuf.VoteMsg.sign_x', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sign_y', full_name='seth.hotstuff.protobuf.VoteMsg.sign_y', index=5,
+      name='sign_y', full_name='shardora.hotstuff.protobuf.VoteMsg.sign_y', index=5,
       number=6, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='partial_sig', full_name='seth.hotstuff.protobuf.VoteMsg.partial_sig', index=6,
+      name='partial_sig', full_name='shardora.hotstuff.protobuf.VoteMsg.partial_sig', index=6,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='txs', full_name='seth.hotstuff.protobuf.VoteMsg.txs', index=7,
+      name='txs', full_name='shardora.hotstuff.protobuf.VoteMsg.txs', index=7,
       number=8, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='leader_idx', full_name='seth.hotstuff.protobuf.VoteMsg.leader_idx', index=8,
+      name='leader_idx', full_name='shardora.hotstuff.protobuf.VoteMsg.leader_idx', index=8,
       number=9, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='tm_height', full_name='seth.hotstuff.protobuf.VoteMsg.tm_height', index=9,
+      name='tm_height', full_name='shardora.hotstuff.protobuf.VoteMsg.tm_height', index=9,
       number=10, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -339,27 +339,27 @@ _VOTEMSG = _descriptor.Descriptor(
 
 _PRERESETTIMERMSG = _descriptor.Descriptor(
   name='PreResetTimerMsg',
-  full_name='seth.hotstuff.protobuf.PreResetTimerMsg',
+  full_name='shardora.hotstuff.protobuf.PreResetTimerMsg',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='replica_idx', full_name='seth.hotstuff.protobuf.PreResetTimerMsg.replica_idx', index=0,
+      name='replica_idx', full_name='shardora.hotstuff.protobuf.PreResetTimerMsg.replica_idx', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='txs', full_name='seth.hotstuff.protobuf.PreResetTimerMsg.txs', index=1,
+      name='txs', full_name='shardora.hotstuff.protobuf.PreResetTimerMsg.txs', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='has_single_tx', full_name='seth.hotstuff.protobuf.PreResetTimerMsg.has_single_tx', index=2,
+      name='has_single_tx', full_name='shardora.hotstuff.protobuf.PreResetTimerMsg.has_single_tx', index=2,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -384,13 +384,13 @@ _PRERESETTIMERMSG = _descriptor.Descriptor(
 
 _RESETTIMERMSG = _descriptor.Descriptor(
   name='ResetTimerMsg',
-  full_name='seth.hotstuff.protobuf.ResetTimerMsg',
+  full_name='shardora.hotstuff.protobuf.ResetTimerMsg',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='leader_idx', full_name='seth.hotstuff.protobuf.ResetTimerMsg.leader_idx', index=0,
+      name='leader_idx', full_name='shardora.hotstuff.protobuf.ResetTimerMsg.leader_idx', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -439,49 +439,49 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 TxPropose = _reflection.GeneratedProtocolMessageType('TxPropose', (_message.Message,), dict(
   DESCRIPTOR = _TXPROPOSE,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.TxPropose)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.TxPropose)
   ))
 _sym_db.RegisterMessage(TxPropose)
 
 HotstuffMessage = _reflection.GeneratedProtocolMessageType('HotstuffMessage', (_message.Message,), dict(
   DESCRIPTOR = _HOTSTUFFMESSAGE,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.HotstuffMessage)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.HotstuffMessage)
   ))
 _sym_db.RegisterMessage(HotstuffMessage)
 
 NewViewMsg = _reflection.GeneratedProtocolMessageType('NewViewMsg', (_message.Message,), dict(
   DESCRIPTOR = _NEWVIEWMSG,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.NewViewMsg)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.NewViewMsg)
   ))
 _sym_db.RegisterMessage(NewViewMsg)
 
 ProposeMsg = _reflection.GeneratedProtocolMessageType('ProposeMsg', (_message.Message,), dict(
   DESCRIPTOR = _PROPOSEMSG,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.ProposeMsg)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.ProposeMsg)
   ))
 _sym_db.RegisterMessage(ProposeMsg)
 
 VoteMsg = _reflection.GeneratedProtocolMessageType('VoteMsg', (_message.Message,), dict(
   DESCRIPTOR = _VOTEMSG,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.VoteMsg)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.VoteMsg)
   ))
 _sym_db.RegisterMessage(VoteMsg)
 
 PreResetTimerMsg = _reflection.GeneratedProtocolMessageType('PreResetTimerMsg', (_message.Message,), dict(
   DESCRIPTOR = _PRERESETTIMERMSG,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.PreResetTimerMsg)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.PreResetTimerMsg)
   ))
 _sym_db.RegisterMessage(PreResetTimerMsg)
 
 ResetTimerMsg = _reflection.GeneratedProtocolMessageType('ResetTimerMsg', (_message.Message,), dict(
   DESCRIPTOR = _RESETTIMERMSG,
   __module__ = 'protos.hotstuff_pb2'
-  # @@protoc_insertion_point(class_scope:seth.hotstuff.protobuf.ResetTimerMsg)
+  # @@protoc_insertion_point(class_scope:shardora.hotstuff.protobuf.ResetTimerMsg)
   ))
 _sym_db.RegisterMessage(ResetTimerMsg)
 

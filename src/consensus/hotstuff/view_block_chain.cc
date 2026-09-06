@@ -11,7 +11,7 @@
 #include "security/ecdsa/ecdsa.h"
 #include "security/ecdsa/secp256k1.h"
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -26,7 +26,7 @@ int CompareTxNonceResult(
     *now_nonce = account_nonce;
     if (account_nonce + 1 != tx_nonce) {
         if (account_nonce >= tx_nonce) {
-            SETH_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
+            SHARDORA_DEBUG("discard failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
                 common::Encode::HexEncode(addr).c_str(),
                 tx_nonce,
                 account_nonce,
@@ -34,7 +34,7 @@ int CompareTxNonceResult(
             return 3;
         }
 
-        SETH_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
+        SHARDORA_INFO("failed check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
             common::Encode::HexEncode(addr).c_str(),
             tx_nonce,
             account_nonce,
@@ -43,7 +43,7 @@ int CompareTxNonceResult(
     }
 
 #ifndef NDEBUG
-    SETH_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
+    SHARDORA_DEBUG("success check tx nonce not exists in db: %s, %lu, db nonce: %lu, phash: %s",
         common::Encode::HexEncode(addr).c_str(),
         tx_nonce,
         account_nonce,
@@ -86,7 +86,7 @@ Status ViewBlockChain::Store(
         const std::shared_ptr<ViewBlock>& view_block, 
         bool directly_store, 
         BalanceAndNonceMapPtr balane_map_ptr,
-        std::shared_ptr<sethvm::SethhainHost> seth_host_ptr,
+        std::shared_ptr<shardoravm::ShardorahainHost> shardora_host_ptr,
         bool init) {
     // CheckThreadIdValid();
     if (chain_type_ == kLocalChain && !network::IsSameToLocalShard(view_block->qc().network_id())) {
@@ -108,7 +108,7 @@ Status ViewBlockChain::Store(
 
     if (Has(view_block->qc().view_block_hash())) {
 #ifndef NDEBUG
-        SETH_DEBUG("view block already stored, hash: %s, view: %lu, propose_debug: %s",
+        SHARDORA_DEBUG("view block already stored, hash: %s, view: %lu, propose_debug: %s",
             common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), 
             view_block->qc().view(),
             ProtobufToJson(cons_debug).c_str());        
@@ -116,8 +116,8 @@ Status ViewBlockChain::Store(
         return Status::kSuccess;
     }
 
-    if (seth_host_ptr == nullptr) {
-        seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
+    if (shardora_host_ptr == nullptr) {
+        shardora_host_ptr = std::make_shared<shardoravm::ShardorahainHost>();
     }
 
     if (chain_type_ == kLocalChain && balane_map_ptr == nullptr) {
@@ -125,9 +125,9 @@ Status ViewBlockChain::Store(
         for (int32_t i = 0; i < view_block->block_info().address_array_size(); ++i) {
             auto new_addr_info = std::make_shared<address::protobuf::AddressInfo>(
                 view_block->block_info().address_array(i));
-            prefix_db_->AddAddressInfo(new_addr_info->addr(), *new_addr_info, seth_host_ptr->db_batch_);
+            prefix_db_->AddAddressInfo(new_addr_info->addr(), *new_addr_info, shardora_host_ptr->db_batch_);
             (*balane_map_ptr)[new_addr_info->addr()] = new_addr_info;
-            SETH_DEBUG("step: %d, success add addr: %s, value: %s", 
+            SHARDORA_DEBUG("step: %d, success add addr: %s, value: %s", 
                 0,
                 common::Encode::HexEncode(new_addr_info->addr()).c_str(), 
                 ProtobufToJson(*new_addr_info).c_str());
@@ -140,12 +140,12 @@ Status ViewBlockChain::Store(
             prefix_db_->SaveTemporaryKv(
                 key, 
                 view_block->block_info().key_value_array(i).SerializeAsString(), 
-                seth_host_ptr->db_batch_);
-            seth_host_ptr->SaveKeyValue(
+                shardora_host_ptr->db_batch_);
+            shardora_host_ptr->SaveKeyValue(
                 view_block->block_info().key_value_array(i).addr(),
                 view_block->block_info().key_value_array(i).key(), 
                 view_block->block_info().key_value_array(i).value());
-            SETH_DEBUG("addr: %s, success add key: %s, value: %s", 
+            SHARDORA_DEBUG("addr: %s, success add key: %s, value: %s", 
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).addr()).c_str(), 
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).key()).c_str(), 
                 common::Encode::HexEncode(view_block->block_info().key_value_array(i).value()).c_str());
@@ -158,18 +158,18 @@ Status ViewBlockChain::Store(
             prefix_db_->SaveNodeVerificationVector(
                 addr,
                 join_info,
-                seth_host_ptr->db_batch_);
+                shardora_host_ptr->db_batch_);
 #ifndef NDEBUG
             auto n = common::GlobalInfo::Instance()->each_shard_max_members();
             auto t = common::GetSignerCount(n);
             //assert(join_info.g2_req().verify_vec_size() >= t);
 #endif
-            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), seth_host_ptr->db_batch_);
+            prefix_db_->AddBlsVerifyG2(addr, join_info.g2_req(), shardora_host_ptr->db_batch_);
         }
     }
 
 #ifndef NDEBUG
-    SETH_DEBUG("merge prev all balance store size: %u, propose_debug: %s, "
+    SHARDORA_DEBUG("merge prev all balance store size: %u, propose_debug: %s, "
         "%u_%u_%lu, %lu, hash: %s, prehash: %s",
         balane_map_ptr ? balane_map_ptr->size() : 0, ProtobufToJson(cons_debug).c_str(),
         view_block->qc().network_id(), view_block->qc().pool_index(), 
@@ -177,7 +177,7 @@ Status ViewBlockChain::Store(
         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
         common::Encode::HexEncode(view_block->parent_hash()).c_str());
 #endif
-    auto block_info_ptr = GetViewBlockInfo(view_block, balane_map_ptr, seth_host_ptr);
+    auto block_info_ptr = GetViewBlockInfo(view_block, balane_map_ptr, shardora_host_ptr);
     if (!start_block_) {
         start_block_ = view_block;
         SetViewBlockToMap(block_info_ptr);
@@ -199,7 +199,7 @@ Status ViewBlockChain::Store(
             auto tmp_latest_committed_block = LatestCommittedBlock();
             if (tmp_latest_committed_block == nullptr ||
                     tmp_latest_committed_block->qc().view_block_hash() != view_block->parent_hash()) {
-                SETH_ERROR("lack of parent view block, hash: %s, parent hash: %s, cur view: %lu, pool: %u",
+                SHARDORA_ERROR("lack of parent view block, hash: %s, parent hash: %s, cur view: %lu, pool: %u",
                     common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
                     common::Encode::HexEncode(view_block->parent_hash()).c_str(),
                     view_block->qc().view(), pool_index_);
@@ -211,13 +211,13 @@ Status ViewBlockChain::Store(
 
     // If there is a qc, the block pointed to by qc must exist
     // if (view_block->has_qc() && !view_block->qc().view_block_hash().empty() && !QCRef(*view_block)) {
-    //     SETH_ERROR("view block qc error, hash: %s, view: %lu",
+    //     SHARDORA_ERROR("view block qc error, hash: %s, view: %lu",
     //         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), view_block->qc().view());        
     //     return Status::kError;
     // }
     SetViewBlockToMap(block_info_ptr);
 #ifndef NDEBUG
-    SETH_DEBUG("success add block info hash: %s, parent hash: %s, %u_%u_%lu, propose_debug: %s", 
+    SHARDORA_DEBUG("success add block info hash: %s, parent hash: %s, %u_%u_%lu, propose_debug: %s", 
         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(), 
         common::Encode::HexEncode(view_block->parent_hash()).c_str(), 
         view_block->qc().network_id(), view_block->qc().pool_index(), 
@@ -249,7 +249,7 @@ std::shared_ptr<ViewBlock> ViewBlockChain::GetViewBlockWithHeight(
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlockWithHeight(network_id, pool_index_, height, &view_block)) {
-        SETH_DEBUG("success add view block remove add %u_%u_%lu_%lu", 
+        SHARDORA_DEBUG("success add view block remove add %u_%u_%lu_%lu", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
             view_block.block_info().height(),
@@ -446,12 +446,12 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::GetViewBlockWithHash(const HashSt
         return view_block_ptr;
     }
 
-    SETH_DEBUG("now get block with hash from db.");
+    SHARDORA_DEBUG("now get block with hash from db.");
     view_block_ptr = std::make_shared<ViewBlockInfo>();
     view_block_ptr->view_block = std::make_shared<ViewBlock>();
     auto& view_block = *view_block_ptr->view_block;
     if (prefix_db_->GetBlock(hash, &view_block)) {
-        SETH_DEBUG("1 success add view block remove add %u_%u_%lu", 
+        SHARDORA_DEBUG("1 success add view block remove add %u_%u_%lu", 
             view_block.qc().network_id(), 
             view_block.qc().pool_index(), 
             view_block.qc().view());
@@ -478,7 +478,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
         auto view_block_info_ptr = it->second;
         if (view_block_info_ptr->view_block) {
             auto& view_block = *view_block_info_ptr->view_block;
-            // SETH_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
+            // SHARDORA_DEBUG("get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
             //     common::Encode::HexEncode(hash).c_str(), 
             //     common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
             //     view_block.qc().network_id(),
@@ -487,7 +487,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::Get(const HashStr &hash) const {
             //     common::Encode::HexEncode(view_block.qc().sign_x()).c_str(),
             //     common::Encode::HexEncode(view_block.parent_hash()).c_str());
             if (view_block.qc().view_block_hash() != hash) {
-                SETH_DEBUG("bug 2 get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
+                SHARDORA_DEBUG("bug 2 get block hash: %s, view block hash: %s, %u_%u_%lu, sign x: %s, parent hash: %s",
                     common::Encode::HexEncode(hash).c_str(), 
                     common::Encode::HexEncode(view_block.qc().view_block_hash()).c_str(),
                     view_block.qc().network_id(),
@@ -511,7 +511,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
     if (it != view_blocks_info_.end() && 
             it->second->view_block != nullptr && 
             !it->second->view_block->qc().sign_x().empty()) {
-        SETH_DEBUG("block hash exists %u_%u_%lu, height: %lu",
+        SHARDORA_DEBUG("block hash exists %u_%u_%lu, height: %lu",
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
             view_block->qc().view(), 
@@ -530,7 +530,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
 
     auto st = Store(view_block, true, nullptr, nullptr, false);
     if (st != Status::kSuccess) {
-        SETH_ERROR("ReplaceWithSyncedBlock Store failed, hash: %s, %u_%u_%lu, height: %lu, status: %d",
+        SHARDORA_ERROR("ReplaceWithSyncedBlock Store failed, hash: %s, %u_%u_%lu, height: %lu, status: %d",
             common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
             view_block->qc().network_id(), 
             view_block->qc().pool_index(), 
@@ -555,7 +555,7 @@ bool ViewBlockChain::ReplaceWithSyncedBlock(std::shared_ptr<ViewBlock>& view_blo
         }
     }
 
-    SETH_DEBUG("add new block hash: %s, %u_%u_%lu, height: %lu",
+    SHARDORA_DEBUG("add new block hash: %s, %u_%u_%lu, height: %lu",
         common::Encode::HexEncode(view_block->qc().view_block_hash()).c_str(),
         view_block->qc().network_id(), 
         view_block->qc().pool_index(), 
@@ -631,12 +631,12 @@ Status ViewBlockChain::GetOrderedAll(std::vector<std::shared_ptr<ViewBlock>>& vi
 
 void ViewBlockChain::CommitSynced(std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block) {
     // not this sharding
-    auto seth_host_ptr = std::make_shared<sethvm::SethhainHost>();
-    new_block_cache_callback_(view_block, seth_host_ptr->db_batch_);
-    auto block_info_ptr = GetViewBlockInfo(view_block, nullptr, seth_host_ptr);
-    AddNewBlock(view_block, seth_host_ptr->db_batch_);
-    if (!db_->Put(seth_host_ptr->db_batch_).ok()) {
-        SETH_FATAL("write to db failed!");
+    auto shardora_host_ptr = std::make_shared<shardoravm::ShardorahainHost>();
+    new_block_cache_callback_(view_block, shardora_host_ptr->db_batch_);
+    auto block_info_ptr = GetViewBlockInfo(view_block, nullptr, shardora_host_ptr);
+    AddNewBlock(view_block, shardora_host_ptr->db_batch_);
+    if (!db_->Put(shardora_host_ptr->db_batch_).ok()) {
+        SHARDORA_FATAL("write to db failed!");
     }
 
     block_mgr_->ConsensusAddBlock(block_info_ptr);
@@ -648,7 +648,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
     std::shared_ptr<ViewBlockInfo> tmp_block_info = v_block_info;
     while (tmp_block_info != nullptr) {
         auto tmp_block = tmp_block_info->view_block;
-        SETH_DEBUG("pool: %d, prepare commit view block %u_%u_%lu_%lu, hash: %s, "
+        SHARDORA_DEBUG("pool: %d, prepare commit view block %u_%u_%lu_%lu, hash: %s, "
             "parent hash: %s, step: %d, statistic_height: %lu, commited: %d, sign empty: %d", 
             pool_index_,
             tmp_block_info->view_block->qc().network_id(), 
@@ -671,7 +671,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                 tmp_block->qc().pool_index(),
                 tmp_block->block_info().height()) &&
                 !tmp_block->qc().sign_x().empty()) {
-            SETH_DEBUG("add to commit list view block %u_%u_%lu_%lu, hash: %s",
+            SHARDORA_DEBUG("add to commit list view block %u_%u_%lu_%lu, hash: %s",
                 tmp_block->qc().network_id(), 
                 tmp_block->qc().pool_index(), 
                 tmp_block->block_info().height(),
@@ -679,7 +679,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                 common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str());
             to_commit_blocks.push_front(tmp_block_info);
         } else {
-            SETH_DEBUG("view block already commited %u_%u_%lu_%lu, hash: %s",
+            SHARDORA_DEBUG("view block already commited %u_%u_%lu_%lu, hash: %s",
                 tmp_block->qc().network_id(), 
                 tmp_block->qc().pool_index(), 
                 tmp_block->block_info().height(),
@@ -693,7 +693,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                     tmp_block->qc().network_id(), 
                     tmp_block->qc().pool_index(),
                     tmp_block->block_info().height())) {
-                SETH_DEBUG("lack of qc block, add sync view hash: %s, %u_%u_%lu_%lu",
+                SHARDORA_DEBUG("lack of qc block, add sync view hash: %s, %u_%u_%lu_%lu",
                     common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str(),
                     tmp_block->qc().network_id(), 
                     tmp_block->qc().pool_index(), 
@@ -716,7 +716,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                         tmp_block->qc().network_id(), 
                         tmp_block->qc().pool_index(), 
                         tmp_block->block_info().height() - 1)) {
-                    SETH_DEBUG("lack of qc block, add sync view hash: %s, %u_%u_%lu_%lu",
+                    SHARDORA_DEBUG("lack of qc block, add sync view hash: %s, %u_%u_%lu_%lu",
                         common::Encode::HexEncode(tmp_block->qc().view_block_hash()).c_str(),
                         tmp_block->qc().network_id(), 
                         tmp_block->qc().pool_index(), 
@@ -739,7 +739,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
     std::shared_ptr<ViewBlockInfo> latest_commited_block = nullptr; 
     for (auto iter = to_commit_blocks.begin(); iter != to_commit_blocks.end(); ++iter) {
         auto tmp_block = (*iter)->view_block;
-        SETH_DEBUG("now commit view block %u_%u_%lu_%lu, hash: %s, "
+        SHARDORA_DEBUG("now commit view block %u_%u_%lu_%lu, hash: %s, "
             "parent hash: %s, step: %d, statistic_height: %lu, tx size: %u", 
             tmp_block->qc().network_id(), 
             tmp_block->qc().pool_index(), 
@@ -750,8 +750,8 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             tmp_block->block_info().tx_list_size() > 0 ? tmp_block->block_info().tx_list(0).step(): -1,
             0,
             tmp_block->block_info().tx_list_size());
-        //assert((*iter)->seth_host_ptr);
-        auto& db_batch = (*iter)->seth_host_ptr->db_batch_;
+        //assert((*iter)->shardora_host_ptr);
+        auto& db_batch = (*iter)->shardora_host_ptr->db_batch_;
         new_block_cache_callback_(tmp_block, db_batch);
         if (tmp_block->qc().view() > commited_max_view_) {
             commited_max_view_ = tmp_block->qc().view();
@@ -772,7 +772,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                     (acc_ptr->latest_height() == new_addr_info->latest_height() &&
                      acc_ptr->tx_index() < new_addr_info->tx_index())) {
                 account_lru_map_.insert(new_addr_info);
-                SETH_ERROR("success update address: %s,balance: %lu, nonce: %lu, new balance: %lu, new nonce: %lu, "
+                SHARDORA_ERROR("success update address: %s,balance: %lu, nonce: %lu, new balance: %lu, new nonce: %lu, "
                     "latest height: %lu, tx index: %u, new latest height: %lu, new tx index: %u",
                     common::Encode::HexEncode(new_addr_info->addr()).c_str(),
                     acc_ptr != nullptr ? acc_ptr->balance() : 0,
@@ -832,7 +832,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         // Previously, SaveLatestPoolInfo was only called during genesis/initial sync,
         // so after restart pool_latest_info.view() was 0 or very old, causing
         // "propose view not match leader view" errors on all pools.
-        SETH_DEBUG("persist pool_latest_info for %u_%u_%lu, use time: %lu ms", 
+        SHARDORA_DEBUG("persist pool_latest_info for %u_%u_%lu, use time: %lu ms", 
             tmp_block->qc().network_id(),
             tmp_block->qc().pool_index(),
             tmp_block->qc().view(),
@@ -850,14 +850,14 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
                 pool_info,
                 pool_info_batch);
             if (!db_->Put(pool_info_batch).ok()) {
-                SETH_ERROR("failed to persist pool_latest_info for %u_%u_%lu",
+                SHARDORA_ERROR("failed to persist pool_latest_info for %u_%u_%lu",
                     tmp_block->qc().network_id(),
                     tmp_block->qc().pool_index(),
                     tmp_block->qc().view());
             }
         }
 
-        SETH_DEBUG("success SaveLatestPoolInfo %u_%u_%lu_%lu, use time: %lu ms",
+        SHARDORA_DEBUG("success SaveLatestPoolInfo %u_%u_%lu_%lu, use time: %lu ms",
             tmp_block->qc().network_id(), 
             tmp_block->qc().pool_index(), 
             tmp_block->qc().view(), 
@@ -871,7 +871,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 //                     //assert(false);
 //                 }
 
-//                 SETH_DEBUG("new addr commit %u_%u_%lu, success update addr: %s, balance: %lu, nonce: %lu",
+//                 SHARDORA_DEBUG("new addr commit %u_%u_%lu, success update addr: %s, balance: %lu, nonce: %lu",
 //                     tmp_block->qc().network_id(), 
 //                     tmp_block->qc().pool_index(), 
 //                     tmp_block->qc().view(),
@@ -884,10 +884,10 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
         const auto db_batch_bytes = db_batch.ApproximateSize();
         const auto db_put_begin_ms = common::TimeUtils::TimestampMs();
         if (!db_->Put(db_batch).ok()) {
-            SETH_FATAL("write to db failed!");
+            SHARDORA_FATAL("write to db failed!");
         }
 
-        SETH_DEBUG("commit block to db success %u_%u_%lu_%lu, batch_bytes: %lu, "
+        SHARDORA_DEBUG("commit block to db success %u_%u_%lu_%lu, batch_bytes: %lu, "
             "db_put_ms: %lu, use time: %lu ms",
             tmp_block->qc().network_id(),
             tmp_block->qc().pool_index(),
@@ -902,7 +902,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             const auto txover_ms = common::TimeUtils::TimestampMs() - txover_begin_ms;
             if (txover_ms >= 100lu ||
                     tmp_block->block_info().tx_list_size() >= 128) {
-                SETH_DEBUG("commit TxOver %u_%u_%lu, txs: %d, txover_ms: %lu",
+                SHARDORA_DEBUG("commit TxOver %u_%u_%lu, txs: %d, txover_ms: %lu",
                     tmp_block->qc().network_id(),
                     tmp_block->qc().pool_index(),
                     tmp_block->block_info().height(),
@@ -911,14 +911,14 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
             }
         }
 
-        SETH_DEBUG("add block to block manager %u_%u_%lu_%lu, use time: %lu ms", 
+        SHARDORA_DEBUG("add block to block manager %u_%u_%lu_%lu, use time: %lu ms", 
             tmp_block->qc().network_id(), 
             tmp_block->qc().pool_index(), 
             tmp_block->qc().view(), 
             tmp_block->block_info().height(),
             (common::TimeUtils::TimestampMs() - b_tm));
         block_mgr_->ConsensusAddBlock(*iter);
-        SETH_DEBUG("success commit view block %u_%u_%lu_%lu, use time: %lu ms", 
+        SHARDORA_DEBUG("success commit view block %u_%u_%lu_%lu, use time: %lu ms", 
             tmp_block->qc().network_id(), 
             tmp_block->qc().pool_index(), 
             tmp_block->qc().view(), 
@@ -936,7 +936,7 @@ void ViewBlockChain::Commit(const std::shared_ptr<ViewBlockInfo>& v_block_info) 
 // #ifndef NDEBUG
 //     transport::protobuf::ConsensusDebug cons_debug3;
 //     cons_debug3.ParseFromString(v_block->debug());
-//     SETH_DEBUG("success commit view block %u_%u_%lu, "
+//     SHARDORA_DEBUG("success commit view block %u_%u_%lu, "
 //         "height: %lu, now chain: %s, propose_debug: %s",
 //         v_block->qc().network_id(), 
 //         v_block->qc().pool_index(), 
@@ -960,7 +960,7 @@ void ViewBlockChain::HandleTimerMessage() {
         return;
     }
 
-    SETH_DEBUG("network: %d, pool: %d, now check view_with_blocks_ size: %d, "
+    SHARDORA_DEBUG("network: %d, pool: %d, now check view_with_blocks_ size: %d, "
         "view_blocks_info_ size: %lu", 
         view_with_blocks_.begin()->second->view_block->qc().network_id(),
         pool_index_, view_with_blocks_.size(), view_blocks_info_.size());
@@ -995,7 +995,7 @@ void ViewBlockChain::HandleTimerMessage() {
                 view_block->qc().network_id(), 
                 view_block->qc().pool_index(),
                 view_block->block_info().height());
-            SETH_DEBUG("network: %d, pool: %d, height: %lu, height_commited: %d, "
+            SHARDORA_DEBUG("network: %d, pool: %d, height: %lu, height_commited: %d, "
                 "now check view_with_blocks_ size: %d", 
                 view_with_blocks_.begin()->second->view_block->qc().network_id(),
                 pool_index_, 
@@ -1047,7 +1047,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
     //assert(!qc.view_block_hash().empty());
     auto v_block1_info = Get(qc.view_block_hash());
     if (!v_block1_info || v_block1_info->view_block->qc().view() <= 0llu){
-        SETH_DEBUG("pool: %d, Failed get v block 1: %s, %u_%u_%lu",
+        SHARDORA_DEBUG("pool: %d, Failed get v block 1: %s, %u_%u_%lu",
             pool_index_,
             common::Encode::HexEncode(qc.view_block_hash()).c_str(),
             qc.network_id(), qc.pool_index(), qc.view());
@@ -1064,7 +1064,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
 #ifndef NDEBUG
     transport::protobuf::ConsensusDebug cons_debug;
     cons_debug.ParseFromString(v_block1->debug());
-    SETH_DEBUG("pool: %d, success get v block 1: %s, %u_%u_%lu, propose_debug: %s",
+    SHARDORA_DEBUG("pool: %d, success get v block 1: %s, %u_%u_%lu, propose_debug: %s",
         pool_index_,
         common::Encode::HexEncode(qc.view_block_hash()).c_str(),
         qc.network_id(), qc.pool_index(), qc.view(), ProtobufToJson(cons_debug).c_str());
@@ -1072,7 +1072,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
     //assert(v_block1->parent_hash() != qc.view_block_hash());
     auto v_block2_info = Get(v_block1->parent_hash());
     if (!v_block2_info) {
-        SETH_DEBUG("pool: %d, Failed get v block 2 block hash: %s, %u_%u_%lu, now chain: %s", 
+        SHARDORA_DEBUG("pool: %d, Failed get v block 2 block hash: %s, %u_%u_%lu, now chain: %s", 
             pool_index_,
             common::Encode::HexEncode(v_block1->parent_hash()).c_str(), 
             qc.network_id(), 
@@ -1091,7 +1091,7 @@ std::shared_ptr<ViewBlockInfo> ViewBlockChain::CheckCommit(const QC& qc) {
 
     auto v_block2 = v_block2_info->view_block;
     if (v_block2->block_info().height() + 1 != v_block1->block_info().height()) {
-        SETH_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
+        SHARDORA_DEBUG("pool: %d, Failed get v block 2 ref: %s, "
             "v_block2->block_info().height() + 1 != v_block1->block_info().height(): %lu, %lu",
             pool_index_,
             common::Encode::HexEncode(v_block1->parent_hash()).c_str(),
@@ -1109,7 +1109,7 @@ void ViewBlockChain::AddNewBlock(
     //assert(!view_block_item->qc().sign_x().empty());
     auto* block_item = &view_block_item->block_info();
     auto btime = common::TimeUtils::TimestampMs();
-    SETH_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
+    SHARDORA_DEBUG("new block coming sharding id: %u_%d_%lu, view: %u_%u_%lu,"
         "tx size: %u, hash: %s, prehash: %s, elect height: %lu, tm height: %lu, step: %d, status: %d",
         view_block_item->qc().network_id(),
         view_block_item->qc().pool_index(),
@@ -1177,7 +1177,7 @@ std::string ViewBlockChain::String() const {
     for (auto it = view_blocks_info_.begin(); it != view_blocks_info_.end(); it++) {
         if (it->second->view_block) {
             view_blocks.push_back(it->second->view_block);
-            SETH_DEBUG("view block view: %lu, height: %lu, hash: %s, phash: %s, has sign: %d", 
+            SHARDORA_DEBUG("view block view: %lu, height: %lu, hash: %s, phash: %s, has sign: %d", 
                 it->second->view_block->qc().view(),
                 it->second->view_block->block_info().height(),
                 common::Encode::HexEncode(it->second->view_block->qc().view_block_hash()).c_str(),
@@ -1208,7 +1208,7 @@ std::string ViewBlockChain::String() const {
         view_set.insert(vb->qc().view());
     }
 
-    SETH_DEBUG("network: %u, get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
+    SHARDORA_DEBUG("network: %u, get chain pool: %u, views: %s, all size: %u, block_height_str: %s",
         view_blocks[0]->qc().network_id(),
         pool_index_, ret.c_str(), view_blocks_info_.size(), block_height_str.c_str());
     //assert(height_set.size() < 256);
@@ -1227,7 +1227,7 @@ Status GetLatestViewBlockFromDb(
             sharding_id,
             pool_index,
             &pool_info)) {
-        SETH_DEBUG("failed get genesis block net: %u, pool: %u", sharding_id, pool_index);
+        SHARDORA_DEBUG("failed get genesis block net: %u, pool: %u", sharding_id, pool_index);
         return Status::kError;
     }
 
@@ -1242,13 +1242,13 @@ Status GetLatestViewBlockFromDb(
         pool_info.height(), 
         &pb_view_block);
     if (!r) {
-        SETH_DEBUG("failed get genesis block net: %u, pool: %u, height: %lu",
+        SHARDORA_DEBUG("failed get genesis block net: %u, pool: %u, height: %lu",
             sharding_id, pool_index, pool_info.height());
         //assert(false);
         return Status::kError;
     }
 
-    SETH_DEBUG("%u_%u_%lu, pool: %d, latest vb from db2, hash: %s, view: %lu, "
+    SHARDORA_DEBUG("%u_%u_%lu, pool: %d, latest vb from db2, hash: %s, view: %lu, "
         "leader: %d, parent_hash: %s, sign x: %s, sign y: %s",
         sharding_id, pool_index, pb_view_block.qc().view(),
         pool_index,
@@ -1282,9 +1282,9 @@ bool ViewBlockChain::GetPrevStorageKeyValue(
             break;
         }
 
-        if (it->second->seth_host_ptr) {
-            auto res = it->second->seth_host_ptr->GetCachedKeyValue(id, key, val);
-            if (res == sethvm::kSethvmSuccess) {
+        if (it->second->shardora_host_ptr) {
+            auto res = it->second->shardora_host_ptr->GetCachedKeyValue(id, key, val);
+            if (res == shardoravm::kShardoravmSuccess) {
                 return true;
             }
         }
@@ -1305,7 +1305,7 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
         const evmc::address& addr,
         const evmc::bytes32& key) {
     // Check cache first — cache values are safe because get_storage()
-    // checks accounts_ (current tx writes) and pre_seth_host_ (same-block writes)
+    // checks accounts_ (current tx writes) and pre_shardora_host_ (same-block writes)
     // before reaching here, so cached values won't shadow uncommitted writes.
     auto* cached = bytes32_storage_cache_.get(addr, key);
     if (cached) {
@@ -1328,8 +1328,8 @@ evmc::bytes32 ViewBlockChain::GetPrevStorageBytes32KeyValue(
             break;
         }
 
-        if (it->second->seth_host_ptr) {
-            auto res = it->second->seth_host_ptr->GetCachedStorage(addr, key);
+        if (it->second->shardora_host_ptr) {
+            auto res = it->second->shardora_host_ptr->GetCachedStorage(addr, key);
             if (res) {
                 // Cache the result for future lookups
                 bytes32_storage_cache_.put(addr, key, res);
@@ -1376,7 +1376,7 @@ void ViewBlockChain::MergeAllPrevBalanceMap(
                 auto fiter = acc_balance_map.find(iter->first);
                 if (fiter == acc_balance_map.end()) {
                     acc_balance_map[iter->first] = std::make_shared<address::protobuf::AddressInfo>(*iter->second);
-                    SETH_DEBUG("merge prev all balance merge prev account balance %s, "
+                    SHARDORA_DEBUG("merge prev all balance merge prev account balance %s, "
                         "balance: %lu, nonce: %lu, %u_%u_%lu, block height: %lu",
                         common::Encode::HexEncode(iter->first).c_str(), 
                         iter->second->balance(), 
@@ -1412,7 +1412,7 @@ int ViewBlockChain::CheckTxNonceValid(
 
         auto addr_info = ChainGetAccountInfo(addr);
         if (addr_info == nullptr) {
-            SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, phash: %s",
+            SHARDORA_DEBUG("failed check tx nonce not exists in db: %s, %lu, phash: %s",
                 common::Encode::HexEncode(addr).c_str(),
                 nonce,
                 common::Encode::HexEncode(parent_hash).c_str());
@@ -1457,7 +1457,7 @@ int ViewBlockChain::CheckTxNonceValid(
 
     auto addr_info = ChainGetAccountInfo(addr);
     if (addr_info == nullptr) {
-        SETH_DEBUG("failed check tx nonce not exists in db: %s, %lu, phash: %s", 
+        SHARDORA_DEBUG("failed check tx nonce not exists in db: %s, %lu, phash: %s", 
             common::Encode::HexEncode(addr).c_str(), 
             nonce,
             common::Encode::HexEncode(parent_hash).c_str());
@@ -1470,20 +1470,20 @@ int ViewBlockChain::CheckTxNonceValid(
 
 void ViewBlockChain::RecoverHighViewBlock() {
     if (!db_ || !prefix_db_) {
-        SETH_DEBUG("db_ or prefix_db_ is null for %u", pool_index_);
+        SHARDORA_DEBUG("db_ or prefix_db_ is null for %u", pool_index_);
         
         return;
     }
 
     auto net_id = common::GlobalInfo::Instance()->network_id();
     if (net_id == common::kInvalidUint32) {
-        SETH_DEBUG("invalid network id for %u", pool_index_);
+        SHARDORA_DEBUG("invalid network id for %u", pool_index_);
         return;
     }
 
     auto view_block_ptr = std::make_shared<ViewBlock>();
     if (!prefix_db_->GetHighViewBlock(net_id, pool_index_, view_block_ptr.get())) {
-        SETH_DEBUG("no persisted high view block for %u_%u", net_id, pool_index_);
+        SHARDORA_DEBUG("no persisted high view block for %u_%u", net_id, pool_index_);
         return;
     }
 
@@ -1491,21 +1491,21 @@ void ViewBlockChain::RecoverHighViewBlock() {
             high_view_block_->qc().view() < view_block_ptr->qc().view()) {
         high_view_block_ = view_block_ptr;
         high_view_block_view_.store(high_view_block_->qc().view());
-        SETH_DEBUG("recovered high view block from db: %u_%u_%lu, height: %lu, hash: %s",
+        SHARDORA_DEBUG("recovered high view block from db: %u_%u_%lu, height: %lu, hash: %s",
             high_view_block_->qc().network_id(),
             pool_index_,
             high_view_block_->qc().view(),
             high_view_block_->block_info().height(),
             common::Encode::HexEncode(high_view_block_->qc().view_block_hash()).c_str());
     } else {
-        SETH_DEBUG("high_view_block_ already newer: %lu vs %lu",
+        SHARDORA_DEBUG("high_view_block_ already newer: %lu vs %lu",
             high_view_block_->qc().view(), view_block_ptr->qc().view());
     }
 }
 
 void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_item) {
     if (qc_item.view_block_hash().empty()) {
-        SETH_DEBUG("qc_item view_block_hash is empty for %u_%u_%lu",
+        SHARDORA_DEBUG("qc_item view_block_hash is empty for %u_%u_%lu",
             qc_item.network_id(), qc_item.pool_index(), qc_item.view());
         return;
     }
@@ -1516,7 +1516,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
         view_block_ptr_info->view_block = std::make_shared<ViewBlock>();
         auto& view_block = *view_block_ptr_info->view_block;
         if (!prefix_db_->GetBlock(qc_item.view_block_hash(), &view_block)) {
-            SETH_DEBUG("failed get view block %u_%u_%lu, hash: %s",
+            SHARDORA_DEBUG("failed get view block %u_%u_%lu, hash: %s",
                 qc_item.network_id(), 
                 qc_item.pool_index(), 
                 qc_item.view(), 
@@ -1537,7 +1537,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             //     *placeholder->mutable_qc() = qc_item;
             //     high_view_block_ = placeholder;
             //     high_view_block_view_.store(qc_item.view());
-            //     SETH_DEBUG("advanced high_view_block via QC placeholder: %u_%u_%lu, hash: %s",
+            //     SHARDORA_DEBUG("advanced high_view_block via QC placeholder: %u_%u_%lu, hash: %s",
             //         qc_item.network_id(), qc_item.pool_index(), qc_item.view(),
             //         common::Encode::HexEncode(qc_item.view_block_hash()).c_str());
             // }
@@ -1555,7 +1555,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
 
     if (chain_type_ == kLocalChain) {
         cached_block_queue_.push(view_block_ptr_info);
-        SETH_DEBUG("success add view block info cached_block_queue_: %u, %u_%u_%lu_%lu",
+        SHARDORA_DEBUG("success add view block info cached_block_queue_: %u, %u_%u_%lu_%lu",
             cached_block_queue_.size(), 
             view_block_ptr->qc().network_id(), 
             view_block_ptr->qc().pool_index(), 
@@ -1569,7 +1569,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             high_view_block_->qc().view() < view_block_ptr->qc().view()) {
 #ifndef NDEBUG
         if (high_view_block_ != nullptr) {
-            SETH_DEBUG("success add update old high view: %lu, high hash: %s, "
+            SHARDORA_DEBUG("success add update old high view: %lu, high hash: %s, "
                 "new view: %lu, block: %s, %u_%u_%lu, parent hash: %s, tx size: %u ",
                 high_view_block_->qc().view(),
                 common::Encode::HexEncode(high_view_block_->qc().view_block_hash()).c_str(),
@@ -1584,7 +1584,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
 #endif
         
         high_view_block_ = view_block_ptr;
-        SETH_DEBUG("final success add update high hash: %s, "
+        SHARDORA_DEBUG("final success add update high hash: %s, "
             "new view: %lu, block: %s, %u_%u_%lu, block tm: %lu, parent hash: %s, tx size: %u ",
             common::Encode::HexEncode(high_view_block_->qc().view_block_hash()).c_str(),
             high_view_block_->qc().view(),
@@ -1609,7 +1609,7 @@ void ViewBlockChain::UpdateHighViewBlock(const view_block::protobuf::QcItem& qc_
             db_batch);
         auto st = db_->Put(db_batch);
         if (!st.ok()) {
-            SETH_ERROR("failed to persist high view block %u_%u_%lu, hash: %s",
+            SHARDORA_ERROR("failed to persist high view block %u_%u_%lu, hash: %s",
                 high_view_block_->qc().network_id(),
                 pool_index_,
                 high_view_block_->qc().view(),
@@ -1634,7 +1634,7 @@ protos::AddressInfoPtr ViewBlockChain::ChainGetAccountInfo(const std::string& ad
         // Use atomic get_or_insert to avoid TOCTOU race: another thread
         // may have inserted the same key between our get() above and now.
         addr_info = account_lru_map_.get_or_insert(addr, addr_info);
-        SETH_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
+        SHARDORA_DEBUG("success update address: %s, balance: %lu, nonce: %lu",
             common::Encode::HexEncode(addr_info->addr()).c_str(),
             addr_info->balance(),
             addr_info->nonce());
@@ -1663,7 +1663,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     tx->set_nonce(timeblock_addr_nonce);
     msg_ptr->address_info = account_mgr_->pools_address_info(
         pools::protobuf::kPoolStatisticTag, pool_index_);
-    SETH_DEBUG("check create kPoolStatisticTag nonce: %lu, pool idx: %u, "
+    SHARDORA_DEBUG("check create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
         tx->nonce(), 
         pool_index_,
@@ -1674,7 +1674,7 @@ void ViewBlockChain::AddPoolStatisticTag(uint64_t height, uint64_t timeblock_add
     //assert(msg_ptr->address_info != nullptr);
     tx->set_to(msg_ptr->address_info->addr());
     pools_mgr_->AddPoolMessage(msg_ptr);
-    SETH_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
+    SHARDORA_DEBUG("success create kPoolStatisticTag nonce: %lu, pool idx: %u, "
         "pool addr: %s, addr get pool: %u, height: %lu, unique_hash: %s",
         tx->nonce(), 
         pool_index_,
@@ -1689,7 +1689,7 @@ void ViewBlockChain::OnTimeBlock(
         uint64_t latest_time_block_height,
         uint64_t vss_random,
         uint64_t timeblock_addr_nonce) {
-    SETH_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
+    SHARDORA_DEBUG("new timeblock coming: %lu, %lu, lastest_time_block_tm: %lu",
         static_cast<uint64_t>(latest_timeblock_height_), latest_time_block_height, lastest_time_block_tm);
     if (latest_timeblock_height_ < latest_time_block_height) {
         latest_timeblock_height_ = latest_time_block_height;
@@ -1702,4 +1702,4 @@ void ViewBlockChain::OnTimeBlock(
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

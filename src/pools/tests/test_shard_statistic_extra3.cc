@@ -5,7 +5,7 @@
 // non-null MembersPtr so that getLeaderIdFromBlock() returns a valid leader id
 // and HandleStatistic proceeds past its early-return guard.
 //
-// All tests are guarded by SETH_UNITTEST because Init() requires the macro
+// All tests are guarded by SHARDORA_UNITTEST because Init() requires the macro
 // for the empty-DB path.
 
 #include <gtest/gtest.h>
@@ -26,19 +26,19 @@
 #include "network/network_utils.h"
 
 // Declared in test_pools_stubs.cc — not a separate header so we extern here.
-namespace seth {
+namespace shardora {
 namespace elect {
 extern common::MembersPtr g_test_members_override;
 extern uint64_t           g_test_latest_height;
 }
 }
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
-#ifndef SETH_UNITTEST
-TEST(ShardStatExtra3, SkippedWithoutSethUnittest) {
+#ifndef SHARDORA_UNITTEST
+TEST(ShardStatExtra3, SkippedWithoutShardoraUnittest) {
     GTEST_SKIP() << "Rebuild with -DXENABLE_CODE_COVERAGE=ON";
 }
 #else
@@ -392,8 +392,8 @@ TEST_F(ShardStatExtra3Test, HandleStatistic_PoolStatisticHeight_Ge2Entries_MaxHe
     common::GlobalInfo::Instance()->set_network_id(prev);
 }
 
-#endif  // SETH_UNITTEST
+#endif  // SHARDORA_UNITTEST
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

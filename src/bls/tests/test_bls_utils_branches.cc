@@ -9,7 +9,7 @@
 
 #include "bls/bls_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace bls {
 namespace test {
 
@@ -185,4 +185,4 @@ TEST_F(BlsUtilsBranches, BlsFinishItemMaxPublicPkMap) {
 
 }  // namespace test
 }  // namespace bls
-}  // namespace seth
+}  // namespace shardora

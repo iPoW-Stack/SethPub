@@ -2,7 +2,7 @@
 
 #include "common/bitmap.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -84,4 +84,4 @@ bool Bitmap::operator==(const Bitmap& r) const {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

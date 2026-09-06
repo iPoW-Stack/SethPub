@@ -1,12 +1,12 @@
 # option
 option(BUILD_SHARED_LIBS "build shared library(.so/.a)" OFF)
-option(BUILD_CLIENT "build seth client" OFF)
-option(SETH_MOCK_VERIFY "Enable mocked signature verification" OFF)
-option(SETH_MOCK_SIGN "Enable mocked signing" OFF)
+option(BUILD_CLIENT "build shardora client" OFF)
+option(SHARDORA_MOCK_VERIFY "Enable mocked signature verification" OFF)
+option(SHARDORA_MOCK_SIGN "Enable mocked signing" OFF)
 
 # version required
 cmake_minimum_required(VERSION 3.22.0)
-project(seth)
+project(shardora)
 
 if(POLICY CMP0069)
   cmake_policy(SET CMP0069 NEW)
@@ -14,23 +14,23 @@ endif()
 
 # Whitebox Curve25519 keys for init (build.sh also passes -DREPLACE_WHITEBOX_*).
 if(NOT DEFINED REPLACE_WHITEBOX_PK OR REPLACE_WHITEBOX_PK STREQUAL "")
-  find_program(SETH_OPENSSL openssl)
-  find_program(SETH_XXD xxd)
-  if(NOT SETH_OPENSSL OR NOT SETH_XXD)
+  find_program(SHARDORA_OPENSSL openssl)
+  find_program(SHARDORA_XXD xxd)
+  if(NOT SHARDORA_OPENSSL OR NOT SHARDORA_XXD)
     message(FATAL_ERROR
-      "REPLACE_WHITEBOX_PK not set. Use: bash build.sh seth Release\n"
+      "REPLACE_WHITEBOX_PK not set. Use: bash build.sh shardora Release\n"
       "  or install openssl + xxd and re-run cmake from an empty build dir.")
   endif()
-  set(_seth_wb_keys "${CMAKE_BINARY_DIR}/seth_whitebox_keys.cmake")
+  set(_shardora_wb_keys "${CMAKE_BINARY_DIR}/shardora_whitebox_keys.cmake")
   execute_process(
-    COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/gen_whitebox_keys.cmake.sh" "${_seth_wb_keys}"
+    COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/gen_whitebox_keys.cmake.sh" "${_shardora_wb_keys}"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    RESULT_VARIABLE _seth_wb_rc
+    RESULT_VARIABLE _shardora_wb_rc
   )
-  if(_seth_wb_rc OR NOT EXISTS "${_seth_wb_keys}")
+  if(_shardora_wb_rc OR NOT EXISTS "${_shardora_wb_keys}")
     message(FATAL_ERROR "Failed to generate whitebox keys (openssl genpkey / xxd).")
   endif()
-  include("${_seth_wb_keys}")
+  include("${_shardora_wb_keys}")
   message(STATUS "Generated ephemeral REPLACE_WHITEBOX_PK/SK at configure time")
 endif()
 
@@ -45,18 +45,18 @@ endif()
 # =========================================================
 # 2. Optional LTO (off by default: third_party/*.a are often built with another GCC)
 # =========================================================
-option(SETH_ENABLE_LTO "Enable IPO/LTO for Release (all static deps must be built with the same compiler/LTO)" OFF)
-if(SETH_ENABLE_LTO)
+option(SHARDORA_ENABLE_LTO "Enable IPO/LTO for Release (all static deps must be built with the same compiler/LTO)" OFF)
+if(SHARDORA_ENABLE_LTO)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
     if(ipo_supported)
-        message(STATUS "IPO/LTO enabled for Release (SETH_ENABLE_LTO=ON).")
+        message(STATUS "IPO/LTO enabled for Release (SHARDORA_ENABLE_LTO=ON).")
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     else()
-        message(WARNING "SETH_ENABLE_LTO=ON but IPO/LTO is not supported: ${ipo_output}")
+        message(WARNING "SHARDORA_ENABLE_LTO=ON but IPO/LTO is not supported: ${ipo_output}")
     endif()
 else()
-    message(STATUS "IPO/LTO disabled (default). Use -DSETH_ENABLE_LTO=ON only if third_party libs were built with matching LTO.")
+    message(STATUS "IPO/LTO disabled (default). Use -DSHARDORA_ENABLE_LTO=ON only if third_party libs were built with matching LTO.")
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF CACHE BOOL "IPO for Release" FORCE)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "IPO all configs" FORCE)
     # Clear -flto left in cache from older configures (otherwise link still invokes lto-wrapper).
@@ -123,7 +123,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(LINK_ANDROID_LOG log)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     add_compile_options(-Wno-c++11-narrowing)
-    add_compile_definitions(SETH_USE_UV)
+    add_compile_definitions(SHARDORA_USE_UV)
     set(LINK_RT )
     set(LINK_DL )
     if(NOT DEFINED IOS_PLATFORM)
@@ -202,11 +202,11 @@ add_definitions(
     -DOPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2r
     -DENABLE_HOTSTUFF
     -DDISABLE_GENESIS_BLS_VERIFY
-    -DSETH_USE_UV
-    #    -DSETH_UNITTEST # for testing
+    -DSHARDORA_USE_UV
+    #    -DSHARDORA_UNITTEST # for testing
     #-DFOR_CONSOLE_DEBUG
 #    -DTEST_TRANSPORT_PERFOMANCE
-#    -DSETH_TRACE_MESSAGE
+#    -DSHARDORA_TRACE_MESSAGE
 #  -DLEVELDB
 #    -DCLIENT_USE_UV
 #    -DMAKE_CLIENT_LIB
@@ -222,11 +222,11 @@ add_definitions(
 
 )
 
-if(SETH_MOCK_VERIFY)
+if(SHARDORA_MOCK_VERIFY)
     add_definitions(-DMOCK_VERIFY)
 endif()
 
-if(SETH_MOCK_SIGN)
+if(SHARDORA_MOCK_SIGN)
     add_definitions(-DMOCK_SIGN)
 endif()
 
@@ -294,7 +294,7 @@ link_directories(
 # bin/lib
 # Tip: Comment out unused executables to speed up compilation
 add_executable(pkicli ${MAIN_DIR}/pki.cc)
-add_executable(seth ${MAIN_DIR}/main.cc)
+add_executable(shardora ${MAIN_DIR}/main.cc)
 add_executable(https ${MAIN_DIR}/http_svr.cc)
 add_executable(httpc ${MAIN_DIR}/http_cli.cc)
 add_executable(wss ${MAIN_DIR}/ws_svr.cc)
@@ -308,7 +308,7 @@ set(LINK_ARGS
     init
     consensus
     sync
-    sethvm
+    shardoravm
     block
     vss
     ck
@@ -352,24 +352,24 @@ if(NOT ENABLE_ASAN)
     list(APPEND LINK_ARGS tcmalloc)
 endif()
 
-set(SETH_LINK_LIBRARIES)
-set(SETH_LINK_OPTIONS)
+set(SHARDORA_LINK_LIBRARIES)
+set(SHARDORA_LINK_OPTIONS)
 foreach(LINK_ARG IN LISTS LINK_ARGS)
     if(LINK_ARG MATCHES "^-")
-        list(APPEND SETH_LINK_OPTIONS "${LINK_ARG}")
+        list(APPEND SHARDORA_LINK_OPTIONS "${LINK_ARG}")
     else()
-        list(APPEND SETH_LINK_LIBRARIES "${LINK_ARG}")
+        list(APPEND SHARDORA_LINK_LIBRARIES "${LINK_ARG}")
     endif()
 endforeach()
 
 # Unified Linking
-set(SETH_EXECUTABLE_TARGETS pkicli blsmain seth tnetc tnets txcli)
-foreach(TARGET_NAME IN LISTS SETH_EXECUTABLE_TARGETS)
-    target_link_libraries(${TARGET_NAME} ${SETH_LINK_LIBRARIES})
-    if(SETH_LINK_OPTIONS)
-        target_link_options(${TARGET_NAME} PRIVATE ${SETH_LINK_OPTIONS})
+set(SHARDORA_EXECUTABLE_TARGETS pkicli blsmain shardora tnetc tnets txcli)
+foreach(TARGET_NAME IN LISTS SHARDORA_EXECUTABLE_TARGETS)
+    target_link_libraries(${TARGET_NAME} ${SHARDORA_LINK_LIBRARIES})
+    if(SHARDORA_LINK_OPTIONS)
+        target_link_options(${TARGET_NAME} PRIVATE ${SHARDORA_LINK_OPTIONS})
     endif()
-    if(NOT SETH_ENABLE_LTO)
+    if(NOT SHARDORA_ENABLE_LTO)
         set_target_properties(${TARGET_NAME} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
         target_compile_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Release>:-fno-lto>)
         target_link_options(${TARGET_NAME} PRIVATE $<$<CONFIG:Release>:-fno-lto>)
@@ -393,7 +393,7 @@ add_subdirectory(${SRC_DIR}/tnet tnet)
 add_subdirectory(${SRC_DIR}/bls bls)
 add_subdirectory(${SRC_DIR}/db db)
 add_subdirectory(${SRC_DIR}/pools pools)
-add_subdirectory(${SRC_DIR}/sethvm sethvm)
+add_subdirectory(${SRC_DIR}/shardoravm shardoravm)
 add_subdirectory(${SRC_DIR}/big_num big_num)
 add_subdirectory(${SRC_DIR}/contract contract)
 add_subdirectory(${SRC_DIR}/elect elect)
@@ -415,7 +415,7 @@ add_subdirectory(${SRC_DIR}/bls/tests bls_test)
 add_subdirectory(${SRC_DIR}/db/tests db_test)
 add_subdirectory(${SRC_DIR}/dht/tests dht_test)
 add_subdirectory(${SRC_DIR}/pools/tests pools_test)
-add_subdirectory(${SRC_DIR}/sethvm/tests sethvm_test)
+add_subdirectory(${SRC_DIR}/shardoravm/tests shardoravm_test)
 add_subdirectory(${SRC_DIR}/big_num/tests bignum_test)
 add_subdirectory(${SRC_DIR}/contract/tests contract_test)
 add_subdirectory(${SRC_DIR}/elect/tests elect_test)

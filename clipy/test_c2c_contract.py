@@ -4,7 +4,7 @@
 C2CSellOrder Contract Test Suite
 ===============================
 Comprehensive test suite for the C2CSellOrder contract based on c2c.sol
-Following seth3.py patterns for deployment and contract calls.
+Following shardora3.py patterns for deployment and contract calls.
 """
 
 import os
@@ -28,21 +28,21 @@ from typing import Dict, Any, Optional, List
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Import Seth SDK components (following seth3.py pattern)
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+# Import Shardora SDK components (following shardora3.py pattern)
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link
 
 TEST_ACCOUNT_BALANCE = 100_000_000
 TEST_CONTRACT_PREFUND = 10_000_000
 
 # All shard HTTP endpoints (via SSH tunnels on localhost).
-# In a multi-shard Seth network each address lives on exactly one shard;
+# In a multi-shard Shardora network each address lives on exactly one shard;
 # the balance only appears when querying that shard's endpoint.
 _FALLBACK_SHARD_PORTS = [22001, 23001, 24001, 25001, 26001]
 
 def _keygen_for_pool(w3_client, target_pool: int, max_tries: int = 50000) -> str:
     """Generate a random private key whose address hashes to exactly target_pool.
 
-    Uses xxhash pool index (same formula as Seth C++): xxh32(addr_bytes, seed=623453345) % 32.
+    Uses xxhash pool index (same formula as Shardora C++): xxh32(addr_bytes, seed=623453345) % 32.
     With 32 pools each key has a 1/32 chance, so expected tries ≈ 32.
     Falls back to a plain random key if xxhash is not available.
     """
@@ -81,14 +81,14 @@ def ensure_status_ok(receipt: Dict[str, Any], label: str) -> None:
         raise RuntimeError(f"{label} failed with status={status}, msg={receipt.get('msg', '')}")
 
 
-def _w3_primary_ep(w3: SethWeb3Mock):
-    """Extract (host, port) from the underlying SethClient base_url."""
+def _w3_primary_ep(w3: ShardoraWeb3Mock):
+    """Extract (host, port) from the underlying ShardoraClient base_url."""
     url = w3.client.base_url  # https://host:port
     parts = url.replace('https://', '').split(':')
     return parts[0], int(parts[1])
 
 
-def fund_test_account(w3: SethWeb3Mock, funder_key: str, address: str,
+def fund_test_account(w3: ShardoraWeb3Mock, funder_key: str, address: str,
                       amount: int = TEST_ACCOUNT_BALANCE, timeout: int = 180) -> None:
     host, port = _w3_primary_ep(w3)
     current_balance = _get_balance_any_shard(address, host, port)
@@ -147,15 +147,15 @@ def _find_account_port(address: str, primary_host: str = '127.0.0.1',
 def contract_for_sender(base_contract: Any, sender_key: str) -> Any:
     """Return a view of the contract whose client is routed to the sender's OWNING shard.
 
-    Seth's HTTP nodes only accept transactions where the sender's sharding_id matches the
+    Shardora's HTTP nodes only accept transactions where the sender's sharding_id matches the
     node's own network_id.  _find_account_port verifies this by comparing shardingId from
     query_account against the expected shard for each port.
     """
-    from seth_sdk import SethClient, SethContract
+    from shardora_sdk import ShardoraClient, ShardoraContract
     sender_addr = base_contract.client.get_address(sender_key)
     sender_port = _find_account_port(sender_addr)
-    sender_client = SethClient('127.0.0.1', sender_port)
-    return SethContract(
+    sender_client = ShardoraClient('127.0.0.1', sender_port)
+    return ShardoraContract(
         sender_client,
         base_contract.address,
         base_contract.abi,
@@ -189,7 +189,7 @@ def _find_account_shard(address: str, primary_host: str = '127.0.0.1') -> tuple:
 
 def ensure_contract_prefund(contract: Any, user_key: str,
                             amount: int = TEST_CONTRACT_PREFUND, timeout: int = 180) -> None:
-    from seth_sdk import SethClient
+    from shardora_sdk import ShardoraClient
     user_address = contract.client.get_address(user_key)
     contract_address = contract.address
     prefund_id = contract_address + user_address
@@ -224,7 +224,7 @@ def ensure_contract_prefund(contract: Any, user_key: str,
 
     # kContractGasPrefund must be accepted by a node whose shard matches the SENDER's sharding_id.
     # The contract lives on its own shard; what matters for the HTTP node is the SENDER being known.
-    sender_client = SethClient('127.0.0.1', sender_port)
+    sender_client = ShardoraClient('127.0.0.1', sender_port)
 
     print(f"  Setting contract prefund for {user_address[:16]}... with {amount} (via port {sender_port})")
     tx_hash = sender_client.send_transaction_auto(
@@ -590,7 +590,7 @@ contract C2CSellOrder {
 
 
 def test_c2c_contract_deployment(host: str, port: int, owner_key: str = None):
-    """Test C2CSellOrder contract deployment following seth3.py patterns"""
+    """Test C2CSellOrder contract deployment following shardora3.py patterns"""
     print("C2CSellOrder Contract Test Suite")
     print("=" * 80)
 
@@ -598,8 +598,8 @@ def test_c2c_contract_deployment(host: str, port: int, owner_key: str = None):
     if not owner_key:
         owner_key = "7cada4d9e5ceed0bb2eaed4a9b31a1cbc421e813687967f17b4ce8b0df00fc1d"
 
-    # Initialize Seth connection (following seth3.py pattern)
-    w3 = SethWeb3Mock(host, port)
+    # Initialize Shardora connection (following shardora3.py pattern)
+    w3 = ShardoraWeb3Mock(host, port)
 
     # Strategy: put all test accounts in the same pool as the owner (genesis).
     # The owner is already on-chain; its pool index is deterministic.
@@ -652,7 +652,7 @@ def test_c2c_contract_deployment(host: str, port: int, owner_key: str = None):
         fund_test_account(w3, owner_key, account_addr)
     
     print("C2CSellOrder Contract Test Suite Initialized")
-    print(f"Connected to Seth node: {host}:{port}")
+    print(f"Connected to Shardora node: {host}:{port}")
     print("Starting C2CSellOrder Contract Comprehensive Test Suite")
     print("=" * 80)
     
@@ -675,7 +675,7 @@ def test_c2c_contract_deployment(host: str, port: int, owner_key: str = None):
             except FileNotFoundError:
                 pass
 
-        # Compile contract (following seth3.py pattern)
+        # Compile contract (following shardora3.py pattern)
         print("Testing Contract Deployment...")
         print("  Compiling C2CSellOrder contract...")
 
@@ -718,10 +718,10 @@ def test_c2c_contract_deployment(host: str, port: int, owner_key: str = None):
             print(f"  Bytecode length: {len(c2c_bin)} chars")
             print(f"  ABI functions: {len([item for item in c2c_abi if item['type'] == 'function'])}")
         
-        # Create contract instance (following seth3.py pattern)
-        c2c_contract = w3.seth.contract(abi=c2c_abi, bytecode=c2c_bin)
+        # Create contract instance (following shardora3.py pattern)
+        c2c_contract = w3.shardora.contract(abi=c2c_abi, bytecode=c2c_bin)
         
-        # Deploy contract with constructor parameters (following seth3.py pattern)
+        # Deploy contract with constructor parameters (following shardora3.py pattern)
         print("  Deploying contract...")
         managers = [manager1_addr, manager2_addr]
         min_pledge = 1000000  # 1M wei minimum pledge
@@ -833,8 +833,8 @@ def test_c2c_contract_deployment(host: str, port: int, owner_key: str = None):
 def main():
     """Main test execution function"""
     parser = argparse.ArgumentParser(description='C2CSellOrder Contract Test Suite')
-    parser.add_argument('--host', default='139.159.119.119', help='Seth node host')
-    parser.add_argument('--port', type=int, default=9001, help='Seth node port')
+    parser.add_argument('--host', default='139.159.119.119', help='Shardora node host')
+    parser.add_argument('--port', type=int, default=9001, help='Shardora node port')
     parser.add_argument('--key', default='7cada4d9e5ceed0bb2eaed4a9b31a1cbc421e813687967f17b4ce8b0df00fc1d',
                         help='Owner private key (hex)')
     args = parser.parse_args()

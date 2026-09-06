@@ -10,7 +10,7 @@
 #include "protos/address.pb.h"
 #include "security/security.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -19,7 +19,7 @@ namespace test {
 extern std::function<std::shared_ptr<address::protobuf::AddressInfo>(const std::string&)>
     g_test_account_info_override;
 
-// With SETH_UNITTEST on pools (coverage), TxPoolManager::SetIsOtherLeaderHookForTest mocks
+// With SHARDORA_UNITTEST on pools (coverage), TxPoolManager::SetIsOtherLeaderHookForTest mocks
 // HotstuffManager::is_other_leader without linking consensus (see tx_pool_manager.h).
 
 inline std::shared_ptr<address::protobuf::AddressInfo> MakeTestAddressInfo(
@@ -93,4 +93,4 @@ struct ScopedAccountInfoOverride {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

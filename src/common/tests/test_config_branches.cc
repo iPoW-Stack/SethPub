@@ -6,7 +6,7 @@
 
 #include "common/config.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -211,7 +211,7 @@ TEST(ConfigBranches, SectionHeaderAllowsCommentAfterClosingBracket) {
 TEST(ConfigBranches, InitFailsWhenFileDoesNotExist) {
     Config cfg;
     EXPECT_FALSE(cfg.Init(std::string(
-        "./seth_test_config_file_should_not_exist_6f2a9c11.ini")));
+        "./shardora_test_config_file_should_not_exist_6f2a9c11.ini")));
 }
 
 TEST(ConfigBranches, SetBoolSerializesAndGetBoolParses) {
@@ -257,7 +257,7 @@ TEST(ConfigBranches, DumpConfigAndInitRoundTrip) {
     ASSERT_TRUE(cfg.InitWithContent(std::string("[round]\nitem=ok\nnum=-3\n")));
 
     const auto tmp = fs::temp_directory_path() /
-        (std::string("seth_cfg_dump_") +
+        (std::string("shardora_cfg_dump_") +
          std::to_string(std::random_device{}()) + ".ini");
     const std::string path = tmp.string();
     ASSERT_TRUE(cfg.DumpConfig(path));
@@ -277,4 +277,4 @@ TEST(ConfigBranches, DumpConfigAndInitRoundTrip) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

@@ -1,10 +1,10 @@
 #!/bin/bash
 # Fix Build Dependencies Script
-# Resolves common build issues for Seth blockchain project
+# Resolves common build issues for Shardora blockchain project
 
 set -e
 
-echo "=== Seth Build Dependencies Fix Script ==="
+echo "=== Shardora Build Dependencies Fix Script ==="
 echo "Fixing common build issues and missing dependencies..."
 
 # Function to check if command exists
@@ -211,7 +211,7 @@ cat > build_wrapper.sh << 'EOF'
 
 set -e
 
-echo "=== Seth Build Wrapper ==="
+echo "=== Shardora Build Wrapper ==="
 
 # Run dependency fix first
 if [ -f "fix_build_dependencies.sh" ]; then
@@ -227,7 +227,7 @@ cd build_release
 echo "Configuring with CMake..."
 cmake .. \
     -DCMAKE_BUILD_TYPE=Release \
-    -DSETH_ENABLE_LTO=OFF \
+    -DSHARDORA_ENABLE_LTO=OFF \
     -DCMAKE_CXX_STANDARD=17 \
     2>&1 | tee cmake_output.log
 

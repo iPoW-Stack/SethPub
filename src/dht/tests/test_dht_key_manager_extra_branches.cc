@@ -4,7 +4,7 @@
 
 #include "dht/dht_key.h"
 
-namespace seth {
+namespace shardora {
 namespace dht {
 namespace test {
 
@@ -27,4 +27,4 @@ TEST(DhtKeyManagerExtraBranches, DhtKeyGetNetIdMatchesConstructedNetId) {
 
 }  // namespace test
 }  // namespace dht
-}  // namespace seth
+}  // namespace shardora

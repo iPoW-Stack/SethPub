@@ -4,10 +4,10 @@
 #include "consensus/zbft/tx_item_base.h"
 #include "protos/prefix_db.h"
 #include "security/security.h"
-#include "sethvm/seth_host.h"
-#include "sethvm/sethvm_utils.h"
+#include "shardoravm/shardora_host.h"
+#include "shardoravm/shardoravm_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
     class ContractManager;
@@ -34,17 +34,17 @@ public:
     virtual int HandleTx(
         uint32_t tx_index,
         view_block::protobuf::ViewBlockItem& view_block,
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         hotstuff::BalanceAndNonceMap& acc_balance_map,
         block::protobuf::BlockTx& block_tx);
 
 private:
     int CreateContractCallExcute(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::BlockTx& tx,
         evmc::Result* out_res);
     int SaveContractCreateInfo(
-        sethvm::SethhainHost& seth_host,
+        shardoravm::ShardorahainHost& shardora_host,
         block::protobuf::BlockTx& tx,
         int64_t& contract_balance_add,
         int64_t& caller_balance_add);
@@ -55,4 +55,4 @@ private:
 
 };  // namespace consensus
 
-};  // namespace seth
+};  // namespace shardora

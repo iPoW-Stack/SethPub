@@ -7,7 +7,7 @@
 
 #include "common/defer.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -133,4 +133,4 @@ TEST_F(TestDefer, DeferFuncMoveKeepsSingleExecution) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

@@ -1,4 +1,4 @@
-#!/root/seth/clipy/oqs_venv/bin/python3
+#!/root/shardora/clipy/oqs_venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -12,7 +12,7 @@
 #include "db/db.h"
 #include "pools/height_tree_level.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -48,4 +48,4 @@ TEST_F(TestHeightTreeExtra, GetMissingHeightsBreaksAt1025) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

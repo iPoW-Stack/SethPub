@@ -4,7 +4,7 @@
 
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -53,7 +53,7 @@ public:
     }
 
     void Stop() {
-        SETH_DEBUG("network socket stopted.");
+        SHARDORA_DEBUG("network socket stopted.");
         stoped_ = true;
     }
 
@@ -72,4 +72,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

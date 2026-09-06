@@ -4,7 +4,7 @@
 
 #include "dht/dht_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace dht {
 namespace test {
 
@@ -36,4 +36,4 @@ TEST(DhtNodeBranches, AtomicsDefaultInitialized) {
 
 }  // namespace test
 }  // namespace dht
-}  // namespace seth
+}  // namespace shardora

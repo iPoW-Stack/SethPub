@@ -9,7 +9,7 @@
 #include "common/utils.h"
 #include "common/tick.h"
 
-namespace seth {
+namespace shardora {
 
 namespace init {
 
@@ -51,4 +51,4 @@ private:
 
 }  // namespace init
 
-}  // namespace seth
+}  // namespace shardora

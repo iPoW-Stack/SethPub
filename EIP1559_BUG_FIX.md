@@ -144,7 +144,7 @@ tx = {
 ### 1. 重新编译
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 ```
 
@@ -152,16 +152,16 @@ make -j$(nproc)
 
 ```bash
 # 停止旧节点
-pkill seth_node
+pkill shardora_node
 
 # 启动新节点
-./seth_node --config config.json
+./shardora_node --config config.json
 ```
 
 ### 3. 运行测试
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 test_eip1559.py
 ```
 
@@ -185,5 +185,5 @@ python3 test_eip1559.py
 ---
 
 **修复日期**: 2024年
-**修复者**: Seth 开发团队
+**修复者**: Shardora 开发团队
 **状态**: ✅ 已修复并测试

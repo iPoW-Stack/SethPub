@@ -2,7 +2,7 @@
 
 #include "security/security_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -18,9 +18,9 @@ static const uint32_t kCommitPointSize = 33u;
 static const uint32_t kPrivateKeySize = 32u;
 static const uint32_t kPublicCompressKeySize = 33u;
 static const uint32_t kPublicKeyUncompressSize = 65u;
-static const uint32_t kSethAddressSize = 20u;
+static const uint32_t kShardoraAddressSize = 20u;
 static const uint32_t kSignatureSize = 65u;
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

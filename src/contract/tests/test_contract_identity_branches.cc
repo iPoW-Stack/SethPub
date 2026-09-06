@@ -7,7 +7,7 @@
 #include "contract/contract_identity.h"
 #include "contract/contract_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -66,4 +66,4 @@ TEST(ContractIdentityBranches, SuccessCopiesDataAndDeductsGas) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora

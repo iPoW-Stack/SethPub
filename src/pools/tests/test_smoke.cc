@@ -9,7 +9,7 @@
 #include "pools/unique_hash_lru_set.h"
 #include "pools/account_qps_lru_map.h"
 
-namespace seth {
+namespace shardora {
 
 namespace {
 
@@ -165,4 +165,4 @@ TEST(TestPoolsSmoke, ConcurrentLikeOperations) {
     }
 }
 
-}  // namespace seth
+}  // namespace shardora

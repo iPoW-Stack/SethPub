@@ -3,7 +3,7 @@
 #include "tnet/tnet_utils.h"
 #include "tnet/socket/tcp_socket.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -25,7 +25,7 @@ public:
 
     int Connect() const {
         if (fd_ < 0) {
-            SETH_ERROR("connect on bad fd [%d]", fd_);
+            SHARDORA_ERROR("connect on bad fd [%d]", fd_);
             return -1;
         }
 #ifndef _WIN32
@@ -36,12 +36,12 @@ public:
         int con_res = connect(fd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
         if (con_res < 0) {
             if (errno == EINPROGRESS) {
-                // SETH_ERROR("connect failed on fd [%d] [%s] con_res[%d] errorno[%d]",
+                // SHARDORA_ERROR("connect failed on fd [%d] [%s] con_res[%d] errorno[%d]",
                 //     fd_, strerror(errno), con_res, errno);
                 return 1;
             }
 
-            SETH_ERROR("connect failed on fd [%d] [%s] con_res[%d] errorno[%d]",
+            SHARDORA_ERROR("connect failed on fd [%d] [%s] con_res[%d] errorno[%d]",
                     fd_, strerror(errno), con_res, errno);
             return -1;
         }
@@ -65,4 +65,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

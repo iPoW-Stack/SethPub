@@ -17,10 +17,10 @@ CrossShardBase Token - 跨分片合约部署与测试
   分片6: 共识分片  端口 26001-26004
 
 用法:
-  python3 /root/seth/clipy/test_crossshardbase.py
+  python3 /root/shardora/clipy/test_crossshardbase.py
 """
 import sys
-sys.path.insert(0, "/root/seth/clipy")
+sys.path.insert(0, "/root/shardora/clipy")
 
 import subprocess, json, time, hashlib, struct, base64
 import requests
@@ -33,10 +33,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── 配置 ─────────────────────────────────────────────────────────────────────
 import os
-HOST     = os.environ.get("SETH_HOST", "192.168.25.129")
+HOST     = os.environ.get("SHARDORA_HOST", "192.168.25.129")
 PRIVKEY  = "c8ee398141fe31308fce258fa4c0fc21288a74a221982db252cb10a94bf7063b"
-SOLC     = "/root/seth/python/solc"
-BASE_SOL = "/root/seth/python/CrossShardBase.sol"
+SOLC     = "/root/shardora/python/solc"
+BASE_SOL = "/root/shardora/python/CrossShardBase.sol"
 VERIFY   = False
 
 SHARD_PORT = {2: 22001, 3: 23001, 4: 24001, 5: 25001, 6: 26001}
@@ -250,7 +250,7 @@ contract TestToken is CrossShardBase {
     constructor(address systemExecutor)
         CrossShardBase(systemExecutor) {}
 
-    // tx.origin/msg.sender may be 0 in Seth constructor, so _baseInit is a no-op.
+    // tx.origin/msg.sender may be 0 in Shardora constructor, so _baseInit is a no-op.
     // Call mint() explicitly after deployment.
     function _baseInit() internal override {}
 
@@ -327,20 +327,20 @@ def compile_testtoken() -> tuple:
         "        IS_ROOT           = true;"
     )
 
-    patched_base = "/root/seth/python/CrossShardBase_patched.sol"
+    patched_base = "/root/shardora/python/CrossShardBase_patched.sol"
     with open(patched_base, "w") as f:
         f.write(base_src)
 
-    src_path = "/root/seth/python/TestToken.sol"
+    src_path = "/root/shardora/python/TestToken.sol"
     with open(src_path, "w") as f:
         f.write(TESTTOKEN_SOL)
 
     result = subprocess.run(
         [SOLC, "--bin", "--abi", "--optimize",
-         "--base-path", "/root/seth/python",
+         "--base-path", "/root/shardora/python",
          src_path],
         capture_output=True, text=True,
-        cwd="/root/seth/python"
+        cwd="/root/shardora/python"
     )
     if result.returncode != 0:
         print("COMPILE STDERR:", result.stderr)
@@ -408,7 +408,7 @@ def main():
     rcpt = wait_receipt(c3, txh)
     print(f"    prefund status: {rcpt.get('status')}")
 
-    # 4b. Mint tokens to sender (tx.origin is 0 during Seth constructor)
+    # 4b. Mint tokens to sender (tx.origin is 0 during Shardora constructor)
     MINT_AMOUNT = 1_000_000 * (10 ** 18)
     print(f"\n[3b] Minting {MINT_AMOUNT//10**18} TT to sender...")
     inp = encode_call("mint(address,uint256)", ["address", "uint256"],

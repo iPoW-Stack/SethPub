@@ -11,7 +11,7 @@ After deploying ContractA, the demo queries its actual shard/pool from the block
 
 ```python
 # Deploy ContractA
-contract_a = w3.seth.contract(...).deploy(...)
+contract_a = w3.shardora.contract(...).deploy(...)
 
 # Query actual shard/pool from blockchain
 contract_a_info = query_address_info(w3, contract_a.address, max_wait=60)
@@ -74,7 +74,7 @@ address=abc123def456...
 
 ```bash
 # Start blockchain
-./build/seth --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
+./build/shardora --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
 
 # Run demo
 cd clipy

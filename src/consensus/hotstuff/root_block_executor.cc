@@ -1,9 +1,9 @@
 #include <consensus/hotstuff/block_executor.h>
 #include <consensus/consensus_utils.h>
 #include "consensus/hotstuff/hotstuff_utils.h"
-#include <sethvm/sethvm_utils.h>
+#include <shardoravm/shardoravm_utils.h>
 
-namespace seth {
+namespace shardora {
 namespace hotstuff {
 
 namespace {
@@ -17,7 +17,7 @@ bool AddBlockTxGas(
         return true;
     }
 
-    SETH_ERROR("block gas used overflow after tx execution: %u_%u_%lu, "
+    SHARDORA_ERROR("block gas used overflow after tx execution: %u_%u_%lu, "
         "tx step: %d, nonce: %lu, block_gas_used: %lu, tx_gas_used: %lu, "
         "block_gas_limit: %lu",
         view_block->qc().network_id(),
@@ -43,30 +43,30 @@ Status RootBlockExecutor::DoTransactionAndCreateTxBlock(
         const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     SetBlockGasUsed(view_block, 0);
     if (txs_ptr->txs.size() == 1) {
         auto& tx = *(txs_ptr->txs.begin());
         switch (tx->tx_info->step()) {
         case pools::protobuf::kConsensusRootElectShard:
-            return RootCreateElectConsensusShardBlock(txs_ptr, view_block, balance_map, seth_host);
+            return RootCreateElectConsensusShardBlock(txs_ptr, view_block, balance_map, shardora_host);
         case pools::protobuf::kConsensusRootTimeBlock:
         case pools::protobuf::kStatistic:
         case pools::protobuf::kCross:
-            return RootDefaultTx(txs_ptr, view_block, balance_map, seth_host);
+            return RootDefaultTx(txs_ptr, view_block, balance_map, shardora_host);
         default:
-            return RootCreateAccountAddressBlock(txs_ptr, view_block, balance_map, seth_host);
+            return RootCreateAccountAddressBlock(txs_ptr, view_block, balance_map, shardora_host);
         }
     }
 
-    return RootCreateAccountAddressBlock(txs_ptr, view_block, balance_map, seth_host);
+    return RootCreateAccountAddressBlock(txs_ptr, view_block, balance_map, shardora_host);
 }
 
 Status RootBlockExecutor::RootDefaultTx(
         const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& balance_map,
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     auto* block = view_block->mutable_block_info();
     auto tx_list = block->mutable_tx_list();
     auto& tx = *tx_list->Add();
@@ -76,7 +76,7 @@ Status RootBlockExecutor::RootDefaultTx(
     int do_tx_res = (*iter)->HandleTx(
         0,
         *view_block,
-        seth_host,
+        shardora_host,
         balance_map,
         tx);
 
@@ -101,7 +101,7 @@ Status RootBlockExecutor::RootCreateAccountAddressBlock(
         const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& acc_balance_map,
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     auto* block = view_block->mutable_block_info();
     auto tx_list = block->mutable_tx_list();
     auto& tx_map = txs_ptr->txs;
@@ -114,7 +114,7 @@ Status RootBlockExecutor::RootCreateAccountAddressBlock(
         int do_tx_res = (*iter)->HandleTx(
             tx_index++,
             *view_block,
-            seth_host,
+            shardora_host,
             acc_balance_map,
             tx);
 
@@ -139,7 +139,7 @@ Status RootBlockExecutor::RootCreateElectConsensusShardBlock(
         const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& acc_balance_map,
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     auto& tx_map = txs_ptr->txs;
     if (tx_map.size() != 1) {
         SetBlockGasUsed(view_block, 0);
@@ -161,13 +161,13 @@ Status RootBlockExecutor::RootCreateElectConsensusShardBlock(
     int do_tx_res = (*iter)->HandleTx(
         0,
         *view_block,
-        seth_host,
+        shardora_host,
         acc_balance_map,
         tx);
     if (do_tx_res != consensus::kConsensusSuccess) {
         tx_list->RemoveLast();
         ////assert(false);
-        SETH_WARN("consensus elect tx failed!");
+        SHARDORA_WARN("consensus elect tx failed!");
         SetBlockGasUsed(view_block, block_gas_used);
         return Status::kSuccess;
     }

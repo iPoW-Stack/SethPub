@@ -1,7 +1,7 @@
-# Seth 内存泄露分析与修复方案
+# Shardora 内存泄露分析与修复方案
 
 ## 问题概述
-压测时 seth 进程占用 4.6GB 内存，存在严重的内存泄露。已识别 5 个关键问题。
+压测时 shardora 进程占用 4.6GB 内存，存在严重的内存泄露。已识别 5 个关键问题。
 
 ---
 
@@ -173,7 +173,7 @@ private:
     bool Send(const std::string& ip, uint16_t port, const transport::protobuf::Header& header) {
         // 检查队列大小
         if (output_queue.Size() > kMaxQueueSize) {
-            SETH_WARN("Output queue full, dropping message");
+            SHARDORA_WARN("Output queue full, dropping message");
             return false;
         }
         // 继续发送...
@@ -218,18 +218,18 @@ private:
 
 1. **使用 valgrind 检测内存泄露**:
 ```bash
-valgrind --leak-check=full --show-leak-kinds=all ./seth
+valgrind --leak-check=full --show-leak-kinds=all ./shardora
 ```
 
 2. **使用 heaptrack 分析内存使用**:
 ```bash
-heaptrack ./seth
-heaptrack_gui heaptrack.seth.*.gz
+heaptrack ./shardora
+heaptrack_gui heaptrack.shardora.*.gz
 ```
 
 3. **监控内存增长**:
 ```bash
-watch -n 1 'ps aux | grep seth | grep -v grep'
+watch -n 1 'ps aux | grep shardora | grep -v grep'
 ```
 
 4. **压测验证**:

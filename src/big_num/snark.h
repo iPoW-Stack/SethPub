@@ -3,7 +3,7 @@
 #include "common/utils.h"
 #include "big_num/bignum_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace bignum {
 
@@ -31,4 +31,4 @@ private:
 
 };  // namespace bignum
 
-};  // namespace seth
+};  // namespace shardora

@@ -8,7 +8,7 @@
 #include "network/network_utils.h"
 #include "pools/tx_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace pools {
     
@@ -28,4 +28,4 @@ void RootCrossPool::Init(
 
 }  // namespace pools
 
-}  // namespace seth
+}  // namespace shardora

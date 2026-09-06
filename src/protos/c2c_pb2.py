@@ -17,15 +17,15 @@ _sym_db = _symbol_database.Default()
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/c2c.proto',
-  package='seth.c2c.protobuf',
+  package='shardora.c2c.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x10protos/c2c.proto\x12\x11seth.c2c.protobuf\"U\n\tOrderInfo\x12\r\n\x05\x62uyer\x18\x01 \x01(\x0c\x12)\n\x06status\x18\x02 \x01(\x0e\x32\x19.seth.c2c.protobuf.Status\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\"\x8c\x02\n\x08SellInfo\x12\x15\n\rprotocol_addr\x18\x01 \x01(\x0c\x12\x0e\n\x06seller\x18\x02 \x01(\x0c\x12\x15\n\rpledge_amount\x18\x03 \x01(\x04\x12\r\n\x05price\x18\x04 \x01(\x04\x12\x12\n\nreceivable\x18\x05 \x01(\x0c\x12\x18\n\x10manager_released\x18\x06 \x01(\x08\x12\x17\n\x0fseller_released\x18\x07 \x01(\x08\x12)\n\x06status\x18\x08 \x01(\x0e\x32\x19.seth.c2c.protobuf.Status\x12\x30\n\norder_info\x18\t \x01(\x0b\x32\x1c.seth.c2c.protobuf.OrderInfo\x12\x0f\n\x07reports\x18\n \x03(\x0c\"9\n\x08NewOrder\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x04\x12\r\n\x05\x62uyer\x18\x03 \x01(\x0c\"c\n\x07NewSell\x12\x15\n\rprotocol_addr\x18\x01 \x01(\x0c\x12\x0e\n\x06seller\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\r\n\x05price\x18\x04 \x01(\x04\x12\x12\n\nreceivable\x18\x05 \x01(\x0c\"3\n\x0b\x42uyerReport\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x14\n\x0creports_info\x18\x02 \x01(\x0c\"\x19\n\x07GetSell\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\"\xec\x01\n\nC2cMessage\x12(\n\x04sell\x18\x01 \x01(\x0b\x32\x1a.seth.c2c.protobuf.NewSell\x12*\n\x05order\x18\x02 \x01(\x0b\x32\x1b.seth.c2c.protobuf.NewOrder\x12.\n\x06report\x18\x03 \x01(\x0b\x32\x1e.seth.c2c.protobuf.BuyerReport\x12*\n\x05sells\x18\x04 \x03(\x0b\x32\x1b.seth.c2c.protobuf.SellInfo\x12,\n\x08get_sell\x18\x05 \x03(\x0b\x32\x1a.seth.c2c.protobuf.GetSell*\x8d\x01\n\x06Status\x12\x0c\n\x08kDefault\x10\x00\x12\x0e\n\nkConfirmed\x10\x01\x12\r\n\tkReported\x10\x02\x12\x10\n\x0ckSellWaiting\x10\x03\x12\x0e\n\nkSellValid\x10\x04\x12\x10\n\x0ckSellInvalid\x10\x05\x12\x11\n\rkSellReleased\x10\x06\x12\x0f\n\x0bkSellExists\x10\x07')
+  serialized_pb=_b('\n\x10protos/c2c.proto\x12\x11shardora.c2c.protobuf\"U\n\tOrderInfo\x12\r\n\x05\x62uyer\x18\x01 \x01(\x0c\x12)\n\x06status\x18\x02 \x01(\x0e\x32\x19.shardora.c2c.protobuf.Status\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\"\x8c\x02\n\x08SellInfo\x12\x15\n\rprotocol_addr\x18\x01 \x01(\x0c\x12\x0e\n\x06seller\x18\x02 \x01(\x0c\x12\x15\n\rpledge_amount\x18\x03 \x01(\x04\x12\r\n\x05price\x18\x04 \x01(\x04\x12\x12\n\nreceivable\x18\x05 \x01(\x0c\x12\x18\n\x10manager_released\x18\x06 \x01(\x08\x12\x17\n\x0fseller_released\x18\x07 \x01(\x08\x12)\n\x06status\x18\x08 \x01(\x0e\x32\x19.shardora.c2c.protobuf.Status\x12\x30\n\norder_info\x18\t \x01(\x0b\x32\x1c.shardora.c2c.protobuf.OrderInfo\x12\x0f\n\x07reports\x18\n \x03(\x0c\"9\n\x08NewOrder\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x02 \x01(\x04\x12\r\n\x05\x62uyer\x18\x03 \x01(\x0c\"c\n\x07NewSell\x12\x15\n\rprotocol_addr\x18\x01 \x01(\x0c\x12\x0e\n\x06seller\x18\x02 \x01(\x0c\x12\x0e\n\x06\x61mount\x18\x03 \x01(\x04\x12\r\n\x05price\x18\x04 \x01(\x04\x12\x12\n\nreceivable\x18\x05 \x01(\x0c\"3\n\x0b\x42uyerReport\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\x12\x14\n\x0creports_info\x18\x02 \x01(\x0c\"\x19\n\x07GetSell\x12\x0e\n\x06seller\x18\x01 \x01(\x0c\"\xec\x01\n\nC2cMessage\x12(\n\x04sell\x18\x01 \x01(\x0b\x32\x1a.shardora.c2c.protobuf.NewSell\x12*\n\x05order\x18\x02 \x01(\x0b\x32\x1b.shardora.c2c.protobuf.NewOrder\x12.\n\x06report\x18\x03 \x01(\x0b\x32\x1e.shardora.c2c.protobuf.BuyerReport\x12*\n\x05sells\x18\x04 \x03(\x0b\x32\x1b.shardora.c2c.protobuf.SellInfo\x12,\n\x08get_sell\x18\x05 \x03(\x0b\x32\x1a.shardora.c2c.protobuf.GetSell*\x8d\x01\n\x06Status\x12\x0c\n\x08kDefault\x10\x00\x12\x0e\n\nkConfirmed\x10\x01\x12\r\n\tkReported\x10\x02\x12\x10\n\x0ckSellWaiting\x10\x03\x12\x0e\n\nkSellValid\x10\x04\x12\x10\n\x0ckSellInvalid\x10\x05\x12\x11\n\rkSellReleased\x10\x06\x12\x0f\n\x0bkSellExists\x10\x07')
 )
 
 _STATUS = _descriptor.EnumDescriptor(
   name='Status',
-  full_name='seth.c2c.protobuf.Status',
+  full_name='shardora.c2c.protobuf.Status',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -83,27 +83,27 @@ kSellExists = 7
 
 _ORDERINFO = _descriptor.Descriptor(
   name='OrderInfo',
-  full_name='seth.c2c.protobuf.OrderInfo',
+  full_name='shardora.c2c.protobuf.OrderInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='buyer', full_name='seth.c2c.protobuf.OrderInfo.buyer', index=0,
+      name='buyer', full_name='shardora.c2c.protobuf.OrderInfo.buyer', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.c2c.protobuf.OrderInfo.status', index=1,
+      name='status', full_name='shardora.c2c.protobuf.OrderInfo.status', index=1,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.c2c.protobuf.OrderInfo.amount', index=2,
+      name='amount', full_name='shardora.c2c.protobuf.OrderInfo.amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -128,76 +128,76 @@ _ORDERINFO = _descriptor.Descriptor(
 
 _SELLINFO = _descriptor.Descriptor(
   name='SellInfo',
-  full_name='seth.c2c.protobuf.SellInfo',
+  full_name='shardora.c2c.protobuf.SellInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='protocol_addr', full_name='seth.c2c.protobuf.SellInfo.protocol_addr', index=0,
+      name='protocol_addr', full_name='shardora.c2c.protobuf.SellInfo.protocol_addr', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.c2c.protobuf.SellInfo.seller', index=1,
+      name='seller', full_name='shardora.c2c.protobuf.SellInfo.seller', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pledge_amount', full_name='seth.c2c.protobuf.SellInfo.pledge_amount', index=2,
+      name='pledge_amount', full_name='shardora.c2c.protobuf.SellInfo.pledge_amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='price', full_name='seth.c2c.protobuf.SellInfo.price', index=3,
+      name='price', full_name='shardora.c2c.protobuf.SellInfo.price', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='receivable', full_name='seth.c2c.protobuf.SellInfo.receivable', index=4,
+      name='receivable', full_name='shardora.c2c.protobuf.SellInfo.receivable', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='manager_released', full_name='seth.c2c.protobuf.SellInfo.manager_released', index=5,
+      name='manager_released', full_name='shardora.c2c.protobuf.SellInfo.manager_released', index=5,
       number=6, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='seller_released', full_name='seth.c2c.protobuf.SellInfo.seller_released', index=6,
+      name='seller_released', full_name='shardora.c2c.protobuf.SellInfo.seller_released', index=6,
       number=7, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='status', full_name='seth.c2c.protobuf.SellInfo.status', index=7,
+      name='status', full_name='shardora.c2c.protobuf.SellInfo.status', index=7,
       number=8, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='order_info', full_name='seth.c2c.protobuf.SellInfo.order_info', index=8,
+      name='order_info', full_name='shardora.c2c.protobuf.SellInfo.order_info', index=8,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='reports', full_name='seth.c2c.protobuf.SellInfo.reports', index=9,
+      name='reports', full_name='shardora.c2c.protobuf.SellInfo.reports', index=9,
       number=10, type=12, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -222,27 +222,27 @@ _SELLINFO = _descriptor.Descriptor(
 
 _NEWORDER = _descriptor.Descriptor(
   name='NewOrder',
-  full_name='seth.c2c.protobuf.NewOrder',
+  full_name='shardora.c2c.protobuf.NewOrder',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.c2c.protobuf.NewOrder.seller', index=0,
+      name='seller', full_name='shardora.c2c.protobuf.NewOrder.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.c2c.protobuf.NewOrder.amount', index=1,
+      name='amount', full_name='shardora.c2c.protobuf.NewOrder.amount', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='buyer', full_name='seth.c2c.protobuf.NewOrder.buyer', index=2,
+      name='buyer', full_name='shardora.c2c.protobuf.NewOrder.buyer', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -267,41 +267,41 @@ _NEWORDER = _descriptor.Descriptor(
 
 _NEWSELL = _descriptor.Descriptor(
   name='NewSell',
-  full_name='seth.c2c.protobuf.NewSell',
+  full_name='shardora.c2c.protobuf.NewSell',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='protocol_addr', full_name='seth.c2c.protobuf.NewSell.protocol_addr', index=0,
+      name='protocol_addr', full_name='shardora.c2c.protobuf.NewSell.protocol_addr', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.c2c.protobuf.NewSell.seller', index=1,
+      name='seller', full_name='shardora.c2c.protobuf.NewSell.seller', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='amount', full_name='seth.c2c.protobuf.NewSell.amount', index=2,
+      name='amount', full_name='shardora.c2c.protobuf.NewSell.amount', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='price', full_name='seth.c2c.protobuf.NewSell.price', index=3,
+      name='price', full_name='shardora.c2c.protobuf.NewSell.price', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='receivable', full_name='seth.c2c.protobuf.NewSell.receivable', index=4,
+      name='receivable', full_name='shardora.c2c.protobuf.NewSell.receivable', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -326,20 +326,20 @@ _NEWSELL = _descriptor.Descriptor(
 
 _BUYERREPORT = _descriptor.Descriptor(
   name='BuyerReport',
-  full_name='seth.c2c.protobuf.BuyerReport',
+  full_name='shardora.c2c.protobuf.BuyerReport',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.c2c.protobuf.BuyerReport.seller', index=0,
+      name='seller', full_name='shardora.c2c.protobuf.BuyerReport.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='reports_info', full_name='seth.c2c.protobuf.BuyerReport.reports_info', index=1,
+      name='reports_info', full_name='shardora.c2c.protobuf.BuyerReport.reports_info', index=1,
       number=2, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -364,13 +364,13 @@ _BUYERREPORT = _descriptor.Descriptor(
 
 _GETSELL = _descriptor.Descriptor(
   name='GetSell',
-  full_name='seth.c2c.protobuf.GetSell',
+  full_name='shardora.c2c.protobuf.GetSell',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='seller', full_name='seth.c2c.protobuf.GetSell.seller', index=0,
+      name='seller', full_name='shardora.c2c.protobuf.GetSell.seller', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -395,41 +395,41 @@ _GETSELL = _descriptor.Descriptor(
 
 _C2CMESSAGE = _descriptor.Descriptor(
   name='C2cMessage',
-  full_name='seth.c2c.protobuf.C2cMessage',
+  full_name='shardora.c2c.protobuf.C2cMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sell', full_name='seth.c2c.protobuf.C2cMessage.sell', index=0,
+      name='sell', full_name='shardora.c2c.protobuf.C2cMessage.sell', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='order', full_name='seth.c2c.protobuf.C2cMessage.order', index=1,
+      name='order', full_name='shardora.c2c.protobuf.C2cMessage.order', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='report', full_name='seth.c2c.protobuf.C2cMessage.report', index=2,
+      name='report', full_name='shardora.c2c.protobuf.C2cMessage.report', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sells', full_name='seth.c2c.protobuf.C2cMessage.sells', index=3,
+      name='sells', full_name='shardora.c2c.protobuf.C2cMessage.sells', index=3,
       number=4, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='get_sell', full_name='seth.c2c.protobuf.C2cMessage.get_sell', index=4,
+      name='get_sell', full_name='shardora.c2c.protobuf.C2cMessage.get_sell', index=4,
       number=5, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -472,49 +472,49 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 OrderInfo = _reflection.GeneratedProtocolMessageType('OrderInfo', (_message.Message,), dict(
   DESCRIPTOR = _ORDERINFO,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.OrderInfo)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.OrderInfo)
   ))
 _sym_db.RegisterMessage(OrderInfo)
 
 SellInfo = _reflection.GeneratedProtocolMessageType('SellInfo', (_message.Message,), dict(
   DESCRIPTOR = _SELLINFO,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.SellInfo)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.SellInfo)
   ))
 _sym_db.RegisterMessage(SellInfo)
 
 NewOrder = _reflection.GeneratedProtocolMessageType('NewOrder', (_message.Message,), dict(
   DESCRIPTOR = _NEWORDER,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.NewOrder)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.NewOrder)
   ))
 _sym_db.RegisterMessage(NewOrder)
 
 NewSell = _reflection.GeneratedProtocolMessageType('NewSell', (_message.Message,), dict(
   DESCRIPTOR = _NEWSELL,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.NewSell)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.NewSell)
   ))
 _sym_db.RegisterMessage(NewSell)
 
 BuyerReport = _reflection.GeneratedProtocolMessageType('BuyerReport', (_message.Message,), dict(
   DESCRIPTOR = _BUYERREPORT,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.BuyerReport)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.BuyerReport)
   ))
 _sym_db.RegisterMessage(BuyerReport)
 
 GetSell = _reflection.GeneratedProtocolMessageType('GetSell', (_message.Message,), dict(
   DESCRIPTOR = _GETSELL,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.GetSell)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.GetSell)
   ))
 _sym_db.RegisterMessage(GetSell)
 
 C2cMessage = _reflection.GeneratedProtocolMessageType('C2cMessage', (_message.Message,), dict(
   DESCRIPTOR = _C2CMESSAGE,
   __module__ = 'protos.c2c_pb2'
-  # @@protoc_insertion_point(class_scope:seth.c2c.protobuf.C2cMessage)
+  # @@protoc_insertion_point(class_scope:shardora.c2c.protobuf.C2cMessage)
   ))
 _sym_db.RegisterMessage(C2cMessage)
 

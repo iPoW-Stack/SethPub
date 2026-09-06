@@ -16,7 +16,7 @@
 #include "protos/elect.pb.h"
 #include "transport/transport_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace block {
 
@@ -55,7 +55,7 @@ int AccountManager::Init(
 
             pool_base_addrs_[step][pool_idx] = addr;
             pool_idx_set.insert(pool_idx);
-            SETH_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
+            SHARDORA_DEBUG("network_id: %u, init pool index: %u, base address: %s", 
                 network_id, pool_idx, common::Encode::HexEncode(addr).c_str());
         }
 
@@ -70,7 +70,7 @@ int AccountManager::Init(
             &tmp_step, 
             sizeof(tmp_step));
         pool_base_addrs_[step][common::kGlobalPoolIndex] = immutable_pool_addr;
-        SETH_DEBUG("init pool immutable index net: %u, init pool index: %u, base address: %s", 
+        SHARDORA_DEBUG("init pool immutable index net: %u, init pool index: %u, base address: %s", 
             network_id, 
             common::kGlobalPoolIndex, 
             common::Encode::HexEncode(immutable_pool_addr).c_str());
@@ -115,7 +115,7 @@ void AccountManager::AddNewBlock(const view_block::protobuf::ViewBlockItem& view
             view_block_item.block_info().address_array(i));
         auto acc_ptr = account_lru_map_.get(addr_info_ptr->addr());
         if (acc_ptr) {
-            SETH_DEBUG("account exists in lru map: %s, balance: %lu, nonce: %lu, "
+            SHARDORA_DEBUG("account exists in lru map: %s, balance: %lu, nonce: %lu, "
                 "latest height: %lu, tx index: %lu, block height: %lu, "
                 "addr_info_ptr latest height: %lu, tx_index: %u",
                 common::Encode::HexEncode(addr_info_ptr->addr()).c_str(),
@@ -127,7 +127,7 @@ void AccountManager::AddNewBlock(const view_block::protobuf::ViewBlockItem& view
                 addr_info_ptr->latest_height(),
                 addr_info_ptr->tx_index());
         } else {
-            SETH_DEBUG("account not exists in lru map: %s, balance: %lu, nonce: %lu, "
+            SHARDORA_DEBUG("account not exists in lru map: %s, balance: %lu, nonce: %lu, "
                 "latest height: %lu, tx index: %lu, block height: %lu",
                 common::Encode::HexEncode(addr_info_ptr->addr()).c_str(),
                 addr_info_ptr->balance(),
@@ -148,4 +148,4 @@ void AccountManager::AddNewBlock(const view_block::protobuf::ViewBlockItem& view
 
 }  // namespace block
 
-}  //namespace seth
+}  //namespace shardora

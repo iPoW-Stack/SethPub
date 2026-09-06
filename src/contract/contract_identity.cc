@@ -1,6 +1,6 @@
 #include "contract/contract_identity.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -35,4 +35,4 @@ int Identity::call(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

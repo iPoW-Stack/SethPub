@@ -5,7 +5,7 @@ set -euo pipefail
 
 ARG_INT="${1:-}"
 if [[ -z "$ARG_INT" ]]; then
-  ARG_INT="$(find "${SETH_ROOT:-.}" -path '*/argtable2/src/arg_int.c' 2>/dev/null | head -1 || true)"
+  ARG_INT="$(find "${SHARDORA_ROOT:-.}" -path '*/argtable2/src/arg_int.c' 2>/dev/null | head -1 || true)"
 fi
 if [[ -z "$ARG_INT" || ! -f "$ARG_INT" ]]; then
   echo "patch_argtable2_arg_int: arg_int.c not found (skip)" >&2

@@ -13,11 +13,11 @@
 
 **原始需求** (中文):
 ```
-在seth3.py中增加一个传入参数是结构体，查询状态返回也是结构体的demo
+在shardora3.py中增加一个传入参数是结构体，查询状态返回也是结构体的demo
 ```
 
 **翻译**:
-在 seth3.py 中添加一个演示，展示：
+在 shardora3.py 中添加一个演示，展示：
 1. **结构体作为参数** - 函数接收结构体类型的参数
 2. **结构体作为返回值** - 函数返回结构体类型的结果
 
@@ -27,7 +27,7 @@
 
 ### 1. 代码实现 (2 文件)
 
-#### a) `clipy/seth3.py` (新增 ~550 行)
+#### a) `clipy/shardora3.py` (新增 ~550 行)
 
 **STRUCT_DEMO_SOL 合约** (Lines 199-450):
 - **3 个结构体定义**:
@@ -111,8 +111,8 @@
 
 ### 3. 导航索引更新
 
-**SETH_INDEX.md** (更新):
-- 添加代码部分第二项: `d:\work\SethPub\clipy\seth3.py`
+**SHARDORA_INDEX.md** (更新):
+- 添加代码部分第二项: `d:\work\ShardoraPub\clipy\shardora3.py`
 - 添加文档部分两个新项:
   - `STRUCT_DEMO.md` (b 项)
   - `STRUCT_ENCODING_GUIDE.md` (c 项)
@@ -182,7 +182,7 @@ result = contract.functions.getUserInfo().call()
 用户需求: "结构体参数和返回值"
     ↓
 实现代码:
-    ├─ clipy/seth3.py
+    ├─ clipy/shardora3.py
     │  ├─ STRUCT_DEMO_SOL (Solidity)
     │  └─ test_struct_demo() (Python)
     └─ 集成到 ecdsa_sign_test()
@@ -192,7 +192,7 @@ result = contract.functions.getUserInfo().call()
     └─ STRUCT_ENCODING_GUIDE.md (深度讲解)
     ↓
 导航索引:
-    └─ SETH_INDEX.md (更新)
+    └─ SHARDORA_INDEX.md (更新)
 ```
 
 ---
@@ -203,9 +203,9 @@ result = contract.functions.getUserInfo().call()
 
 | 文件 | 类型 | 行数 | 内容 |
 |------|------|------|------|
-| clipy/seth3.py (STRUCT_DEMO_SOL) | Solidity | 250 | 3 struct + 10 functions |
-| clipy/seth3.py (test_struct_demo) | Python | 300+ | 9 test scenarios |
-| clipy/seth3.py (集成) | Python | 1 | ecdsa_sign_test 中的调用 |
+| clipy/shardora3.py (STRUCT_DEMO_SOL) | Solidity | 250 | 3 struct + 10 functions |
+| clipy/shardora3.py (test_struct_demo) | Python | 300+ | 9 test scenarios |
+| clipy/shardora3.py (集成) | Python | 1 | ecdsa_sign_test 中的调用 |
 
 ### 按功能
 
@@ -267,7 +267,7 @@ result = contract.functions.getUserInfo().call()
 ### 1. 查看代码实现
 ```bash
 # 打开代码文件查看结构体定义和测试
-code clipy/seth3.py
+code clipy/shardora3.py
 
 # 查找相关代码
 # - STRUCT_DEMO_SOL: Lines 199-450
@@ -277,7 +277,7 @@ code clipy/seth3.py
 ### 2. 运行测试
 ```bash
 # 运行完整的测试套件（包括结构体演示）
-python clipy/seth3.py
+python clipy/shardora3.py
 
 # 在输出中查找:
 # "TEST CASE: Struct Demo - Structs as Parameters and Return Values"
@@ -292,7 +292,7 @@ cat STRUCT_DEMO.md
 cat STRUCT_ENCODING_GUIDE.md
 
 # 导航索引
-cat SETH_INDEX.md
+cat SHARDORA_INDEX.md
 ```
 
 ---
@@ -317,8 +317,8 @@ cat SETH_INDEX.md
 |------|---------|
 | STRUCT_DEMO.md | 实现细节、测试场景、最佳实践 |
 | STRUCT_ENCODING_GUIDE.md | ABI 编码、调试技巧、常见陷阱 |
-| SETH_INDEX.md | 导航、快速查询、学习路径 |
-| QUICK_REFERENCE.md | 相关 Seth 概念 |
+| SHARDORA_INDEX.md | 导航、快速查询、学习路径 |
+| QUICK_REFERENCE.md | 相关 Shardora 概念 |
 
 ---
 
@@ -403,6 +403,6 @@ cat SETH_INDEX.md
 
 ## ✨ 致谢
 
-感谢 Seth 区块链团队提供的完整开发环境和文档支持。
+感谢 Shardora 区块链团队提供的完整开发环境和文档支持。
 
 **下一步**: 查看 `STRUCT_DEMO.md` 开始学习，或参考 `STRUCT_ENCODING_GUIDE.md` 深入理解实现细节。

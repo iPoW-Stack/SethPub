@@ -9,7 +9,7 @@
 #include "tnet/socket/client_socket.h"
 #include "tnet/utils/packet_factory.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -69,4 +69,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

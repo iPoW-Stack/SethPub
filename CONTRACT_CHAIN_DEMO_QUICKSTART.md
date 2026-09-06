@@ -34,15 +34,15 @@ cd clipy
 python test_contract_chain_demo.py
 ```
 
-### 方法 2: 集成到 seth3.py
+### 方法 2: 集成到 shardora3.py
 
-在 `seth3.py` 的末尾添加:
+在 `shardora3.py` 的末尾添加:
 
 ```python
 from test_contract_chain_demo import test_contract_chain_same_shard_pool
 
 if __name__ == "__main__":
-    w3 = SethWeb3Mock("127.0.0.1", 8080)
+    w3 = ShardoraWeb3Mock("127.0.0.1", 8080)
     MY_KEY = "your_private_key_here"
     MY_ADDR = w3.client.get_address(MY_KEY)
     

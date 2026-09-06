@@ -30,7 +30,7 @@
 #include <libff/algebra/curves/alt_bn128/alt_bn128_init.hpp>
 #include <protos/prefix_db.h>
 
-namespace seth {
+namespace shardora {
 
 namespace init {
 
@@ -142,4 +142,4 @@ private:
 
 }  // namespace init
 
-}  // namespace seth
+}  // namespace shardora

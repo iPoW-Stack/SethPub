@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -18,5 +18,5 @@ class Rule {
 
 } // namespace consensus
 
-} // namespace seth
+} // namespace shardora
 

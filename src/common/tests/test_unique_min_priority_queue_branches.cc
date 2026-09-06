@@ -4,7 +4,7 @@
 
 #include "common/unique_min_priority_queue.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -65,4 +65,4 @@ TEST(UniqueMinPriorityQueueBranches, DistinctPushesIncreaseSize) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

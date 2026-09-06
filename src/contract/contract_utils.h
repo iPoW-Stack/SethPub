@@ -4,12 +4,12 @@
 #include "common/log.h"
 #include "common/encode.h"
 
-#define CONTRACT_DEBUG(fmt, ...) SETH_DEBUG("[CONTRACT]" fmt, ## __VA_ARGS__)
-#define CONTRACT_INFO(fmt, ...) SETH_DEBUG("[CONTRACT]" fmt, ## __VA_ARGS__)
-#define CONTRACT_WARN(fmt, ...) SETH_WARN("[CONTRACT]" fmt, ## __VA_ARGS__)
-#define CONTRACT_ERROR(fmt, ...) SETH_ERROR("[CONRTACT]" fmt, ## __VA_ARGS__)
+#define CONTRACT_DEBUG(fmt, ...) SHARDORA_DEBUG("[CONTRACT]" fmt, ## __VA_ARGS__)
+#define CONTRACT_INFO(fmt, ...) SHARDORA_DEBUG("[CONTRACT]" fmt, ## __VA_ARGS__)
+#define CONTRACT_WARN(fmt, ...) SHARDORA_WARN("[CONTRACT]" fmt, ## __VA_ARGS__)
+#define CONTRACT_ERROR(fmt, ...) SHARDORA_ERROR("[CONRTACT]" fmt, ## __VA_ARGS__)
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -38,4 +38,4 @@ static const std::string kContractBlake2_compression = common::Encode::HexDecode
 
 }  // namespace contact
 
-}  // namespace seth
+}  // namespace shardora

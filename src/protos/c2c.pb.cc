@@ -27,7 +27,7 @@ extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fc2c_2eproto ::google::protobuf
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fc2c_2eproto ::google::protobuf::internal::SCCInfo<0> scc_info_OrderInfo;
 extern PROTOBUF_INTERNAL_EXPORT_protobuf_protos_2fc2c_2eproto ::google::protobuf::internal::SCCInfo<1> scc_info_SellInfo;
 }  // namespace protobuf_protos_2fc2c_2eproto
-namespace seth {
+namespace shardora {
 namespace c2c {
 namespace protobuf {
 class OrderInfoDefaultTypeInternal {
@@ -67,17 +67,17 @@ class C2cMessageDefaultTypeInternal {
 } _C2cMessage_default_instance_;
 }  // namespace protobuf
 }  // namespace c2c
-}  // namespace seth
+}  // namespace shardora
 namespace protobuf_protos_2fc2c_2eproto {
 static void InitDefaultsOrderInfo() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_OrderInfo_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::OrderInfo();
+    void* ptr = &::shardora::c2c::protobuf::_OrderInfo_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::OrderInfo();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::OrderInfo::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::OrderInfo::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<0> scc_info_OrderInfo =
@@ -87,11 +87,11 @@ static void InitDefaultsSellInfo() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_SellInfo_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::SellInfo();
+    void* ptr = &::shardora::c2c::protobuf::_SellInfo_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::SellInfo();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::SellInfo::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::SellInfo::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<1> scc_info_SellInfo =
@@ -102,11 +102,11 @@ static void InitDefaultsNewOrder() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_NewOrder_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::NewOrder();
+    void* ptr = &::shardora::c2c::protobuf::_NewOrder_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::NewOrder();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::NewOrder::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::NewOrder::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<0> scc_info_NewOrder =
@@ -116,11 +116,11 @@ static void InitDefaultsNewSell() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_NewSell_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::NewSell();
+    void* ptr = &::shardora::c2c::protobuf::_NewSell_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::NewSell();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::NewSell::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::NewSell::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<0> scc_info_NewSell =
@@ -130,11 +130,11 @@ static void InitDefaultsBuyerReport() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_BuyerReport_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::BuyerReport();
+    void* ptr = &::shardora::c2c::protobuf::_BuyerReport_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::BuyerReport();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::BuyerReport::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::BuyerReport::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<0> scc_info_BuyerReport =
@@ -144,11 +144,11 @@ static void InitDefaultsGetSell() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_GetSell_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::GetSell();
+    void* ptr = &::shardora::c2c::protobuf::_GetSell_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::GetSell();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::GetSell::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::GetSell::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<0> scc_info_GetSell =
@@ -158,11 +158,11 @@ static void InitDefaultsC2cMessage() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
   {
-    void* ptr = &::seth::c2c::protobuf::_C2cMessage_default_instance_;
-    new (ptr) ::seth::c2c::protobuf::C2cMessage();
+    void* ptr = &::shardora::c2c::protobuf::_C2cMessage_default_instance_;
+    new (ptr) ::shardora::c2c::protobuf::C2cMessage();
     ::google::protobuf::internal::OnShutdownDestroyMessage(ptr);
   }
-  ::seth::c2c::protobuf::C2cMessage::InitAsDefaultInstance();
+  ::shardora::c2c::protobuf::C2cMessage::InitAsDefaultInstance();
 }
 
 ::google::protobuf::internal::SCCInfo<5> scc_info_C2cMessage =
@@ -187,32 +187,32 @@ void InitDefaults() {
 const ::google::protobuf::EnumDescriptor* file_level_enum_descriptors[1];
 
 const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::OrderInfo, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::OrderInfo, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::OrderInfo, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::OrderInfo, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::OrderInfo, buyer_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::OrderInfo, status_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::OrderInfo, amount_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::OrderInfo, buyer_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::OrderInfo, status_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::OrderInfo, amount_),
   0,
   2,
   1,
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, protocol_addr_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, seller_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, pledge_amount_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, price_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, receivable_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, manager_released_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, seller_released_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, status_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, order_info_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::SellInfo, reports_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, protocol_addr_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, seller_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, pledge_amount_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, price_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, receivable_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, manager_released_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, seller_released_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, status_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, order_info_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::SellInfo, reports_),
   0,
   1,
   4,
@@ -223,58 +223,58 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   8,
   3,
   ~0u,
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewOrder, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewOrder, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewOrder, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewOrder, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewOrder, seller_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewOrder, amount_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewOrder, buyer_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewOrder, seller_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewOrder, amount_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewOrder, buyer_),
   0,
   2,
   1,
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, protocol_addr_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, seller_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, amount_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, price_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::NewSell, receivable_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, protocol_addr_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, seller_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, amount_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, price_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::NewSell, receivable_),
   0,
   1,
   3,
   4,
   2,
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::BuyerReport, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::BuyerReport, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::BuyerReport, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::BuyerReport, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::BuyerReport, seller_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::BuyerReport, reports_info_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::BuyerReport, seller_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::BuyerReport, reports_info_),
   0,
   1,
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::GetSell, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::GetSell, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::GetSell, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::GetSell, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::GetSell, seller_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::GetSell, seller_),
   0,
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, _has_bits_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, _internal_metadata_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, _has_bits_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, sell_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, order_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, report_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, sells_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::seth::c2c::protobuf::C2cMessage, get_sell_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, sell_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, order_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, report_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, sells_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::shardora::c2c::protobuf::C2cMessage, get_sell_),
   0,
   1,
   2,
@@ -282,23 +282,23 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-  { 0, 8, sizeof(::seth::c2c::protobuf::OrderInfo)},
-  { 11, 26, sizeof(::seth::c2c::protobuf::SellInfo)},
-  { 36, 44, sizeof(::seth::c2c::protobuf::NewOrder)},
-  { 47, 57, sizeof(::seth::c2c::protobuf::NewSell)},
-  { 62, 69, sizeof(::seth::c2c::protobuf::BuyerReport)},
-  { 71, 77, sizeof(::seth::c2c::protobuf::GetSell)},
-  { 78, 88, sizeof(::seth::c2c::protobuf::C2cMessage)},
+  { 0, 8, sizeof(::shardora::c2c::protobuf::OrderInfo)},
+  { 11, 26, sizeof(::shardora::c2c::protobuf::SellInfo)},
+  { 36, 44, sizeof(::shardora::c2c::protobuf::NewOrder)},
+  { 47, 57, sizeof(::shardora::c2c::protobuf::NewSell)},
+  { 62, 69, sizeof(::shardora::c2c::protobuf::BuyerReport)},
+  { 71, 77, sizeof(::shardora::c2c::protobuf::GetSell)},
+  { 78, 88, sizeof(::shardora::c2c::protobuf::C2cMessage)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_OrderInfo_default_instance_),
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_SellInfo_default_instance_),
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_NewOrder_default_instance_),
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_NewSell_default_instance_),
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_BuyerReport_default_instance_),
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_GetSell_default_instance_),
-  reinterpret_cast<const ::google::protobuf::Message*>(&::seth::c2c::protobuf::_C2cMessage_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_OrderInfo_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_SellInfo_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_NewOrder_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_NewSell_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_BuyerReport_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_GetSell_default_instance_),
+  reinterpret_cast<const ::google::protobuf::Message*>(&::shardora::c2c::protobuf::_C2cMessage_default_instance_),
 };
 
 void protobuf_AssignDescriptors() {
@@ -322,15 +322,15 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\020protos/c2c.proto\022\021seth.c2c.protobuf\"U\n"
+      "\n\020protos/c2c.proto\022\021shardora.c2c.protobuf\"U\n"
       "\tOrderInfo\022\r\n\005buyer\030\001 \001(\014\022)\n\006status\030\002 \001("
-      "\0162\031.seth.c2c.protobuf.Status\022\016\n\006amount\030\003"
+      "\0162\031.shardora.c2c.protobuf.Status\022\016\n\006amount\030\003"
       " \001(\004\"\214\002\n\010SellInfo\022\025\n\rprotocol_addr\030\001 \001(\014"
       "\022\016\n\006seller\030\002 \001(\014\022\025\n\rpledge_amount\030\003 \001(\004\022"
       "\r\n\005price\030\004 \001(\004\022\022\n\nreceivable\030\005 \001(\014\022\030\n\020ma"
       "nager_released\030\006 \001(\010\022\027\n\017seller_released\030"
-      "\007 \001(\010\022)\n\006status\030\010 \001(\0162\031.seth.c2c.protobu"
-      "f.Status\0220\n\norder_info\030\t \001(\0132\034.seth.c2c."
+      "\007 \001(\010\022)\n\006status\030\010 \001(\0162\031.shardora.c2c.protobu"
+      "f.Status\0220\n\norder_info\030\t \001(\0132\034.shardora.c2c."
       "protobuf.OrderInfo\022\017\n\007reports\030\n \003(\014\"9\n\010N"
       "ewOrder\022\016\n\006seller\030\001 \001(\014\022\016\n\006amount\030\002 \001(\004\022"
       "\r\n\005buyer\030\003 \001(\014\"c\n\007NewSell\022\025\n\rprotocol_ad"
@@ -338,12 +338,12 @@ void AddDescriptorsImpl() {
       "\022\r\n\005price\030\004 \001(\004\022\022\n\nreceivable\030\005 \001(\014\"3\n\013B"
       "uyerReport\022\016\n\006seller\030\001 \001(\014\022\024\n\014reports_in"
       "fo\030\002 \001(\014\"\031\n\007GetSell\022\016\n\006seller\030\001 \001(\014\"\354\001\n\n"
-      "C2cMessage\022(\n\004sell\030\001 \001(\0132\032.seth.c2c.prot"
-      "obuf.NewSell\022*\n\005order\030\002 \001(\0132\033.seth.c2c.p"
-      "rotobuf.NewOrder\022.\n\006report\030\003 \001(\0132\036.seth."
+      "C2cMessage\022(\n\004sell\030\001 \001(\0132\032.shardora.c2c.prot"
+      "obuf.NewSell\022*\n\005order\030\002 \001(\0132\033.shardora.c2c.p"
+      "rotobuf.NewOrder\022.\n\006report\030\003 \001(\0132\036.shardora."
       "c2c.protobuf.BuyerReport\022*\n\005sells\030\004 \003(\0132"
-      "\033.seth.c2c.protobuf.SellInfo\022,\n\010get_sell"
-      "\030\005 \003(\0132\032.seth.c2c.protobuf.GetSell*\215\001\n\006S"
+      "\033.shardora.c2c.protobuf.SellInfo\022,\n\010get_sell"
+      "\030\005 \003(\0132\032.shardora.c2c.protobuf.GetSell*\215\001\n\006S"
       "tatus\022\014\n\010kDefault\020\000\022\016\n\nkConfirmed\020\001\022\r\n\tk"
       "Reported\020\002\022\020\n\014kSellWaiting\020\003\022\016\n\nkSellVal"
       "id\020\004\022\020\n\014kSellInvalid\020\005\022\021\n\rkSellReleased\020"
@@ -366,7 +366,7 @@ struct StaticDescriptorInitializer {
   }
 } static_descriptor_initializer;
 }  // namespace protobuf_protos_2fc2c_2eproto
-namespace seth {
+namespace shardora {
 namespace c2c {
 namespace protobuf {
 const ::google::protobuf::EnumDescriptor* Status_descriptor() {
@@ -405,7 +405,7 @@ OrderInfo::OrderInfo()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_OrderInfo.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.OrderInfo)
 }
 OrderInfo::OrderInfo(const OrderInfo& from)
   : ::google::protobuf::Message(),
@@ -419,7 +419,7 @@ OrderInfo::OrderInfo(const OrderInfo& from)
   ::memcpy(&amount_, &from.amount_,
     static_cast<size_t>(reinterpret_cast<char*>(&status_) -
     reinterpret_cast<char*>(&amount_)) + sizeof(status_));
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.OrderInfo)
 }
 
 void OrderInfo::SharedCtor() {
@@ -430,7 +430,7 @@ void OrderInfo::SharedCtor() {
 }
 
 OrderInfo::~OrderInfo() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.OrderInfo)
   SharedDtor();
 }
 
@@ -453,7 +453,7 @@ const OrderInfo& OrderInfo::default_instance() {
 
 
 void OrderInfo::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.OrderInfo)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.OrderInfo)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -475,7 +475,7 @@ bool OrderInfo::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.OrderInfo)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
@@ -493,7 +493,7 @@ bool OrderInfo::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.c2c.protobuf.Status status = 2;
+      // optional .shardora.c2c.protobuf.Status status = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(16u /* 16 & 0xFF */)) {
@@ -501,8 +501,8 @@ bool OrderInfo::MergePartialFromCodedStream(
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
                  input, &value)));
-          if (::seth::c2c::protobuf::Status_IsValid(value)) {
-            set_status(static_cast< ::seth::c2c::protobuf::Status >(value));
+          if (::shardora::c2c::protobuf::Status_IsValid(value)) {
+            set_status(static_cast< ::shardora::c2c::protobuf::Status >(value));
           } else {
             mutable_unknown_fields()->AddVarint(
                 2, static_cast< ::google::protobuf::uint64>(value));
@@ -539,17 +539,17 @@ bool OrderInfo::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.OrderInfo)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.OrderInfo)
   return false;
 #undef DO_
 }
 
 void OrderInfo::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.OrderInfo)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -560,7 +560,7 @@ void OrderInfo::SerializeWithCachedSizes(
       1, this->buyer(), output);
   }
 
-  // optional .seth.c2c.protobuf.Status status = 2;
+  // optional .shardora.c2c.protobuf.Status status = 2;
   if (cached_has_bits & 0x00000004u) {
     ::google::protobuf::internal::WireFormatLite::WriteEnum(
       2, this->status(), output);
@@ -575,13 +575,13 @@ void OrderInfo::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.OrderInfo)
 }
 
 ::google::protobuf::uint8* OrderInfo::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.OrderInfo)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -593,7 +593,7 @@ void OrderInfo::SerializeWithCachedSizes(
         1, this->buyer(), target);
   }
 
-  // optional .seth.c2c.protobuf.Status status = 2;
+  // optional .shardora.c2c.protobuf.Status status = 2;
   if (cached_has_bits & 0x00000004u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
       2, this->status(), target);
@@ -608,12 +608,12 @@ void OrderInfo::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.OrderInfo)
   return target;
 }
 
 size_t OrderInfo::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.OrderInfo)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.OrderInfo)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -636,7 +636,7 @@ size_t OrderInfo::ByteSizeLong() const {
           this->amount());
     }
 
-    // optional .seth.c2c.protobuf.Status status = 2;
+    // optional .shardora.c2c.protobuf.Status status = 2;
     if (has_status()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::EnumSize(this->status());
@@ -649,22 +649,22 @@ size_t OrderInfo::ByteSizeLong() const {
 }
 
 void OrderInfo::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.OrderInfo)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.OrderInfo)
   GOOGLE_DCHECK_NE(&from, this);
   const OrderInfo* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const OrderInfo>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.OrderInfo)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.OrderInfo)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.OrderInfo)
     MergeFrom(*source);
   }
 }
 
 void OrderInfo::MergeFrom(const OrderInfo& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.OrderInfo)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.OrderInfo)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -687,14 +687,14 @@ void OrderInfo::MergeFrom(const OrderInfo& from) {
 }
 
 void OrderInfo::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.OrderInfo)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.OrderInfo)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void OrderInfo::CopyFrom(const OrderInfo& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.OrderInfo)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.OrderInfo)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -727,8 +727,8 @@ void OrderInfo::InternalSwap(OrderInfo* other) {
 // ===================================================================
 
 void SellInfo::InitAsDefaultInstance() {
-  ::seth::c2c::protobuf::_SellInfo_default_instance_._instance.get_mutable()->order_info_ = const_cast< ::seth::c2c::protobuf::OrderInfo*>(
-      ::seth::c2c::protobuf::OrderInfo::internal_default_instance());
+  ::shardora::c2c::protobuf::_SellInfo_default_instance_._instance.get_mutable()->order_info_ = const_cast< ::shardora::c2c::protobuf::OrderInfo*>(
+      ::shardora::c2c::protobuf::OrderInfo::internal_default_instance());
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int SellInfo::kProtocolAddrFieldNumber;
@@ -748,7 +748,7 @@ SellInfo::SellInfo()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_SellInfo.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.SellInfo)
 }
 SellInfo::SellInfo(const SellInfo& from)
   : ::google::protobuf::Message(),
@@ -769,14 +769,14 @@ SellInfo::SellInfo(const SellInfo& from)
     receivable_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.receivable_);
   }
   if (from.has_order_info()) {
-    order_info_ = new ::seth::c2c::protobuf::OrderInfo(*from.order_info_);
+    order_info_ = new ::shardora::c2c::protobuf::OrderInfo(*from.order_info_);
   } else {
     order_info_ = NULL;
   }
   ::memcpy(&pledge_amount_, &from.pledge_amount_,
     static_cast<size_t>(reinterpret_cast<char*>(&status_) -
     reinterpret_cast<char*>(&pledge_amount_)) + sizeof(status_));
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.SellInfo)
 }
 
 void SellInfo::SharedCtor() {
@@ -789,7 +789,7 @@ void SellInfo::SharedCtor() {
 }
 
 SellInfo::~SellInfo() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.SellInfo)
   SharedDtor();
 }
 
@@ -815,7 +815,7 @@ const SellInfo& SellInfo::default_instance() {
 
 
 void SellInfo::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.SellInfo)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.SellInfo)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -851,7 +851,7 @@ bool SellInfo::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.SellInfo)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
@@ -949,7 +949,7 @@ bool SellInfo::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.c2c.protobuf.Status status = 8;
+      // optional .shardora.c2c.protobuf.Status status = 8;
       case 8: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(64u /* 64 & 0xFF */)) {
@@ -957,8 +957,8 @@ bool SellInfo::MergePartialFromCodedStream(
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
                  input, &value)));
-          if (::seth::c2c::protobuf::Status_IsValid(value)) {
-            set_status(static_cast< ::seth::c2c::protobuf::Status >(value));
+          if (::shardora::c2c::protobuf::Status_IsValid(value)) {
+            set_status(static_cast< ::shardora::c2c::protobuf::Status >(value));
           } else {
             mutable_unknown_fields()->AddVarint(
                 8, static_cast< ::google::protobuf::uint64>(value));
@@ -969,7 +969,7 @@ bool SellInfo::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.c2c.protobuf.OrderInfo order_info = 9;
+      // optional .shardora.c2c.protobuf.OrderInfo order_info = 9;
       case 9: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(74u /* 74 & 0xFF */)) {
@@ -1005,17 +1005,17 @@ bool SellInfo::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.SellInfo)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.SellInfo)
   return false;
 #undef DO_
 }
 
 void SellInfo::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.SellInfo)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1058,13 +1058,13 @@ void SellInfo::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteBool(7, this->seller_released(), output);
   }
 
-  // optional .seth.c2c.protobuf.Status status = 8;
+  // optional .shardora.c2c.protobuf.Status status = 8;
   if (cached_has_bits & 0x00000100u) {
     ::google::protobuf::internal::WireFormatLite::WriteEnum(
       8, this->status(), output);
   }
 
-  // optional .seth.c2c.protobuf.OrderInfo order_info = 9;
+  // optional .shardora.c2c.protobuf.OrderInfo order_info = 9;
   if (cached_has_bits & 0x00000008u) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       9, this->_internal_order_info(), output);
@@ -1080,13 +1080,13 @@ void SellInfo::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.SellInfo)
 }
 
 ::google::protobuf::uint8* SellInfo::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.SellInfo)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1132,13 +1132,13 @@ void SellInfo::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(7, this->seller_released(), target);
   }
 
-  // optional .seth.c2c.protobuf.Status status = 8;
+  // optional .shardora.c2c.protobuf.Status status = 8;
   if (cached_has_bits & 0x00000100u) {
     target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
       8, this->status(), target);
   }
 
-  // optional .seth.c2c.protobuf.OrderInfo order_info = 9;
+  // optional .shardora.c2c.protobuf.OrderInfo order_info = 9;
   if (cached_has_bits & 0x00000008u) {
     target = ::google::protobuf::internal::WireFormatLite::
       InternalWriteMessageToArray(
@@ -1155,12 +1155,12 @@ void SellInfo::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.SellInfo)
   return target;
 }
 
 size_t SellInfo::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.SellInfo)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.SellInfo)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -1198,7 +1198,7 @@ size_t SellInfo::ByteSizeLong() const {
           this->receivable());
     }
 
-    // optional .seth.c2c.protobuf.OrderInfo order_info = 9;
+    // optional .shardora.c2c.protobuf.OrderInfo order_info = 9;
     if (has_order_info()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSize(
@@ -1230,7 +1230,7 @@ size_t SellInfo::ByteSizeLong() const {
     }
 
   }
-  // optional .seth.c2c.protobuf.Status status = 8;
+  // optional .shardora.c2c.protobuf.Status status = 8;
   if (has_status()) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::EnumSize(this->status());
@@ -1242,22 +1242,22 @@ size_t SellInfo::ByteSizeLong() const {
 }
 
 void SellInfo::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.SellInfo)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.SellInfo)
   GOOGLE_DCHECK_NE(&from, this);
   const SellInfo* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const SellInfo>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.SellInfo)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.SellInfo)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.SellInfo)
     MergeFrom(*source);
   }
 }
 
 void SellInfo::MergeFrom(const SellInfo& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.SellInfo)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.SellInfo)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -1279,7 +1279,7 @@ void SellInfo::MergeFrom(const SellInfo& from) {
       receivable_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.receivable_);
     }
     if (cached_has_bits & 0x00000008u) {
-      mutable_order_info()->::seth::c2c::protobuf::OrderInfo::MergeFrom(from.order_info());
+      mutable_order_info()->::shardora::c2c::protobuf::OrderInfo::MergeFrom(from.order_info());
     }
     if (cached_has_bits & 0x00000010u) {
       pledge_amount_ = from.pledge_amount_;
@@ -1301,14 +1301,14 @@ void SellInfo::MergeFrom(const SellInfo& from) {
 }
 
 void SellInfo::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.SellInfo)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.SellInfo)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void SellInfo::CopyFrom(const SellInfo& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.SellInfo)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.SellInfo)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -1362,7 +1362,7 @@ NewOrder::NewOrder()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_NewOrder.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.NewOrder)
 }
 NewOrder::NewOrder(const NewOrder& from)
   : ::google::protobuf::Message(),
@@ -1378,7 +1378,7 @@ NewOrder::NewOrder(const NewOrder& from)
     buyer_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.buyer_);
   }
   amount_ = from.amount_;
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.NewOrder)
 }
 
 void NewOrder::SharedCtor() {
@@ -1388,7 +1388,7 @@ void NewOrder::SharedCtor() {
 }
 
 NewOrder::~NewOrder() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.NewOrder)
   SharedDtor();
 }
 
@@ -1412,7 +1412,7 @@ const NewOrder& NewOrder::default_instance() {
 
 
 void NewOrder::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.NewOrder)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.NewOrder)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -1435,7 +1435,7 @@ bool NewOrder::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.NewOrder)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
@@ -1491,17 +1491,17 @@ bool NewOrder::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.NewOrder)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.NewOrder)
   return false;
 #undef DO_
 }
 
 void NewOrder::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.NewOrder)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1527,13 +1527,13 @@ void NewOrder::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.NewOrder)
 }
 
 ::google::protobuf::uint8* NewOrder::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.NewOrder)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1561,12 +1561,12 @@ void NewOrder::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.NewOrder)
   return target;
 }
 
 size_t NewOrder::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.NewOrder)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.NewOrder)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -1603,22 +1603,22 @@ size_t NewOrder::ByteSizeLong() const {
 }
 
 void NewOrder::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.NewOrder)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.NewOrder)
   GOOGLE_DCHECK_NE(&from, this);
   const NewOrder* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const NewOrder>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.NewOrder)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.NewOrder)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.NewOrder)
     MergeFrom(*source);
   }
 }
 
 void NewOrder::MergeFrom(const NewOrder& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.NewOrder)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.NewOrder)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -1642,14 +1642,14 @@ void NewOrder::MergeFrom(const NewOrder& from) {
 }
 
 void NewOrder::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.NewOrder)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.NewOrder)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void NewOrder::CopyFrom(const NewOrder& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.NewOrder)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.NewOrder)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -1697,7 +1697,7 @@ NewSell::NewSell()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_NewSell.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.NewSell)
 }
 NewSell::NewSell(const NewSell& from)
   : ::google::protobuf::Message(),
@@ -1719,7 +1719,7 @@ NewSell::NewSell(const NewSell& from)
   ::memcpy(&amount_, &from.amount_,
     static_cast<size_t>(reinterpret_cast<char*>(&price_) -
     reinterpret_cast<char*>(&amount_)) + sizeof(price_));
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.NewSell)
 }
 
 void NewSell::SharedCtor() {
@@ -1732,7 +1732,7 @@ void NewSell::SharedCtor() {
 }
 
 NewSell::~NewSell() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.NewSell)
   SharedDtor();
 }
 
@@ -1757,7 +1757,7 @@ const NewSell& NewSell::default_instance() {
 
 
 void NewSell::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.NewSell)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.NewSell)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -1787,7 +1787,7 @@ bool NewSell::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.NewSell)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
@@ -1869,17 +1869,17 @@ bool NewSell::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.NewSell)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.NewSell)
   return false;
 #undef DO_
 }
 
 void NewSell::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.NewSell)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1916,13 +1916,13 @@ void NewSell::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.NewSell)
 }
 
 ::google::protobuf::uint8* NewSell::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.NewSell)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -1962,12 +1962,12 @@ void NewSell::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.NewSell)
   return target;
 }
 
 size_t NewSell::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.NewSell)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.NewSell)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2018,22 +2018,22 @@ size_t NewSell::ByteSizeLong() const {
 }
 
 void NewSell::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.NewSell)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.NewSell)
   GOOGLE_DCHECK_NE(&from, this);
   const NewSell* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const NewSell>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.NewSell)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.NewSell)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.NewSell)
     MergeFrom(*source);
   }
 }
 
 void NewSell::MergeFrom(const NewSell& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.NewSell)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.NewSell)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -2064,14 +2064,14 @@ void NewSell::MergeFrom(const NewSell& from) {
 }
 
 void NewSell::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.NewSell)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.NewSell)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void NewSell::CopyFrom(const NewSell& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.NewSell)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.NewSell)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -2119,7 +2119,7 @@ BuyerReport::BuyerReport()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_BuyerReport.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.BuyerReport)
 }
 BuyerReport::BuyerReport(const BuyerReport& from)
   : ::google::protobuf::Message(),
@@ -2134,7 +2134,7 @@ BuyerReport::BuyerReport(const BuyerReport& from)
   if (from.has_reports_info()) {
     reports_info_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.reports_info_);
   }
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.BuyerReport)
 }
 
 void BuyerReport::SharedCtor() {
@@ -2143,7 +2143,7 @@ void BuyerReport::SharedCtor() {
 }
 
 BuyerReport::~BuyerReport() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.BuyerReport)
   SharedDtor();
 }
 
@@ -2167,7 +2167,7 @@ const BuyerReport& BuyerReport::default_instance() {
 
 
 void BuyerReport::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.BuyerReport)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.BuyerReport)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -2189,7 +2189,7 @@ bool BuyerReport::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.BuyerReport)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
@@ -2231,17 +2231,17 @@ bool BuyerReport::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.BuyerReport)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.BuyerReport)
   return false;
 #undef DO_
 }
 
 void BuyerReport::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.BuyerReport)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2262,13 +2262,13 @@ void BuyerReport::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.BuyerReport)
 }
 
 ::google::protobuf::uint8* BuyerReport::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.BuyerReport)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2291,12 +2291,12 @@ void BuyerReport::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.BuyerReport)
   return target;
 }
 
 size_t BuyerReport::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.BuyerReport)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.BuyerReport)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2326,22 +2326,22 @@ size_t BuyerReport::ByteSizeLong() const {
 }
 
 void BuyerReport::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.BuyerReport)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.BuyerReport)
   GOOGLE_DCHECK_NE(&from, this);
   const BuyerReport* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const BuyerReport>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.BuyerReport)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.BuyerReport)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.BuyerReport)
     MergeFrom(*source);
   }
 }
 
 void BuyerReport::MergeFrom(const BuyerReport& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.BuyerReport)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.BuyerReport)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -2361,14 +2361,14 @@ void BuyerReport::MergeFrom(const BuyerReport& from) {
 }
 
 void BuyerReport::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.BuyerReport)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.BuyerReport)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void BuyerReport::CopyFrom(const BuyerReport& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.BuyerReport)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.BuyerReport)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -2411,7 +2411,7 @@ GetSell::GetSell()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_GetSell.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.GetSell)
 }
 GetSell::GetSell(const GetSell& from)
   : ::google::protobuf::Message(),
@@ -2422,7 +2422,7 @@ GetSell::GetSell(const GetSell& from)
   if (from.has_seller()) {
     seller_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.seller_);
   }
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.GetSell)
 }
 
 void GetSell::SharedCtor() {
@@ -2430,7 +2430,7 @@ void GetSell::SharedCtor() {
 }
 
 GetSell::~GetSell() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.GetSell)
   SharedDtor();
 }
 
@@ -2453,7 +2453,7 @@ const GetSell& GetSell::default_instance() {
 
 
 void GetSell::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.GetSell)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.GetSell)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -2470,7 +2470,7 @@ bool GetSell::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.GetSell)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
@@ -2500,17 +2500,17 @@ bool GetSell::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.GetSell)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.GetSell)
   return false;
 #undef DO_
 }
 
 void GetSell::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.GetSell)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2525,13 +2525,13 @@ void GetSell::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.GetSell)
 }
 
 ::google::protobuf::uint8* GetSell::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.GetSell)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
@@ -2547,12 +2547,12 @@ void GetSell::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.GetSell)
   return target;
 }
 
 size_t GetSell::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.GetSell)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.GetSell)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2573,22 +2573,22 @@ size_t GetSell::ByteSizeLong() const {
 }
 
 void GetSell::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.GetSell)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.GetSell)
   GOOGLE_DCHECK_NE(&from, this);
   const GetSell* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const GetSell>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.GetSell)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.GetSell)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.GetSell)
     MergeFrom(*source);
   }
 }
 
 void GetSell::MergeFrom(const GetSell& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.GetSell)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.GetSell)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -2601,14 +2601,14 @@ void GetSell::MergeFrom(const GetSell& from) {
 }
 
 void GetSell::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.GetSell)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.GetSell)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void GetSell::CopyFrom(const GetSell& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.GetSell)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.GetSell)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -2639,12 +2639,12 @@ void GetSell::InternalSwap(GetSell* other) {
 // ===================================================================
 
 void C2cMessage::InitAsDefaultInstance() {
-  ::seth::c2c::protobuf::_C2cMessage_default_instance_._instance.get_mutable()->sell_ = const_cast< ::seth::c2c::protobuf::NewSell*>(
-      ::seth::c2c::protobuf::NewSell::internal_default_instance());
-  ::seth::c2c::protobuf::_C2cMessage_default_instance_._instance.get_mutable()->order_ = const_cast< ::seth::c2c::protobuf::NewOrder*>(
-      ::seth::c2c::protobuf::NewOrder::internal_default_instance());
-  ::seth::c2c::protobuf::_C2cMessage_default_instance_._instance.get_mutable()->report_ = const_cast< ::seth::c2c::protobuf::BuyerReport*>(
-      ::seth::c2c::protobuf::BuyerReport::internal_default_instance());
+  ::shardora::c2c::protobuf::_C2cMessage_default_instance_._instance.get_mutable()->sell_ = const_cast< ::shardora::c2c::protobuf::NewSell*>(
+      ::shardora::c2c::protobuf::NewSell::internal_default_instance());
+  ::shardora::c2c::protobuf::_C2cMessage_default_instance_._instance.get_mutable()->order_ = const_cast< ::shardora::c2c::protobuf::NewOrder*>(
+      ::shardora::c2c::protobuf::NewOrder::internal_default_instance());
+  ::shardora::c2c::protobuf::_C2cMessage_default_instance_._instance.get_mutable()->report_ = const_cast< ::shardora::c2c::protobuf::BuyerReport*>(
+      ::shardora::c2c::protobuf::BuyerReport::internal_default_instance());
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int C2cMessage::kSellFieldNumber;
@@ -2659,7 +2659,7 @@ C2cMessage::C2cMessage()
   ::google::protobuf::internal::InitSCC(
       &protobuf_protos_2fc2c_2eproto::scc_info_C2cMessage.base);
   SharedCtor();
-  // @@protoc_insertion_point(constructor:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(constructor:shardora.c2c.protobuf.C2cMessage)
 }
 C2cMessage::C2cMessage(const C2cMessage& from)
   : ::google::protobuf::Message(),
@@ -2669,21 +2669,21 @@ C2cMessage::C2cMessage(const C2cMessage& from)
       get_sell_(from.get_sell_) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   if (from.has_sell()) {
-    sell_ = new ::seth::c2c::protobuf::NewSell(*from.sell_);
+    sell_ = new ::shardora::c2c::protobuf::NewSell(*from.sell_);
   } else {
     sell_ = NULL;
   }
   if (from.has_order()) {
-    order_ = new ::seth::c2c::protobuf::NewOrder(*from.order_);
+    order_ = new ::shardora::c2c::protobuf::NewOrder(*from.order_);
   } else {
     order_ = NULL;
   }
   if (from.has_report()) {
-    report_ = new ::seth::c2c::protobuf::BuyerReport(*from.report_);
+    report_ = new ::shardora::c2c::protobuf::BuyerReport(*from.report_);
   } else {
     report_ = NULL;
   }
-  // @@protoc_insertion_point(copy_constructor:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(copy_constructor:shardora.c2c.protobuf.C2cMessage)
 }
 
 void C2cMessage::SharedCtor() {
@@ -2693,7 +2693,7 @@ void C2cMessage::SharedCtor() {
 }
 
 C2cMessage::~C2cMessage() {
-  // @@protoc_insertion_point(destructor:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(destructor:shardora.c2c.protobuf.C2cMessage)
   SharedDtor();
 }
 
@@ -2718,7 +2718,7 @@ const C2cMessage& C2cMessage::default_instance() {
 
 
 void C2cMessage::Clear() {
-// @@protoc_insertion_point(message_clear_start:seth.c2c.protobuf.C2cMessage)
+// @@protoc_insertion_point(message_clear_start:shardora.c2c.protobuf.C2cMessage)
   ::google::protobuf::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
@@ -2748,13 +2748,13 @@ bool C2cMessage::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!GOOGLE_PREDICT_TRUE(EXPRESSION)) goto failure
   ::google::protobuf::uint32 tag;
-  // @@protoc_insertion_point(parse_start:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(parse_start:shardora.c2c.protobuf.C2cMessage)
   for (;;) {
     ::std::pair<::google::protobuf::uint32, bool> p = input->ReadTagWithCutoffNoLastTag(127u);
     tag = p.first;
     if (!p.second) goto handle_unusual;
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // optional .seth.c2c.protobuf.NewSell sell = 1;
+      // optional .shardora.c2c.protobuf.NewSell sell = 1;
       case 1: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(10u /* 10 & 0xFF */)) {
@@ -2766,7 +2766,7 @@ bool C2cMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.c2c.protobuf.NewOrder order = 2;
+      // optional .shardora.c2c.protobuf.NewOrder order = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
@@ -2778,7 +2778,7 @@ bool C2cMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // optional .seth.c2c.protobuf.BuyerReport report = 3;
+      // optional .shardora.c2c.protobuf.BuyerReport report = 3;
       case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
@@ -2790,7 +2790,7 @@ bool C2cMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // repeated .seth.c2c.protobuf.SellInfo sells = 4;
+      // repeated .shardora.c2c.protobuf.SellInfo sells = 4;
       case 4: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
@@ -2802,7 +2802,7 @@ bool C2cMessage::MergePartialFromCodedStream(
         break;
       }
 
-      // repeated .seth.c2c.protobuf.GetSell get_sell = 5;
+      // repeated .shardora.c2c.protobuf.GetSell get_sell = 5;
       case 5: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(42u /* 42 & 0xFF */)) {
@@ -2826,40 +2826,40 @@ bool C2cMessage::MergePartialFromCodedStream(
     }
   }
 success:
-  // @@protoc_insertion_point(parse_success:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(parse_success:shardora.c2c.protobuf.C2cMessage)
   return true;
 failure:
-  // @@protoc_insertion_point(parse_failure:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(parse_failure:shardora.c2c.protobuf.C2cMessage)
   return false;
 #undef DO_
 }
 
 void C2cMessage::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // @@protoc_insertion_point(serialize_start:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(serialize_start:shardora.c2c.protobuf.C2cMessage)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  // optional .seth.c2c.protobuf.NewSell sell = 1;
+  // optional .shardora.c2c.protobuf.NewSell sell = 1;
   if (cached_has_bits & 0x00000001u) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       1, this->_internal_sell(), output);
   }
 
-  // optional .seth.c2c.protobuf.NewOrder order = 2;
+  // optional .shardora.c2c.protobuf.NewOrder order = 2;
   if (cached_has_bits & 0x00000002u) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       2, this->_internal_order(), output);
   }
 
-  // optional .seth.c2c.protobuf.BuyerReport report = 3;
+  // optional .shardora.c2c.protobuf.BuyerReport report = 3;
   if (cached_has_bits & 0x00000004u) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       3, this->_internal_report(), output);
   }
 
-  // repeated .seth.c2c.protobuf.SellInfo sells = 4;
+  // repeated .shardora.c2c.protobuf.SellInfo sells = 4;
   for (unsigned int i = 0,
       n = static_cast<unsigned int>(this->sells_size()); i < n; i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
@@ -2868,7 +2868,7 @@ void C2cMessage::SerializeWithCachedSizes(
       output);
   }
 
-  // repeated .seth.c2c.protobuf.GetSell get_sell = 5;
+  // repeated .shardora.c2c.protobuf.GetSell get_sell = 5;
   for (unsigned int i = 0,
       n = static_cast<unsigned int>(this->get_sell_size()); i < n; i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
@@ -2881,39 +2881,39 @@ void C2cMessage::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         _internal_metadata_.unknown_fields(), output);
   }
-  // @@protoc_insertion_point(serialize_end:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(serialize_end:shardora.c2c.protobuf.C2cMessage)
 }
 
 ::google::protobuf::uint8* C2cMessage::InternalSerializeWithCachedSizesToArray(
     bool deterministic, ::google::protobuf::uint8* target) const {
   (void)deterministic; // Unused
-  // @@protoc_insertion_point(serialize_to_array_start:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(serialize_to_array_start:shardora.c2c.protobuf.C2cMessage)
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
   cached_has_bits = _has_bits_[0];
-  // optional .seth.c2c.protobuf.NewSell sell = 1;
+  // optional .shardora.c2c.protobuf.NewSell sell = 1;
   if (cached_has_bits & 0x00000001u) {
     target = ::google::protobuf::internal::WireFormatLite::
       InternalWriteMessageToArray(
         1, this->_internal_sell(), deterministic, target);
   }
 
-  // optional .seth.c2c.protobuf.NewOrder order = 2;
+  // optional .shardora.c2c.protobuf.NewOrder order = 2;
   if (cached_has_bits & 0x00000002u) {
     target = ::google::protobuf::internal::WireFormatLite::
       InternalWriteMessageToArray(
         2, this->_internal_order(), deterministic, target);
   }
 
-  // optional .seth.c2c.protobuf.BuyerReport report = 3;
+  // optional .shardora.c2c.protobuf.BuyerReport report = 3;
   if (cached_has_bits & 0x00000004u) {
     target = ::google::protobuf::internal::WireFormatLite::
       InternalWriteMessageToArray(
         3, this->_internal_report(), deterministic, target);
   }
 
-  // repeated .seth.c2c.protobuf.SellInfo sells = 4;
+  // repeated .shardora.c2c.protobuf.SellInfo sells = 4;
   for (unsigned int i = 0,
       n = static_cast<unsigned int>(this->sells_size()); i < n; i++) {
     target = ::google::protobuf::internal::WireFormatLite::
@@ -2921,7 +2921,7 @@ void C2cMessage::SerializeWithCachedSizes(
         4, this->sells(static_cast<int>(i)), deterministic, target);
   }
 
-  // repeated .seth.c2c.protobuf.GetSell get_sell = 5;
+  // repeated .shardora.c2c.protobuf.GetSell get_sell = 5;
   for (unsigned int i = 0,
       n = static_cast<unsigned int>(this->get_sell_size()); i < n; i++) {
     target = ::google::protobuf::internal::WireFormatLite::
@@ -2933,12 +2933,12 @@ void C2cMessage::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields(), target);
   }
-  // @@protoc_insertion_point(serialize_to_array_end:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(serialize_to_array_end:shardora.c2c.protobuf.C2cMessage)
   return target;
 }
 
 size_t C2cMessage::ByteSizeLong() const {
-// @@protoc_insertion_point(message_byte_size_start:seth.c2c.protobuf.C2cMessage)
+// @@protoc_insertion_point(message_byte_size_start:shardora.c2c.protobuf.C2cMessage)
   size_t total_size = 0;
 
   if (_internal_metadata_.have_unknown_fields()) {
@@ -2946,7 +2946,7 @@ size_t C2cMessage::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         _internal_metadata_.unknown_fields());
   }
-  // repeated .seth.c2c.protobuf.SellInfo sells = 4;
+  // repeated .shardora.c2c.protobuf.SellInfo sells = 4;
   {
     unsigned int count = static_cast<unsigned int>(this->sells_size());
     total_size += 1UL * count;
@@ -2957,7 +2957,7 @@ size_t C2cMessage::ByteSizeLong() const {
     }
   }
 
-  // repeated .seth.c2c.protobuf.GetSell get_sell = 5;
+  // repeated .shardora.c2c.protobuf.GetSell get_sell = 5;
   {
     unsigned int count = static_cast<unsigned int>(this->get_sell_size());
     total_size += 1UL * count;
@@ -2969,21 +2969,21 @@ size_t C2cMessage::ByteSizeLong() const {
   }
 
   if (_has_bits_[0 / 32] & 7u) {
-    // optional .seth.c2c.protobuf.NewSell sell = 1;
+    // optional .shardora.c2c.protobuf.NewSell sell = 1;
     if (has_sell()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSize(
           *sell_);
     }
 
-    // optional .seth.c2c.protobuf.NewOrder order = 2;
+    // optional .shardora.c2c.protobuf.NewOrder order = 2;
     if (has_order()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSize(
           *order_);
     }
 
-    // optional .seth.c2c.protobuf.BuyerReport report = 3;
+    // optional .shardora.c2c.protobuf.BuyerReport report = 3;
     if (has_report()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSize(
@@ -2997,22 +2997,22 @@ size_t C2cMessage::ByteSizeLong() const {
 }
 
 void C2cMessage::MergeFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_merge_from_start:seth.c2c.protobuf.C2cMessage)
+// @@protoc_insertion_point(generalized_merge_from_start:shardora.c2c.protobuf.C2cMessage)
   GOOGLE_DCHECK_NE(&from, this);
   const C2cMessage* source =
       ::google::protobuf::internal::DynamicCastToGenerated<const C2cMessage>(
           &from);
   if (source == NULL) {
-  // @@protoc_insertion_point(generalized_merge_from_cast_fail:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:shardora.c2c.protobuf.C2cMessage)
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
   } else {
-  // @@protoc_insertion_point(generalized_merge_from_cast_success:seth.c2c.protobuf.C2cMessage)
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:shardora.c2c.protobuf.C2cMessage)
     MergeFrom(*source);
   }
 }
 
 void C2cMessage::MergeFrom(const C2cMessage& from) {
-// @@protoc_insertion_point(class_specific_merge_from_start:seth.c2c.protobuf.C2cMessage)
+// @@protoc_insertion_point(class_specific_merge_from_start:shardora.c2c.protobuf.C2cMessage)
   GOOGLE_DCHECK_NE(&from, this);
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::google::protobuf::uint32 cached_has_bits = 0;
@@ -3023,26 +3023,26 @@ void C2cMessage::MergeFrom(const C2cMessage& from) {
   cached_has_bits = from._has_bits_[0];
   if (cached_has_bits & 7u) {
     if (cached_has_bits & 0x00000001u) {
-      mutable_sell()->::seth::c2c::protobuf::NewSell::MergeFrom(from.sell());
+      mutable_sell()->::shardora::c2c::protobuf::NewSell::MergeFrom(from.sell());
     }
     if (cached_has_bits & 0x00000002u) {
-      mutable_order()->::seth::c2c::protobuf::NewOrder::MergeFrom(from.order());
+      mutable_order()->::shardora::c2c::protobuf::NewOrder::MergeFrom(from.order());
     }
     if (cached_has_bits & 0x00000004u) {
-      mutable_report()->::seth::c2c::protobuf::BuyerReport::MergeFrom(from.report());
+      mutable_report()->::shardora::c2c::protobuf::BuyerReport::MergeFrom(from.report());
     }
   }
 }
 
 void C2cMessage::CopyFrom(const ::google::protobuf::Message& from) {
-// @@protoc_insertion_point(generalized_copy_from_start:seth.c2c.protobuf.C2cMessage)
+// @@protoc_insertion_point(generalized_copy_from_start:shardora.c2c.protobuf.C2cMessage)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
 void C2cMessage::CopyFrom(const C2cMessage& from) {
-// @@protoc_insertion_point(class_specific_copy_from_start:seth.c2c.protobuf.C2cMessage)
+// @@protoc_insertion_point(class_specific_copy_from_start:shardora.c2c.protobuf.C2cMessage)
   if (&from == this) return;
   Clear();
   MergeFrom(from);
@@ -3076,29 +3076,29 @@ void C2cMessage::InternalSwap(C2cMessage* other) {
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace protobuf
 }  // namespace c2c
-}  // namespace seth
+}  // namespace shardora
 namespace google {
 namespace protobuf {
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::OrderInfo* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::OrderInfo >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::OrderInfo >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::OrderInfo* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::OrderInfo >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::OrderInfo >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::SellInfo* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::SellInfo >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::SellInfo >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::SellInfo* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::SellInfo >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::SellInfo >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::NewOrder* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::NewOrder >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::NewOrder >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::NewOrder* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::NewOrder >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::NewOrder >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::NewSell* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::NewSell >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::NewSell >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::NewSell* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::NewSell >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::NewSell >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::BuyerReport* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::BuyerReport >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::BuyerReport >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::BuyerReport* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::BuyerReport >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::BuyerReport >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::GetSell* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::GetSell >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::GetSell >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::GetSell* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::GetSell >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::GetSell >(arena);
 }
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::seth::c2c::protobuf::C2cMessage* Arena::CreateMaybeMessage< ::seth::c2c::protobuf::C2cMessage >(Arena* arena) {
-  return Arena::CreateInternal< ::seth::c2c::protobuf::C2cMessage >(arena);
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::shardora::c2c::protobuf::C2cMessage* Arena::CreateMaybeMessage< ::shardora::c2c::protobuf::C2cMessage >(Arena* arena) {
+  return Arena::CreateInternal< ::shardora::c2c::protobuf::C2cMessage >(arena);
 }
 }  // namespace protobuf
 }  // namespace google

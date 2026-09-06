@@ -5,7 +5,7 @@
 
 #include "big_num/bignum_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace bignum {
 namespace test {
 
@@ -114,4 +114,4 @@ TEST(BignumUtilsBranches, ToBigEndianArraySizeTwo) {
 
 }  // namespace test
 }  // namespace bignum
-}  // namespace seth
+}  // namespace shardora

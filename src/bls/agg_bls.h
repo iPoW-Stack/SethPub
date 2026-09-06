@@ -12,7 +12,7 @@
 #include <protos/prefix_db.h>
 #include <unordered_set>
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 

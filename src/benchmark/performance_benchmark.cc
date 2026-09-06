@@ -26,7 +26,7 @@
 #undef private
 #undef protected
 
-namespace seth {
+namespace shardora {
 namespace benchmark {
 
 class PerformanceBenchmark {
@@ -51,7 +51,7 @@ public:
     }
     
     void RunAllBenchmarks() {
-        std::cout << "=== Seth Blockchain Performance Benchmark Suite ===" << std::endl;
+        std::cout << "=== Shardora Blockchain Performance Benchmark Suite ===" << std::endl;
         std::cout << "Starting comprehensive performance analysis..." << std::endl << std::endl;
         
         // Core component benchmarks
@@ -518,7 +518,7 @@ private:
     }
     
     void GenerateCSVReport() {
-        std::ofstream csv_file("seth_performance_benchmark.csv");
+        std::ofstream csv_file("shardora_performance_benchmark.csv");
         if (!csv_file.is_open()) {
             std::cerr << "Failed to create CSV report file" << std::endl;
             return;
@@ -542,7 +542,7 @@ private:
         }
         
         csv_file.close();
-        std::cout << "\nDetailed CSV report saved to: seth_performance_benchmark.csv" << std::endl;
+        std::cout << "\nDetailed CSV report saved to: shardora_performance_benchmark.csv" << std::endl;
     }
     
     void GeneratePerformanceSummary() {
@@ -605,10 +605,10 @@ private:
 };
 
 } // namespace benchmark
-} // namespace seth
+} // namespace shardora
 
 int main() {
-    seth::benchmark::PerformanceBenchmark benchmark;
+    shardora::benchmark::PerformanceBenchmark benchmark;
     benchmark.RunAllBenchmarks();
     return 0;
 }

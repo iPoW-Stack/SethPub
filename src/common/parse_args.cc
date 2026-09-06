@@ -4,7 +4,7 @@
 
 #include "common/string_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -276,4 +276,4 @@ int ParserArgs::Parse(const std::string& params, std::string& err_pos) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

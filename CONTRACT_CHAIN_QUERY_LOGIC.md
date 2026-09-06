@@ -59,7 +59,7 @@ After deploying ContractA, the demo queries its actual shard/pool from the block
 
 ```python
 # Deploy ContractA
-contract_a = w3.seth.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
+contract_a = w3.shardora.contract(abi=a_abi, bytecode=a_bin, sender_address=user1_addr).deploy({
     'from': user1_addr,
     'salt': salt_a,
 }, user1_key)
@@ -190,7 +190,7 @@ To test the query logic:
 
 1. **Start the blockchain:**
    ```bash
-   ./build/seth --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
+   ./build/shardora --show_cmd -g 1 -n 1 -c 1 -m 1 -s 1 -d 1
    ```
 
 2. **Run the demo:**

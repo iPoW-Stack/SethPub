@@ -13,7 +13,7 @@
 #include "common/utils.h"
 #include "tnet/tnet_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace tnet {
 
@@ -57,4 +57,4 @@ private:
 
 }  // namespace tnet
 
-}  // namespace seth
+}  // namespace shardora

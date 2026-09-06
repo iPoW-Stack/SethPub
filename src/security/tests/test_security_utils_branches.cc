@@ -4,7 +4,7 @@
 
 #include "security/security_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace security {
 namespace test {
 
@@ -98,7 +98,7 @@ TEST(SecurityUtilsBranches, SecurityErrorCodeEnumValues) {
 
 }  // namespace test
 }  // namespace security
-}  // namespace seth
+}  // namespace shardora
 #include <gtest/gtest.h>
 #include <string>
 
@@ -106,7 +106,7 @@ TEST(SecurityUtilsBranches, SecurityErrorCodeEnumValues) {
 #include "common/random.h"
 #include "security/security_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace security {
 namespace test {
 
@@ -219,4 +219,4 @@ TEST(SecurityUtilsBranches, GetContractAddressEmptyFrom) {
 
 }  // namespace test
 }  // namespace security
-}  // namespace seth
+}  // namespace shardora

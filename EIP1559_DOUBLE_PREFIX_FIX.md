@@ -9,7 +9,7 @@ The EIP-1559 transaction implementation had two critical bugs:
 
 ## Changes Made
 
-### 1. Python Client (`clipy/seth3.py`)
+### 1. Python Client (`clipy/shardora3.py`)
 
 #### Fix 1: Double Prefix Prevention
 **Location**: Lines 2495-2500
@@ -126,29 +126,29 @@ payload += rlp_encode_uint(gas_price);  // maxFeePerGas
 
 ### Step 1: Compile C++ Code
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 ```
 
-### Step 2: Restart Seth Node
+### Step 2: Restart Shardora Node
 ```bash
 # Stop the current node (if running)
-pkill -f seth
+pkill -f shardora
 
 # Start the node
-cd /root/seth
+cd /root/shardora
 ./start_node.sh  # or however you start your node
 ```
 
 ### Step 3: Run EIP-1559 Tests
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 test_eip1559.py
 ```
 
 ### Step 4: Run Simple Example
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 eip1559_example.py
 ```
 
@@ -183,7 +183,7 @@ keccak256(0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLi
 ### If you still see "invalid raw transaction":
 1. Check server logs for specific error messages:
    ```bash
-   tail -f /root/seth/logs/seth.log | grep -i "eip-1559\|DecodeEthRawTx\|sendRawTransaction"
+   tail -f /root/shardora/logs/shardora.log | grep -i "eip-1559\|DecodeEthRawTx\|sendRawTransaction"
    ```
 
 2. Verify the signing hash matches between Python and C++:
@@ -199,13 +199,13 @@ keccak256(0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLi
 2. Check for syntax errors in the modified files
 3. Try a clean rebuild:
    ```bash
-   cd /root/seth/build
+   cd /root/shardora/build
    make clean
    make -j$(nproc)
    ```
 
 ## Files Modified
-- `clipy/seth3.py` - Python client EIP-1559 signing and RPC call
+- `clipy/shardora3.py` - Python client EIP-1559 signing and RPC call
 - `src/init/http_handler.cc` - C++ server EIP-1559 decoding and signature verification
 
 ## Related Documentation

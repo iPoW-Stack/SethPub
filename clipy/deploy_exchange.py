@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Deploy Exchange contract + 100 test accounts with prefund.
-Runs inside seth-builder container via deploy_exchange.sh.
+Runs inside shardora-builder container via deploy_exchange.sh.
 
 Output: /data/tmp/exchange_deploy_result.json
   - contract_address
@@ -12,8 +12,8 @@ import time, sys, os, secrets, json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(__file__))
-from seth_sdk import (
-    SethClient, SethWeb3Mock, StepType, compile_and_link, normalize_hex,
+from shardora_sdk import (
+    ShardoraClient, ShardoraWeb3Mock, StepType, compile_and_link, normalize_hex,
     calc_create2_address,
 )
 
@@ -24,8 +24,8 @@ from Crypto.Hash import keccak
 from solcx import install_solc
 install_solc("0.8.34")
 
-HOST = os.environ.get("SETH_HOST", "127.0.0.1")
-PORT = int(os.environ.get("SETH_PORT", "23001"))
+HOST = os.environ.get("SHARDORA_HOST", "127.0.0.1")
+PORT = int(os.environ.get("SHARDORA_PORT", "23001"))
 FUNDER_KEY = os.environ["FUNDER_KEY"]
 NUM_ACCOUNTS = int(os.environ.get("NUM_ACCOUNTS", "100"))
 FUND_AMOUNT = int(os.environ.get("FUND_AMOUNT", "500000000"))
@@ -60,8 +60,8 @@ def find_salt_on_shard(sender: str, bytecode: str, shard: int) -> str:
             return s
     raise RuntimeError(f"no CREATE2 salt found for shard {shard}")
 
-client = SethClient(HOST, PORT)
-w3 = SethWeb3Mock(HOST, PORT)
+client = ShardoraClient(HOST, PORT)
+w3 = ShardoraWeb3Mock(HOST, PORT)
 
 print("=" * 60)
 print("  EXCHANGE CONTRACT DEPLOYMENT")

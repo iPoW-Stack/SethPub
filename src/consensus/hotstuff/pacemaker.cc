@@ -12,7 +12,7 @@
 #include <protos/view_block.pb.h>
 #include <transport/tcp_transport.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -43,7 +43,7 @@ void Pacemaker::NewTc(const std::shared_ptr<view_block::protobuf::QcItem>& tc) {
     if (IsQcTcValid(*tc)) {
         if (cur_view_ < tc->view() + 1) {
             cur_view_ = tc->view() + 1;
-            SETH_DEBUG("success new tc view: %lu, %u_%u_%lu, pool index: %u",
+            SHARDORA_DEBUG("success new tc view: %lu, %u_%u_%lu, pool index: %u",
                 cur_view_, tc->network_id(), tc->pool_index(), tc->view(), pool_idx_);
         }
 
@@ -55,7 +55,7 @@ void Pacemaker::NewTc(const std::shared_ptr<view_block::protobuf::QcItem>& tc) {
         duration_->ViewStarted();
     }
    
-    SETH_DEBUG("local time set start duration is new tc called start timeout: %lu", pool_idx_);
+    SHARDORA_DEBUG("local time set start duration is new tc called start timeout: %lu", pool_idx_);
     StartTimeoutTimer();
 }
 
@@ -65,7 +65,7 @@ void Pacemaker::NewAggQc(const std::shared_ptr<AggregateQC>& agg_qc) {
 void Pacemaker::NewQcView(uint64_t qc_view) {
     if (cur_view_ < qc_view + 1) {
         cur_view_ = qc_view + 1;
-        SETH_DEBUG("success new qc view: %lu, %u_%u_%lu, pool index: %u",
+        SHARDORA_DEBUG("success new qc view: %lu, %u_%u_%lu, pool index: %u",
             qc_view, common::GlobalInfo::Instance()->network_id(), pool_idx_, qc_view, pool_idx_);
     }
 }
@@ -86,4 +86,4 @@ int Pacemaker::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 
 } // namespace consensus
 
-} // namespace seth
+} // namespace shardora

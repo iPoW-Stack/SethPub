@@ -28,10 +28,10 @@
 
 ## Root Cause Analysis
 
-Seth blockchain uses a consensus mechanism (HotStuff/ZBFT) that requires specific conditions for block production:
+Shardora blockchain uses a consensus mechanism (HotStuff/ZBFT) that requires specific conditions for block production:
 
 ### 1. **Consensus Requirements**
-- Seth is designed for multi-node consensus
+- Shardora is designed for multi-node consensus
 - Single-node setups may require special configuration
 - Block production triggered by consensus rounds, not just transactions
 
@@ -41,7 +41,7 @@ Seth blockchain uses a consensus mechanism (HotStuff/ZBFT) that requires specifi
 - May need minimum number of nodes for consensus
 
 ### 3. **Timer-Based vs Transaction-Based**
-- Seth uses `kPoolTimerMessage` for periodic checks
+- Shardora uses `kPoolTimerMessage` for periodic checks
 - But actual block production may require:
   - Sufficient transactions in pool
   - Consensus quorum
@@ -51,7 +51,7 @@ Seth blockchain uses a consensus mechanism (HotStuff/ZBFT) that requires specifi
 
 ### Solution 1: Check Node Startup Flags
 
-Your node was started with: `./seth -g -f -s -d`
+Your node was started with: `./shardora -g -f -s -d`
 
 Flags meaning:
 - `-g` = genesis mode
@@ -63,7 +63,7 @@ Flags meaning:
 
 ```bash
 # Check available flags
-./seth --help
+./shardora --help
 
 # Look for flags like:
 # --dev-mode
@@ -88,7 +88,7 @@ cat conf.ut/node0.conf
 
 ### Solution 3: Start Multiple Nodes
 
-Seth may require multiple nodes for consensus:
+Shardora may require multiple nodes for consensus:
 
 ```bash
 # Check if there are scripts for multi-node setup
@@ -106,7 +106,7 @@ ls -la | grep start
 Some blockchains wait for a minimum number of transactions:
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 trigger_block_production.py
 ```
 
@@ -123,18 +123,18 @@ curl -k -X POST https://127.0.0.1:23001/mine_block
 curl -k -X POST https://127.0.0.1:23001/trigger_consensus
 
 # Or check if there's a CLI command:
-./seth --produce-block
-./seth-cli produce-block
+./shardora --produce-block
+./shardora-cli produce-block
 ```
 
 ### Solution 6: Check Logs for Clues
 
 ```bash
-# In the Seth node terminal, look for:
-grep -i "consensus" /path/to/seth.log
-grep -i "leader" /path/to/seth.log
-grep -i "block" /path/to/seth.log
-grep -i "timer" /path/to/seth.log
+# In the Shardora node terminal, look for:
+grep -i "consensus" /path/to/shardora.log
+grep -i "leader" /path/to/shardora.log
+grep -i "block" /path/to/shardora.log
+grep -i "timer" /path/to/shardora.log
 
 # Look for messages like:
 # - "waiting for consensus"
@@ -148,7 +148,7 @@ grep -i "timer" /path/to/seth.log
 ### Step 1: Try Sending Multiple Transactions
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 trigger_block_production.py
 ```
 
@@ -156,14 +156,14 @@ python3 trigger_block_production.py
 
 In one terminal:
 ```bash
-# Watch Seth logs
-tail -f /path/to/seth.log | grep -i "block\|consensus\|leader"
+# Watch Shardora logs
+tail -f /path/to/shardora.log | grep -i "block\|consensus\|leader"
 ```
 
 In another terminal:
 ```bash
 # Send transactions
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 trigger_block_production.py
 ```
 
@@ -206,7 +206,7 @@ Once block production is working, you should see:
 And the EIP-1559 test should pass:
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 python3 test_eip1559.py
 
 # Expected output:
@@ -237,14 +237,14 @@ ls -la clipy/*.py
 
 ## Summary
 
-The EIP-1559 implementation is **functionally complete**. The issue is with Seth's block production mechanism, which is independent of EIP-1559.
+The EIP-1559 implementation is **functionally complete**. The issue is with Shardora's block production mechanism, which is independent of EIP-1559.
 
 **Next Steps:**
 1. Run `trigger_block_production.py` to see if multiple transactions help
 2. Check node configuration and startup flags
 3. Look for existing working test scripts
 4. Consider multi-node setup if single-node doesn't produce blocks
-5. Check Seth documentation for block production requirements
+5. Check Shardora documentation for block production requirements
 
 **Key Question to Answer:**
-How do existing Seth tests (like `amm.py` or contract tests) successfully see balance changes? What's different about their setup?
+How do existing Shardora tests (like `amm.py` or contract tests) successfully see balance changes? What's different about their setup?

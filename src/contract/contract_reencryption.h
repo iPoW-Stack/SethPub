@@ -7,7 +7,7 @@
 #include "cpppbc/PBC.h"
 #include "db/db.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -65,4 +65,4 @@ private:
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

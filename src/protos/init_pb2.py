@@ -18,10 +18,10 @@ from protos import view_block_pb2 as protos_dot_view__block__pb2
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='protos/init.proto',
-  package='seth.init.protobuf',
+  package='shardora.init.protobuf',
   syntax='proto2',
   serialized_options=None,
-  serialized_pb=_b('\n\x11protos/init.proto\x12\x12seth.init.protobuf\x1a\x10protos/bls.proto\x1a\x17protos/view_block.proto\"#\n\x15GetAddressInfoRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\"U\n\x16GetAddressInfoResponse\x12;\n\nview_block\x18\x01 \x01(\x0b\x32\'.seth.view_block.protobuf.ViewBlockItem\"\x85\x01\n\x12InvalidLeaderPools\x12\r\n\x05pools\x18\x01 \x03(\x05\x12\x14\n\x0c\x65lect_height\x18\x02 \x01(\x04\x12\x14\n\x0cmember_index\x18\x03 \x01(\r\x12\x0f\n\x07mod_num\x18\x04 \x01(\x05\x12\x12\n\nleader_idx\x18\x05 \x01(\r\x12\x0f\n\x07version\x18\x06 \x01(\r\"\xe7\x01\n\x12GenesisInitBlsInfo\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x10\n\x08shard_id\x18\x02 \x01(\r\x12\n\n\x02id\x18\x03 \x01(\x0c\x12\x14\n\x0c\x62ls_enc_data\x18\x04 \x01(\x0c\x12\x10\n\x08\x62ls_hash\x18\x05 \x01(\x0c\x12\x33\n\tjoin_info\x18\x06 \x01(\x0b\x32 .seth.bls.protobuf.JoinElectInfo\x12\x36\n\nlocal_poly\x18\x07 \x01(\x0b\x32\".seth.bls.protobuf.LocalPolynomial\x12\x0e\n\x06prikey\x18\x08 \x01(\x0c\"\xbf\x01\n\x0bInitMessage\x12;\n\x08\x61\x64\x64r_req\x18\x01 \x01(\x0b\x32).seth.init.protobuf.GetAddressInfoRequest\x12<\n\x08\x61\x64\x64r_res\x18\x02 \x01(\x0b\x32*.seth.init.protobuf.GetAddressInfoResponse\x12\x35\n\x05pools\x18\x03 \x01(\x0b\x32&.seth.init.protobuf.InvalidLeaderPools')
+  serialized_pb=_b('\n\x11protos/init.proto\x12\x12shardora.init.protobuf\x1a\x10protos/bls.proto\x1a\x17protos/view_block.proto\"#\n\x15GetAddressInfoRequest\x12\n\n\x02id\x18\x01 \x01(\x0c\"U\n\x16GetAddressInfoResponse\x12;\n\nview_block\x18\x01 \x01(\x0b\x32\'.shardora.view_block.protobuf.ViewBlockItem\"\x85\x01\n\x12InvalidLeaderPools\x12\r\n\x05pools\x18\x01 \x03(\x05\x12\x14\n\x0c\x65lect_height\x18\x02 \x01(\x04\x12\x14\n\x0cmember_index\x18\x03 \x01(\r\x12\x0f\n\x07mod_num\x18\x04 \x01(\x05\x12\x12\n\nleader_idx\x18\x05 \x01(\r\x12\x0f\n\x07version\x18\x06 \x01(\r\"\xe7\x01\n\x12GenesisInitBlsInfo\x12\x0e\n\x06height\x18\x01 \x01(\x04\x12\x10\n\x08shard_id\x18\x02 \x01(\r\x12\n\n\x02id\x18\x03 \x01(\x0c\x12\x14\n\x0c\x62ls_enc_data\x18\x04 \x01(\x0c\x12\x10\n\x08\x62ls_hash\x18\x05 \x01(\x0c\x12\x33\n\tjoin_info\x18\x06 \x01(\x0b\x32 .shardora.bls.protobuf.JoinElectInfo\x12\x36\n\nlocal_poly\x18\x07 \x01(\x0b\x32\".shardora.bls.protobuf.LocalPolynomial\x12\x0e\n\x06prikey\x18\x08 \x01(\x0c\"\xbf\x01\n\x0bInitMessage\x12;\n\x08\x61\x64\x64r_req\x18\x01 \x01(\x0b\x32).shardora.init.protobuf.GetAddressInfoRequest\x12<\n\x08\x61\x64\x64r_res\x18\x02 \x01(\x0b\x32*.shardora.init.protobuf.GetAddressInfoResponse\x12\x35\n\x05pools\x18\x03 \x01(\x0b\x32&.shardora.init.protobuf.InvalidLeaderPools')
   ,
   dependencies=[protos_dot_bls__pb2.DESCRIPTOR,protos_dot_view__block__pb2.DESCRIPTOR,])
 
@@ -30,13 +30,13 @@ DESCRIPTOR = _descriptor.FileDescriptor(
 
 _GETADDRESSINFOREQUEST = _descriptor.Descriptor(
   name='GetAddressInfoRequest',
-  full_name='seth.init.protobuf.GetAddressInfoRequest',
+  full_name='shardora.init.protobuf.GetAddressInfoRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='seth.init.protobuf.GetAddressInfoRequest.id', index=0,
+      name='id', full_name='shardora.init.protobuf.GetAddressInfoRequest.id', index=0,
       number=1, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -61,13 +61,13 @@ _GETADDRESSINFOREQUEST = _descriptor.Descriptor(
 
 _GETADDRESSINFORESPONSE = _descriptor.Descriptor(
   name='GetAddressInfoResponse',
-  full_name='seth.init.protobuf.GetAddressInfoResponse',
+  full_name='shardora.init.protobuf.GetAddressInfoResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='view_block', full_name='seth.init.protobuf.GetAddressInfoResponse.view_block', index=0,
+      name='view_block', full_name='shardora.init.protobuf.GetAddressInfoResponse.view_block', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -92,48 +92,48 @@ _GETADDRESSINFORESPONSE = _descriptor.Descriptor(
 
 _INVALIDLEADERPOOLS = _descriptor.Descriptor(
   name='InvalidLeaderPools',
-  full_name='seth.init.protobuf.InvalidLeaderPools',
+  full_name='shardora.init.protobuf.InvalidLeaderPools',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='pools', full_name='seth.init.protobuf.InvalidLeaderPools.pools', index=0,
+      name='pools', full_name='shardora.init.protobuf.InvalidLeaderPools.pools', index=0,
       number=1, type=5, cpp_type=1, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='elect_height', full_name='seth.init.protobuf.InvalidLeaderPools.elect_height', index=1,
+      name='elect_height', full_name='shardora.init.protobuf.InvalidLeaderPools.elect_height', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='member_index', full_name='seth.init.protobuf.InvalidLeaderPools.member_index', index=2,
+      name='member_index', full_name='shardora.init.protobuf.InvalidLeaderPools.member_index', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mod_num', full_name='seth.init.protobuf.InvalidLeaderPools.mod_num', index=3,
+      name='mod_num', full_name='shardora.init.protobuf.InvalidLeaderPools.mod_num', index=3,
       number=4, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='leader_idx', full_name='seth.init.protobuf.InvalidLeaderPools.leader_idx', index=4,
+      name='leader_idx', full_name='shardora.init.protobuf.InvalidLeaderPools.leader_idx', index=4,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='version', full_name='seth.init.protobuf.InvalidLeaderPools.version', index=5,
+      name='version', full_name='shardora.init.protobuf.InvalidLeaderPools.version', index=5,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -158,62 +158,62 @@ _INVALIDLEADERPOOLS = _descriptor.Descriptor(
 
 _GENESISINITBLSINFO = _descriptor.Descriptor(
   name='GenesisInitBlsInfo',
-  full_name='seth.init.protobuf.GenesisInitBlsInfo',
+  full_name='shardora.init.protobuf.GenesisInitBlsInfo',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='height', full_name='seth.init.protobuf.GenesisInitBlsInfo.height', index=0,
+      name='height', full_name='shardora.init.protobuf.GenesisInitBlsInfo.height', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='shard_id', full_name='seth.init.protobuf.GenesisInitBlsInfo.shard_id', index=1,
+      name='shard_id', full_name='shardora.init.protobuf.GenesisInitBlsInfo.shard_id', index=1,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='id', full_name='seth.init.protobuf.GenesisInitBlsInfo.id', index=2,
+      name='id', full_name='shardora.init.protobuf.GenesisInitBlsInfo.id', index=2,
       number=3, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bls_enc_data', full_name='seth.init.protobuf.GenesisInitBlsInfo.bls_enc_data', index=3,
+      name='bls_enc_data', full_name='shardora.init.protobuf.GenesisInitBlsInfo.bls_enc_data', index=3,
       number=4, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='bls_hash', full_name='seth.init.protobuf.GenesisInitBlsInfo.bls_hash', index=4,
+      name='bls_hash', full_name='shardora.init.protobuf.GenesisInitBlsInfo.bls_hash', index=4,
       number=5, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='join_info', full_name='seth.init.protobuf.GenesisInitBlsInfo.join_info', index=5,
+      name='join_info', full_name='shardora.init.protobuf.GenesisInitBlsInfo.join_info', index=5,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='local_poly', full_name='seth.init.protobuf.GenesisInitBlsInfo.local_poly', index=6,
+      name='local_poly', full_name='shardora.init.protobuf.GenesisInitBlsInfo.local_poly', index=6,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='prikey', full_name='seth.init.protobuf.GenesisInitBlsInfo.prikey', index=7,
+      name='prikey', full_name='shardora.init.protobuf.GenesisInitBlsInfo.prikey', index=7,
       number=8, type=12, cpp_type=9, label=1,
       has_default_value=False, default_value=_b(""),
       message_type=None, enum_type=None, containing_type=None,
@@ -238,27 +238,27 @@ _GENESISINITBLSINFO = _descriptor.Descriptor(
 
 _INITMESSAGE = _descriptor.Descriptor(
   name='InitMessage',
-  full_name='seth.init.protobuf.InitMessage',
+  full_name='shardora.init.protobuf.InitMessage',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='addr_req', full_name='seth.init.protobuf.InitMessage.addr_req', index=0,
+      name='addr_req', full_name='shardora.init.protobuf.InitMessage.addr_req', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='addr_res', full_name='seth.init.protobuf.InitMessage.addr_res', index=1,
+      name='addr_res', full_name='shardora.init.protobuf.InitMessage.addr_res', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='pools', full_name='seth.init.protobuf.InitMessage.pools', index=2,
+      name='pools', full_name='shardora.init.protobuf.InitMessage.pools', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -296,35 +296,35 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 GetAddressInfoRequest = _reflection.GeneratedProtocolMessageType('GetAddressInfoRequest', (_message.Message,), dict(
   DESCRIPTOR = _GETADDRESSINFOREQUEST,
   __module__ = 'protos.init_pb2'
-  # @@protoc_insertion_point(class_scope:seth.init.protobuf.GetAddressInfoRequest)
+  # @@protoc_insertion_point(class_scope:shardora.init.protobuf.GetAddressInfoRequest)
   ))
 _sym_db.RegisterMessage(GetAddressInfoRequest)
 
 GetAddressInfoResponse = _reflection.GeneratedProtocolMessageType('GetAddressInfoResponse', (_message.Message,), dict(
   DESCRIPTOR = _GETADDRESSINFORESPONSE,
   __module__ = 'protos.init_pb2'
-  # @@protoc_insertion_point(class_scope:seth.init.protobuf.GetAddressInfoResponse)
+  # @@protoc_insertion_point(class_scope:shardora.init.protobuf.GetAddressInfoResponse)
   ))
 _sym_db.RegisterMessage(GetAddressInfoResponse)
 
 InvalidLeaderPools = _reflection.GeneratedProtocolMessageType('InvalidLeaderPools', (_message.Message,), dict(
   DESCRIPTOR = _INVALIDLEADERPOOLS,
   __module__ = 'protos.init_pb2'
-  # @@protoc_insertion_point(class_scope:seth.init.protobuf.InvalidLeaderPools)
+  # @@protoc_insertion_point(class_scope:shardora.init.protobuf.InvalidLeaderPools)
   ))
 _sym_db.RegisterMessage(InvalidLeaderPools)
 
 GenesisInitBlsInfo = _reflection.GeneratedProtocolMessageType('GenesisInitBlsInfo', (_message.Message,), dict(
   DESCRIPTOR = _GENESISINITBLSINFO,
   __module__ = 'protos.init_pb2'
-  # @@protoc_insertion_point(class_scope:seth.init.protobuf.GenesisInitBlsInfo)
+  # @@protoc_insertion_point(class_scope:shardora.init.protobuf.GenesisInitBlsInfo)
   ))
 _sym_db.RegisterMessage(GenesisInitBlsInfo)
 
 InitMessage = _reflection.GeneratedProtocolMessageType('InitMessage', (_message.Message,), dict(
   DESCRIPTOR = _INITMESSAGE,
   __module__ = 'protos.init_pb2'
-  # @@protoc_insertion_point(class_scope:seth.init.protobuf.InitMessage)
+  # @@protoc_insertion_point(class_scope:shardora.init.protobuf.InitMessage)
   ))
 _sym_db.RegisterMessage(InitMessage)
 

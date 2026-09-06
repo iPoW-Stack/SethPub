@@ -5,9 +5,9 @@
 ### 1. 发送 EIP-1559 转账
 
 ```python
-from seth_sdk import SethWeb3Mock, _eth_sign_and_send
+from shardora_sdk import ShardoraWeb3Mock, _eth_sign_and_send
 
-w3 = SethWeb3Mock("127.0.0.1", 23001)
+w3 = ShardoraWeb3Mock("127.0.0.1", 23001)
 sender = w3.client.get_address(private_key)
 nonce = w3.client.get_nonce(sender)
 
@@ -28,7 +28,7 @@ tx_hash = _eth_sign_and_send(
 ### 2. 部署合约（EIP-1559）
 
 ```python
-from seth_sdk import compile_and_link
+from shardora_sdk import compile_and_link
 
 # 编译合约
 bytecode, abi = compile_and_link(contract_source, "ContractName")
@@ -348,7 +348,7 @@ python clipy/test_eip1559.py --host 127.0.0.1 --port 23001 --key <key>
 python clipy/eip1559_example.py
 
 # 查看日志
-tail -f /path/to/seth/logs/seth.log | grep EIP-1559
+tail -f /path/to/shardora/logs/shardora.log | grep EIP-1559
 ```
 
 ## 更多资源
@@ -356,7 +356,7 @@ tail -f /path/to/seth/logs/seth.log | grep EIP-1559
 - 完整文档: `EIP1559_IMPLEMENTATION.md`
 - 测试脚本: `clipy/test_eip1559.py`
 - 示例代码: `clipy/eip1559_example.py`
-- Seth SDK: `clipy/seth_sdk.py`
+- Shardora SDK: `clipy/shardora_sdk.py`
 
 ## 支持
 
@@ -364,4 +364,4 @@ tail -f /path/to/seth/logs/seth.log | grep EIP-1559
 1. 查看完整文档 `EIP1559_IMPLEMENTATION.md`
 2. 检查日志文件
 3. 运行测试脚本验证环境
-4. 联系 Seth 开发团队
+4. 联系 Shardora 开发团队

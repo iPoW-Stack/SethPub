@@ -264,7 +264,7 @@ make -j8
 **错误**: `Failed to send tcp client`
 
 **解决**: 
-1. 检查 Seth 节点是否运行
+1. 检查 Shardora 节点是否运行
 2. 验证 IP 和端口
 3. 检查防火墙设置
 
@@ -297,8 +297,8 @@ make -j8
 ### 1. 测试前准备
 
 ```bash
-# 确保 Seth 节点运行
-ps aux | grep seth
+# 确保 Shardora 节点运行
+ps aux | grep shardora
 
 # 检查账户余额
 ./txcli 2 3 0 127.0.0.1 13001  # 使用 Mode 2 查询

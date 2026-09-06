@@ -4,7 +4,7 @@
 #include "security/ecdsa/ecdh_create_key.h"
 #include "security/ecdsa/aes.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -53,4 +53,4 @@ int Crypto::GetDecryptData(
 
 };  // namespace security
 
-};  // namespace seth
+};  // namespace shardora

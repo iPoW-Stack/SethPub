@@ -16,7 +16,7 @@
 #include "protos/timeblock.pb.h"
 #include "protos/transport.pb.h"
 
-namespace seth {
+namespace shardora {
 
 namespace vss {
     class VssManager;
@@ -37,13 +37,13 @@ public:
     }
 
     uint64_t LatestTimestampHeight() {
-        SETH_DEBUG("latest_time_block_height_ get: %lu",
+        SHARDORA_DEBUG("latest_time_block_height_ get: %lu",
             static_cast<uint64_t>(latest_time_block_height_));
         return latest_time_block_height_;
     }
 
     uint64_t LatestPrevTimestampHeight() {
-        SETH_DEBUG("prev_time_block_height_ get: %lu",
+        SHARDORA_DEBUG("prev_time_block_height_ get: %lu",
             static_cast<uint64_t>(prev_time_block_height_));
         return prev_time_block_height_;
     }
@@ -72,7 +72,7 @@ private:
 
     bool CanCallTimeBlockTx() const {
         uint64_t now_sec = common::TimeUtils::TimestampSeconds();
-        SETH_DEBUG("tmblock_tx_ptr CanCallTimeBlockTx now_sec: %lu "
+        SHARDORA_DEBUG("tmblock_tx_ptr CanCallTimeBlockTx now_sec: %lu "
             "latest_time_block_tm_: %lu, latest_tm_block_local_sec_: %lu, %lu, valid0: %d, valid1: %d",
             now_sec, 
             (uint64_t)latest_time_block_tm_, 
@@ -124,4 +124,4 @@ private:
 
 }  // namespace timeblock
 
-}  // namespace seth
+}  // namespace shardora

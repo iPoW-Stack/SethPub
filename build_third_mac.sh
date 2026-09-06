@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build third-party dependencies for Seth on macOS.
+# Build third-party dependencies for Shardora on macOS.
 #
 # The project CMake searches both third_party/lib and third_party/libs/mac on
 # Darwin.  This script installs into third_party/ first, then mirrors static
@@ -509,7 +509,7 @@ build_simple_deps
 install_header_only
 sync_static_libs
 
-log "Removing shared libraries to keep Seth static-link friendly"
+log "Removing shared libraries to keep Shardora static-link friendly"
 find "$PREFIX/lib" "$PREFIX/lib64" "$LIB_MAC" -type f \( -name '*.so' -o -name '*.so.*' \) -delete 2>/dev/null || true
 
 log "macOS third-party dependencies are ready"

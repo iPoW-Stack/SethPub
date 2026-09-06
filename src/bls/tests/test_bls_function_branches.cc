@@ -17,7 +17,7 @@
 #include "protos/prefix_db.h"
 #include "security/ecdsa/ecdsa.h"
 
-namespace seth {
+namespace shardora {
 namespace bls {
 namespace test {
 
@@ -27,7 +27,7 @@ class TempPrefixDb {
 public:
     explicit TempPrefixDb(const std::string& name) {
         path_ = std::filesystem::temp_directory_path() /
-            ("seth_bls_" + name + "_" + std::to_string(counter_++));
+            ("shardora_bls_" + name + "_" + std::to_string(counter_++));
         std::filesystem::remove_all(path_);
         db_ = std::make_shared<db::Db>();
         EXPECT_TRUE(db_->Init(path_.string()));
@@ -229,4 +229,4 @@ TEST_F(BlsFunctionBranches, DkgCacheInitWarmsAvailableEntriesAndIgnoresMissingOn
 
 }  // namespace test
 }  // namespace bls
-}  // namespace seth
+}  // namespace shardora

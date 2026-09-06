@@ -9,7 +9,7 @@
 #include "common/time_utils.h"
 #include "security/gmssl/gmssl.h"
 
-namespace seth {
+namespace shardora {
 
 namespace security {
 
@@ -19,7 +19,7 @@ int GmSsl::SetPrivateKey(const std::string& prikey) {
     prikey_ = std::make_shared<SM2_KEY>();
     // Generate public key from private key
     if (sm2_key_set_private_key(prikey_.get(), (uint8_t*)prikey.c_str()) != 1) {
-        SETH_ERROR("Failed to generate public key from private key.");
+        SHARDORA_ERROR("Failed to generate public key from private key.");
         return kSecurityError;
     }
 
@@ -101,4 +101,4 @@ std::string GmSsl::UnicastAddress(const std::string& src_address) {
 
 }  // namespace security
 
-}  // namespace seth
+}  // namespace shardora

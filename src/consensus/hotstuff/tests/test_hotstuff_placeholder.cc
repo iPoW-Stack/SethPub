@@ -4,7 +4,7 @@
 // current protobuf and consensus APIs. They are excluded from the hotstuff_test target
 // until rewritten. This placeholder keeps CI linking and gtest wiring healthy.
 
-namespace seth {
+namespace shardora {
 namespace hotstuff {
 namespace test {
 
@@ -14,4 +14,4 @@ TEST(HotstuffPlaceholder, BuildSmoke) {
 
 }  // namespace test
 }  // namespace hotstuff
-}  // namespace seth
+}  // namespace shardora

@@ -3,9 +3,9 @@
 #include "common/split.h"
 #include "common/string_utils.h"
 #include "common/time_utils.h"
-#include "sethvm/seth_host.h"
+#include "shardoravm/shardora_host.h"
 
-namespace seth {
+namespace shardora {
 
 namespace contract {
 
@@ -35,7 +35,7 @@ int ContractReEncryption::CreatePrivateAndPublicKeys(
     //下标为0的用户0作为加密者，其余用户(1~9)为接受者。
     auto lines = common::Split<>(value.c_str(), ';');
     if (lines.Count() != 2) {
-        SETH_WARN("failed!");
+        SHARDORA_WARN("failed!");
         return kContractError;
     }
 
@@ -52,11 +52,11 @@ int ContractReEncryption::CreatePrivateAndPublicKeys(
         pk.push_back(tmp_pk);
         auto private_key = id + "_" + std::string("init_prikey_") + std::to_string(i);
         auto public_key = id + "_" + std::string("init_pubkey_") + std::to_string(i);
-        SETH_WARN("create member private and public key: %s, %s sk: %s, pk: %s",
+        SHARDORA_WARN("create member private and public key: %s, %s sk: %s, pk: %s",
             private_key.c_str(), public_key.c_str(), common::Encode::HexEncode(x.toString()).c_str(),
             common::Encode::HexEncode(tmp_pk.toString(true)).c_str());
-        param.seth_host->SaveKeyValue(param.from, private_key, x.toString());
-        param.seth_host->SaveKeyValue(param.from, public_key, tmp_pk.toString(true));
+        param.shardora_host->SaveKeyValue(param.from, private_key, x.toString());
+        param.shardora_host->SaveKeyValue(param.from, public_key, tmp_pk.toString(true));
     }
 
     std::string reenc_value = id+";468a50340bc016c5161df8a40dd7890a84132750,204be12c7d5a77f4cecca96aeb1aadd0dc11e829,4d84890349d26fa23fb94ee32d16a4a522025072,4855a79cbcfc3d54cd99d504872beee01c8f9096,543cf9eec69613a4a01c28ebe64e50fbe234b57f,026047a338ee52e99f611bd02e9e5b12ecb83b74,35c95955d7bca26ccea47b3bf1aacc5936b53c5a,5e1694b4226bd0e1b75b71a249d6126c87d14a9e,48d9915add7e5bf58e5ad8adef850fb899c3d6ea,166ab66ee71d78d357c2c69697267c30fb820c65\n578997ffbf36d620eabeed6c6462090bf4850063,1ca9d6839beec8a8ae44aa717b217ea49929333d,6f20963912e7b78aba3a27850a53e2d2898d156d\n77f1868888fea3dc4cf479b9fed840c50e7b80e6,1c4bdf20371da32c30499e0e46438dcd0f829c21,3029b3818313522b65700c0bfaffe8741acfd1de\n4544042ac99c72c0740f78945b3842d90e362da3ce950cd40daa73da7651ab2908318301af471419fbd37334b8514a7031f70761bbf5b3755c4221cf7147ec1153066cef10869dff1ab7f6d39043dbc8287f06f6588e9418b3f253e501ae3881daf1a54363a37c5f4a3a9ba8b4a5cdfeea0993aef11fb0187ebb57a18eec290a,3b5987fc4a0a333f36376062f4b917560901e80e765b908a982bb33d276eb8fdacbfeffb63baefb81559c032d47e0afc1c4d70c4785cef138027f296c4585b17500b95dcb5a1e67458dbefb741f1ecd9fb100e50bd6ece1fe23714238d468a92eafaaa1c7ac6d2f6e722480b5729eff536c6e5d2262c5be3cc4f2c469fa8e2ea,8b94d276adea01a630b195216a210bdda9e4a07929d3a3c3d5660bc3a9726f75d2ba89bf64089b505562ac0c3a6f81e28936ddd235eaf185bd63c6e7ccd459187094a3f5e2c2a2b36b01ba8f6a072194cb276f3700440c972aa6b194c150a2a5e0c72f1df1689a01f60b42c270e2bfbbf6ced7edfd677816aadb4d8a5da6e72a,849ff0d2ffabf448864463b78d7de061e0142cbe12131b7f944c6df368c8d3223067e68f1f555b995c84320466b43f4dbef933ef201b433cd97972f371113f3a4adedaaec087673ab079bf217e3ee54bf7fa03435addb2262a99f04ef203b99108bcee8555189b543fb353998345e8f20b9f1a25f92d0ef501338ed28dbb27f0,3850f3d6b6e8305c7bf536e024843d8f9170660e514bae7342152aa14e07eb3b75f462d6226c34e00398e48bfd9265a07684a9ddb5bba7c8010a029f25784b992a0559ec761f0d72728ad37df2c067cff8c0b1f33516cd1b5f2a01def52abd782f114e545725dc8a79be4453552c7b99b8c71298661d6a2e17e0e7858f2c4d51,1e8b6f9ecc6c317d51923ff1a730365237115c99cb573f19241e7ae3938a817df95d45ccd7fcbea2d87c97b2a1be265e43a5a270913d1c14dfa19866ccd55bc04889db7f30cb04f210c73520ee72175b7c26cf9324a55755e5f4dc6eab57b9d0c8a9ee538adf84880dc0f5d181fb15f352cade261cf4a6c0376e4144399275c6,7a669e8d8a9cbb185626b0af4eb467cb86ee1e5393165544715e7486198394319e1b8790335ff5949d17a4054974e84e703c85b7bbfc1e577e2feeaaeaf16acb83ba19a36403aab7f796788fa31546a72e5b7b4d419b49a1fa63757791390d3327debb38e7b6fcc80df28c67c119368b57e989bb1bc7ea667b642f1f71b7181b,a008e91fc6085a0386b0076edc3796a2a0c431e5f946556ae63c9a173a47fe08eae37b9fce61c05138c4a04de7fe024afdacc556f9d0fbb5020c03ae8b5173de4b4933b9ce0c611bd0ce6eb6b68947e12b5c7a4e93febc1b880c6e9e917aeebd9da5e3f9251f83150d2b89654f8631ed0e7f53ccc67dbfc2cb495747391ca550,4749b5b7cfb6c8e9f7418615a53d94b582cc873a8e586ac06837885f22d44bdca39ff8109b19372481b7c58cc7dd91958abd20b26eaffb38006c8c1874714e2615403ad7b65ebd01c98be53382f77c25c69a8fd2e0ca490271a77ee2118bd541223a73b45b9ea26109fb5274360aa276437271c1a9a78e5b026ed63aec01146d\n4eb24680d02ab2ba45ef78e8b425f7c94eb662d0,3545ad3b3fe0c2f4c08a900eae3d03c87969ba6c,336293b77152b9e4d718481c6153c2d4369561b5,578e3eb7048153b05577276a0b1c1059140be7c9,604e8223208efb81daa9778237fa75fc22344a1c,138eb8b0d8c6073a080179935b8b9b92d00c589b,0f2ea3cf55743836fbbf9a5756a524be3adb1c78,247922d501351bfea6ab14bab95cf0cf912ef84e,78cddbd9d4299c953cfa839feac915e0bcdf7bce";
@@ -76,7 +76,7 @@ int ContractReEncryption::CreateReEncryptionKeys(
 
     auto lines = common::Split<>(value.c_str(), ';');
     if (lines.Count() != 2) {
-        SETH_WARN("failed!");
+        SHARDORA_WARN("failed!");
         return kContractError;
     }
 
@@ -89,7 +89,7 @@ int ContractReEncryption::CreateReEncryptionKeys(
     for(int i = 0;i<nu;i++){
         auto private_key = id + "_" + std::string("init_prikey_") + std::to_string(i);
         std::string val;
-        if (param.seth_host->GetKeyValue(param.from, private_key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, private_key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -97,7 +97,7 @@ int ContractReEncryption::CreateReEncryptionKeys(
         Zr x(e, val.c_str(), val.size());
         sk.push_back(x);
         auto public_key = id + "_" + std::string("init_pubkey_") + std::to_string(i);
-        if (param.seth_host->GetKeyValue(param.from, public_key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, public_key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -110,7 +110,7 @@ int ContractReEncryption::CreateReEncryptionKeys(
     //即只有不少于t个代理参与重加密，才能正确解密。
     auto line_split = common::Split<>(lines[1], '\n');
     if (line_split.Count() < 5) {
-        SETH_WARN("failed!");
+        SHARDORA_WARN("failed!");
         return kContractError;
     }
 
@@ -125,10 +125,10 @@ int ContractReEncryption::CreateReEncryptionKeys(
         auto tmp_pid_str = common::Encode::HexDecode(sk_splits[i]);
         auto tmp_proxy_id = Zr(e, tmp_pid_str.c_str(), tmp_pid_str.size());
         proxyId.push_back(tmp_proxy_id);
-        SETH_WARN("create member proxy id: %d, proxy_id: %s",
+        SHARDORA_WARN("create member proxy id: %d, proxy_id: %s",
             i, common::Encode::HexEncode(tmp_proxy_id.toString()).c_str());
         auto key = id + "_" + std::string("create_renc_key_proxyid_") + std::to_string(i);
-        param.seth_host->SaveKeyValue(param.from, key, tmp_proxy_id.toString());
+        param.shardora_host->SaveKeyValue(param.from, key, tmp_proxy_id.toString());
     }
 
     //选择两个t-1阶多项式
@@ -141,7 +141,7 @@ int ContractReEncryption::CreateReEncryptionKeys(
         auto tmp_h = Zr(e, tmp_h_str.c_str(), tmp_h_str.size());
         coefficientsF.push_back(tmp_f);
         coefficientsH.push_back(tmp_h);
-        SETH_WARN("create member private and public key: %d, f: %s, h: %s",
+        SHARDORA_WARN("create member private and public key: %d, f: %s, h: %s",
             i, common::Encode::HexEncode(tmp_f.toString()).c_str(),
             common::Encode::HexEncode(tmp_h.toString()).c_str());
     }
@@ -158,9 +158,9 @@ int ContractReEncryption::CreateReEncryptionKeys(
 
         fid.push_back(resultf);
         hid.push_back(resulth);
-        SETH_WARN("create member hid: %d, hid: %s", i, common::Encode::HexEncode(resulth.toString()).c_str());
+        SHARDORA_WARN("create member hid: %d, hid: %s", i, common::Encode::HexEncode(resulth.toString()).c_str());
         auto key = id + "_" + std::string("create_renc_key_hid_") + std::to_string(i);
-        param.seth_host->SaveKeyValue(param.from, key, resulth.toString());
+        param.shardora_host->SaveKeyValue(param.from, key, resulth.toString());
     }
 
     //选择随机数X作为对称密钥
@@ -171,7 +171,7 @@ int ContractReEncryption::CreateReEncryptionKeys(
         auto x_str = common::Encode::HexDecode(x_splits[i - 1]);
         X[i] = GT(e, x_str.c_str(), x_str.size());
         Hx[i] = G1(e,X[i].toString().c_str(),X[i].getElementSize());//GT到G1的哈希
-        SETH_WARN("create member hid: %d, Xi: %s", i, common::Encode::HexEncode(X[i].toString()).c_str());
+        SHARDORA_WARN("create member hid: %d, Xi: %s", i, common::Encode::HexEncode(X[i].toString()).c_str());
     }
 
     //计算重加密密钥 rk=(rk1,rk2,rk3)
@@ -183,18 +183,18 @@ int ContractReEncryption::CreateReEncryptionKeys(
     for(int i = 1; i < nu;i++){
         auto rk_str = common::Encode::HexDecode(rk_splits[i - 1]);
         Zr r(e, rk_str.c_str(), rk_str.size());
-        SETH_WARN("create member hid: %d, RKi: %s", i, common::Encode::HexEncode(r.toString()).c_str());
+        SHARDORA_WARN("create member hid: %d, RKi: %s", i, common::Encode::HexEncode(r.toString()).c_str());
         auto tmp_rk2 = g^r;
         rk2.push_back(tmp_rk2);
-        SETH_WARN("create member rk2: %d, rk2: %s", i, common::Encode::HexEncode(tmp_rk2.toString(true)).c_str());
+        SHARDORA_WARN("create member rk2: %d, rk2: %s", i, common::Encode::HexEncode(tmp_rk2.toString(true)).c_str());
         auto rk2_key = id + "_" + std::string("create_renc_key_rk2_") + std::to_string(i);
-        param.seth_host->SaveKeyValue(param.from, rk2_key, tmp_rk2.toString(true));
+        param.shardora_host->SaveKeyValue(param.from, rk2_key, tmp_rk2.toString(true));
 
         auto tmp_rk3 = X[i]*e(g1,pk[i]^r);
         rk3.push_back(tmp_rk3);
-        SETH_WARN("create member rk3: %d, rk3: %s", i, common::Encode::HexEncode(tmp_rk3.toString()).c_str());
+        SHARDORA_WARN("create member rk3: %d, rk3: %s", i, common::Encode::HexEncode(tmp_rk3.toString()).c_str());
         auto rk3_key = id + "_" + std::string("create_renc_key_rk3_") + std::to_string(i);
-        param.seth_host->SaveKeyValue(param.from, rk3_key, tmp_rk3.toString());
+        param.shardora_host->SaveKeyValue(param.from, rk3_key, tmp_rk3.toString());
         vector<G1> tmp;
         if(i==1){
             for(int j= 0;j<np;j++){
@@ -208,10 +208,10 @@ int ContractReEncryption::CreateReEncryptionKeys(
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp.size(); ++tmp_idx) {
-            SETH_WARN("create member rk1: %d, %d, rk1: %s",
+            SHARDORA_WARN("create member rk1: %d, %d, rk1: %s",
             i, tmp_idx, common::Encode::HexEncode(tmp[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_renc_key_rk1_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp[tmp_idx].toString(true));
         }
 
         rk1.push_back(tmp);
@@ -232,7 +232,7 @@ int ContractReEncryption::EncryptUserMessage(
 
     auto lines = common::Split<>(value.c_str(), ';');
     if (lines.Count() != 2) {
-        SETH_WARN("failed!");
+        SHARDORA_WARN("failed!");
         return kContractError;
     }
 
@@ -246,7 +246,7 @@ int ContractReEncryption::EncryptUserMessage(
     for(int i = 0;i<nu;i++){
         auto private_key = id + "_" + std::string("init_prikey_") + std::to_string(i);
         std::string val;
-        if (param.seth_host->GetKeyValue(param.from, private_key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, private_key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -254,7 +254,7 @@ int ContractReEncryption::EncryptUserMessage(
         Zr x(e, val.c_str(), val.size());
         sk.push_back(x);
         auto public_key = id + "_" + std::string("init_pubkey_") + std::to_string(i);
-        if (param.seth_host->GetKeyValue(param.from, public_key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, public_key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -262,7 +262,7 @@ int ContractReEncryption::EncryptUserMessage(
         G1 tmp_pk(e, (const unsigned char*)val.c_str(), val.size(), true, 0);
         pk.push_back(tmp_pk);
 
-        SETH_WARN("init member private and public key: %d, sk: %s, pk: %s",
+        SHARDORA_WARN("init member private and public key: %d, sk: %s, pk: %s",
             i, common::Encode::HexEncode(x.toString()).c_str(),
             common::Encode::HexEncode(tmp_pk.toString(true)).c_str());
     }
@@ -272,7 +272,7 @@ int ContractReEncryption::EncryptUserMessage(
     for(int i = 0;i<np;i++){
         auto key = id + "_" + std::string("create_renc_key_proxyid_") + std::to_string(i);
         std::string val;
-        if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -283,7 +283,7 @@ int ContractReEncryption::EncryptUserMessage(
     for(int i = 0;i<np;i++){
         auto key = id + "_" + std::string("create_renc_key_hid_") + std::to_string(i);
         std::string val;
-        if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -297,7 +297,7 @@ int ContractReEncryption::EncryptUserMessage(
         Zr r(e,true);
         auto rk2_key = id + "_" + std::string("create_renc_key_rk2_") + std::to_string(i);
         std::string rk2_val;
-        if (param.seth_host->GetKeyValue(param.from, rk2_key, &rk2_val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, rk2_key, &rk2_val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", rk2_key.c_str());
             return kContractError;
         }
@@ -305,7 +305,7 @@ int ContractReEncryption::EncryptUserMessage(
         rk2.push_back(G1(e, rk2_val.c_str(), rk2_val.size()));
         auto rk3_key = id + "_" + std::string("create_renc_key_rk3_") + std::to_string(i);
         std::string rk3_val;
-        if (param.seth_host->GetKeyValue(param.from, rk3_key, &rk3_val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, rk3_key, &rk3_val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", rk3_key.c_str());
             return kContractError;
         }
@@ -315,7 +315,7 @@ int ContractReEncryption::EncryptUserMessage(
         for(int j= 0; j<np; j++) {
             auto key = id + "_" + std::string("create_renc_key_rk1_") + std::to_string(i) + "_" + std::to_string(j);
             std::string rk1_val;
-            if (param.seth_host->GetKeyValue(param.from, key, &rk1_val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &rk1_val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -332,10 +332,10 @@ int ContractReEncryption::EncryptUserMessage(
     vector<GT> c2,c4,c6;
     std::string test_data = lines[1];
     GT m(e, test_data.c_str(), test_data.size());
-    SETH_WARN("enc m data src: %s, tom: %s",
+    SHARDORA_WARN("enc m data src: %s, tom: %s",
         test_data.c_str(), 
         common::Encode::HexEncode(m.toString()).c_str());
-    SETH_WARN("get m data: %s, %s, %s", 
+    SHARDORA_WARN("get m data: %s, %s, %s", 
         test_data.c_str(), 
         common::Encode::HexEncode(m.toString()).c_str(), 
         (const char*)m.getElement()->data);
@@ -369,7 +369,7 @@ int ContractReEncryption::EncryptUserMessage(
         common::Encode::HexDecode("7a4862984defcf29a65b2e4aa09603be99995f04ce6c9daf0a3c8d645fce348daa25d3d315cde539f23305207ea249b2edd0db1dc7f0bd301f7ab7e44d80b8b58df2a0f9f311960681eceded415682dd7d809e8120083d6308e9469414a45e5962571f9e1b8fc33a0274a38bf649fe2d42801cac32f14ba256b25ae2ca49a9ba")
     };
 
-    SETH_WARN("re encryption create key r: %s, z: %s", common::Encode::HexEncode(r.toString()).c_str(), common::Encode::HexEncode(z.toString()).c_str());
+    SHARDORA_WARN("re encryption create key r: %s, z: %s", common::Encode::HexEncode(r.toString()).c_str(), common::Encode::HexEncode(z.toString()).c_str());
     for (int i = 0; i < np; i++) {
         auto tmp_c1 = g^r;
         auto tmp_c2 = (m*(e(g1,pk[0])^r))^hid[i];
@@ -377,14 +377,14 @@ int ContractReEncryption::EncryptUserMessage(
         auto tmp_c4 = e(g1,pk[0])^(z*hid[i]);
         auto tmp_c5 = G1(e, c5_vec[i].c_str(), c5_vec[i].size());
         auto tmp_c6 = GT(e, c6_vec[i].c_str(), c6_vec[i].size());
-        SETH_WARN("re encryption create key i: %d, c5: %s, c6: %s", i, common::Encode::HexEncode(tmp_c5.toString(true)).c_str(), common::Encode::HexEncode(tmp_c6.toString()).c_str());
+        SHARDORA_WARN("re encryption create key i: %d, c5: %s, c6: %s", i, common::Encode::HexEncode(tmp_c5.toString(true)).c_str(), common::Encode::HexEncode(tmp_c6.toString()).c_str());
         c1.push_back(tmp_c1);
         c2.push_back(tmp_c2);
         c3.push_back(tmp_c3);
         c4.push_back(tmp_c4);
         c5.push_back(tmp_c5);
         c6.push_back(tmp_c6);
-        SETH_WARN("c-6 create member %d c1: %s, c2: %s, c3: %s, c4: %s, c5: %s, c6: %s",
+        SHARDORA_WARN("c-6 create member %d c1: %s, c2: %s, c3: %s, c4: %s, c5: %s, c6: %s",
                 i, common::Encode::HexEncode(tmp_c1.toString(true)).c_str(),
                 common::Encode::HexEncode(tmp_c2.toString()).c_str(),
                 common::Encode::HexEncode(tmp_c3.toString(true)).c_str(),
@@ -393,8 +393,8 @@ int ContractReEncryption::EncryptUserMessage(
                 common::Encode::HexEncode(tmp_c6.toString()).c_str());
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c1_") + std::to_string(i);
-            param.seth_host->SaveKeyValue(param.from, key, tmp_c1.toString(true));
-            SETH_WARN("save now create g1 i: %d, from:%s, key: %s, val: %s",
+            param.shardora_host->SaveKeyValue(param.from, key, tmp_c1.toString(true));
+            SHARDORA_WARN("save now create g1 i: %d, from:%s, key: %s, val: %s",
                 i, 
                 common::Encode::HexEncode(param.from).c_str(), 
                 key.c_str(), 
@@ -403,27 +403,27 @@ int ContractReEncryption::EncryptUserMessage(
 
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c2_") + std::to_string(i);
-            param.seth_host->SaveKeyValue(param.from, key, tmp_c2.toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp_c2.toString());
         }
 
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c3_") + std::to_string(i);
-            param.seth_host->SaveKeyValue(param.from, key, tmp_c3.toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp_c3.toString(true));
         }
 
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c4_") + std::to_string(i);
-            param.seth_host->SaveKeyValue(param.from, key, tmp_c4.toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp_c4.toString());
         }
 
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c5_") + std::to_string(i);
-            param.seth_host->SaveKeyValue(param.from, key, tmp_c5.toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp_c5.toString(true));
         }
 
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c6_") + std::to_string(i);
-            param.seth_host->SaveKeyValue(param.from, key, tmp_c6.toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp_c6.toString());
         }
     }
 
@@ -441,9 +441,9 @@ int ContractReEncryption::EncryptUserMessage(
         }
 
         lag.push_back(result);
-        SETH_WARN("create member lag: %d, lag: %s", i, common::Encode::HexEncode(result.toString()).c_str());
+        SHARDORA_WARN("create member lag: %d, lag: %s", i, common::Encode::HexEncode(result.toString()).c_str());
         auto key = id + "_" + std::string("create_enc_user_msg_lag_") + std::to_string(i);
-        param.seth_host->SaveKeyValue(param.from, key, result.toString());
+        param.shardora_host->SaveKeyValue(param.from, key, result.toString());
     }
 
     GT tempc2(c2[0] ^ lag[0]);
@@ -453,14 +453,14 @@ int ContractReEncryption::EncryptUserMessage(
 
     GT result1(tempc2 / e(c1[0], g1 ^ sk[0]));
     if (m == result1) {
-        SETH_WARN("user encryption success: %s", common::Encode::HexEncode(result1.toString()).c_str());
+        SHARDORA_WARN("user encryption success: %s", common::Encode::HexEncode(result1.toString()).c_str());
     } else {
-        SETH_WARN("user encryption failed: %s, %s", common::Encode::HexEncode(m.toString()).c_str(), common::Encode::HexEncode(result1.toString()).c_str());
+        SHARDORA_WARN("user encryption failed: %s, %s", common::Encode::HexEncode(m.toString()).c_str(), common::Encode::HexEncode(result1.toString()).c_str());
     }
 
     return kContractSuccess;
 } catch(std::exception& e) {
-    SETH_WARN("user encryption data catch error: %s", e.what());
+    SHARDORA_WARN("user encryption data catch error: %s", e.what());
     return kContractError;
 }
 
@@ -484,7 +484,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c1_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -494,7 +494,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c2_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -504,7 +504,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c3_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -514,7 +514,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c4_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -524,7 +524,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c5_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -534,7 +534,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c6_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -549,7 +549,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         Zr r(e,true);
         auto rk2_key = id + "_" + std::string("create_renc_key_rk2_") + std::to_string(i);
         std::string rk2_val;
-        if (param.seth_host->GetKeyValue(param.from, rk2_key, &rk2_val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, rk2_key, &rk2_val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", rk2_key.c_str());
             return kContractError;
         }
@@ -557,7 +557,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         rk2.push_back(G1(e, (const unsigned char*)rk2_val.c_str(), rk2_val.size(), true, 0));
         auto rk3_key = id + "_" + std::string("create_renc_key_rk3_") + std::to_string(i);
         std::string rk3_val;
-        if (param.seth_host->GetKeyValue(param.from, rk3_key, &rk3_val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, rk3_key, &rk3_val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", rk3_key.c_str());
             return kContractError;
         }
@@ -567,7 +567,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         for(int j= 0; j<np; j++) {
             auto key = id + "_" + std::string("create_renc_key_rk1_") + std::to_string(i) + "_" + std::to_string(j);
             std::string rk1_val;
-            if (param.seth_host->GetKeyValue(param.from, key, &rk1_val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &rk1_val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -620,7 +620,7 @@ int ContractReEncryption::ReEncryptUserMessage(
         //例如每个代理都向其他代理发送w1i和w2i，每个代理接收后都做累加得到w1和w2。
         Zr w1(e, w1_vec[i - 1].c_str(), w1_vec[i - 1].size());
         Zr w2(e, w2_vec[i - 1].c_str(), w2_vec[i - 1].size());
-        SETH_WARN("encrypt data i: %d, w1: %s, w2: %s",
+        SHARDORA_WARN("encrypt data i: %d, w1: %s, w2: %s",
             i, 
             common::Encode::HexEncode(w1.toString()).c_str(), 
             common::Encode::HexEncode(w2.toString()).c_str());
@@ -641,51 +641,51 @@ int ContractReEncryption::ReEncryptUserMessage(
         rc5.push_back(tmp5);
         rc6.push_back(tmp6);
         for (uint32_t tmp_idx = 0; tmp_idx < tmp1.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp1: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp1: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp1[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc1_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp1[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp1[tmp_idx].toString(true));
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp2.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp2: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp2: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp2[tmp_idx].toString()).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc2_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp2[tmp_idx].toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp2[tmp_idx].toString());
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp3.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp3: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp3: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp3[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc3_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp3[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp3[tmp_idx].toString(true));
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp4.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp4: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp4: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp4[tmp_idx].toString()).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc4_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp4[tmp_idx].toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp4[tmp_idx].toString());
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp5.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp5: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp5: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp5[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc5_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp5[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp5[tmp_idx].toString(true));
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp6.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp6: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp6: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp6[tmp_idx].toString()).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc6_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp6[tmp_idx].toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp6[tmp_idx].toString());
         }
     }
 
@@ -698,7 +698,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         const std::string& value) {
     auto lines = common::Split<>(value.c_str(), ';');
     if (lines.Count() != 2) {
-        SETH_WARN("failed!");
+        SHARDORA_WARN("failed!");
         return kContractError;
     }
 
@@ -706,7 +706,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
 
     int32_t member_idx = -1;
     if (!common::StringUtil::ToInt32(value, &member_idx)) {
-        SETH_WARN("member index failed!");
+        SHARDORA_WARN("member index failed!");
         return kContractError;
     }
 
@@ -714,7 +714,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
     int nu = 10;
     int np=10,t=4;
     if (member_idx < 1 || member_idx >= nu) {
-        SETH_WARN("failed!");
+        SHARDORA_WARN("failed!");
         return kContractError;
     }
 
@@ -724,7 +724,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c1_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -734,7 +734,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c2_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -744,7 +744,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c3_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -754,7 +754,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c4_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -764,7 +764,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c5_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -774,7 +774,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c6_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -792,7 +792,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
 
         auto rk2_key = id + "_" + std::string("create_renc_key_rk2_") + std::to_string(i);
         std::string rk2_val;
-        if (param.seth_host->GetKeyValue(param.from, rk2_key, &rk2_val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, rk2_key, &rk2_val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", rk2_key.c_str());
             return kContractError;
         }
@@ -800,7 +800,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         rk2.push_back(G1(e, (const unsigned char*)rk2_val.c_str(), rk2_val.size(), true, 0));
         auto rk3_key = id + "_" + std::string("create_renc_key_rk3_") + std::to_string(i);
         std::string rk3_val;
-        if (param.seth_host->GetKeyValue(param.from, rk3_key, &rk3_val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, rk3_key, &rk3_val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", rk3_key.c_str());
             return kContractError;
         }
@@ -810,7 +810,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         for(int j= 0; j<np; j++) {
             auto key = id + "_" + std::string("create_renc_key_rk1_") + std::to_string(i) + "_" + std::to_string(j);
             std::string rk1_val;
-            if (param.seth_host->GetKeyValue(param.from, key, &rk1_val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &rk1_val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -867,7 +867,7 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         //例如每个代理都向其他代理发送w1i和w2i，每个代理接收后都做累加得到w1和w2。
         Zr w1(e, w1_vec[i - 1].c_str(), w1_vec[i - 1].size());
         Zr w2(e, w2_vec[i - 1].c_str(), w2_vec[i - 1].size());
-        SETH_WARN("encrypt data i: %d, w1: %s, w2: %s",
+        SHARDORA_WARN("encrypt data i: %d, w1: %s, w2: %s",
             i, 
             common::Encode::HexEncode(w1.toString()).c_str(), 
             common::Encode::HexEncode(w2.toString()).c_str());
@@ -888,51 +888,51 @@ int ContractReEncryption::ReEncryptUserMessageWithMember(
         rc5.push_back(tmp5);
         rc6.push_back(tmp6);
         for (uint32_t tmp_idx = 0; tmp_idx < tmp1.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp1: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp1: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp1[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc1_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp1[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp1[tmp_idx].toString(true));
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp2.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp2: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp2: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp2[tmp_idx].toString()).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc2_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp2[tmp_idx].toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp2[tmp_idx].toString());
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp3.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp3: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp3: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp3[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc3_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp3[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp3[tmp_idx].toString(true));
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp4.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp4: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp4: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp4[tmp_idx].toString()).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc4_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp4[tmp_idx].toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp4[tmp_idx].toString());
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp5.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp5: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp5: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp5[tmp_idx].toString(true)).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc5_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp5[tmp_idx].toString(true));
+            param.shardora_host->SaveKeyValue(param.from, key, tmp5[tmp_idx].toString(true));
         }
 
         for (uint32_t tmp_idx = 0; tmp_idx < tmp6.size(); ++tmp_idx) {
-            SETH_WARN("create member reenc data: %d, %d, tmp6: %s", 
+            SHARDORA_WARN("create member reenc data: %d, %d, tmp6: %s", 
                 i, tmp_idx, 
                 common::Encode::HexEncode(tmp6[tmp_idx].toString()).c_str());
             auto key = id + "_" + std::string("create_reenc_user_msg_rc6_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
-            param.seth_host->SaveKeyValue(param.from, key, tmp6[tmp_idx].toString());
+            param.shardora_host->SaveKeyValue(param.from, key, tmp6[tmp_idx].toString());
         }
     }
 
@@ -944,14 +944,14 @@ int ContractReEncryption::Decryption(
         const std::string& key, 
         const std::string& value,
         std::string* res) try {
-    SETH_WARN("called 0!");
+    SHARDORA_WARN("called 0!");
     auto lines = common::Split<>(value.c_str(), ';');
     if (lines.Count() != 2) {
-        SETH_WARN("failed: %s, count: %d", value.c_str(), lines.Count());
+        SHARDORA_WARN("failed: %s, count: %d", value.c_str(), lines.Count());
         return kContractError;
     }
 
-    SETH_WARN("called 1!");
+    SHARDORA_WARN("called 1!");
     std::string id(lines[0]);
     auto& e = *pairing_ptr_;
     //密钥生成，这里生成10个用户。
@@ -964,7 +964,7 @@ int ContractReEncryption::Decryption(
     for(int i = 0;i<nu;i++){
         auto private_key = id + "_" + std::string("init_prikey_") + std::to_string(i);
         std::string val;
-        if (param.seth_host->GetKeyValue(param.from, private_key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, private_key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -973,7 +973,7 @@ int ContractReEncryption::Decryption(
         sk.push_back(x);
     }
 
-    SETH_WARN("called 2!");
+    SHARDORA_WARN("called 2!");
     std::string g1_str(common::Encode::HexDecode("7c8ae882453932ed180735e6eef3c983c93e0501dcfe6a1230fbfea4ac95f4c22795fe5a8137549d1a1b7427519b189431e794e365be5910fcd8e1c91bbc67fa00"));
     G1 g1(e, g1_str.c_str(), g1_str.size());
 
@@ -985,12 +985,12 @@ int ContractReEncryption::Decryption(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c1_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
 
-            SETH_WARN("now create g1 i: %d, from:%s, key: %s, val: %s",
+            SHARDORA_WARN("now create g1 i: %d, from:%s, key: %s, val: %s",
                 i, 
                 common::Encode::HexEncode(param.from).c_str(), 
                 key.c_str(), 
@@ -1001,7 +1001,7 @@ int ContractReEncryption::Decryption(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c2_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1011,7 +1011,7 @@ int ContractReEncryption::Decryption(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c3_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1021,7 +1021,7 @@ int ContractReEncryption::Decryption(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c4_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1031,7 +1031,7 @@ int ContractReEncryption::Decryption(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c5_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1041,7 +1041,7 @@ int ContractReEncryption::Decryption(
         {
             auto key = id + "_" + std::string("create_enc_user_msg_c6_") + std::to_string(i);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1049,7 +1049,7 @@ int ContractReEncryption::Decryption(
         }
     }
 
-    SETH_WARN("called 3!");
+    SHARDORA_WARN("called 3!");
     rc1.push_back(c1);
     rc2.push_back(c2);
     rc3.push_back(c3);
@@ -1059,29 +1059,29 @@ int ContractReEncryption::Decryption(
 
     //有nu-1个接受者，则需重加密nu-1次
     for (int i = 1; i < nu; i++) {
-        SETH_WARN("called 3 0!");
+        SHARDORA_WARN("called 3 0!");
         vector<G1> tmp1;
         for (int32_t tmp_idx = 0; tmp_idx < t; ++tmp_idx) {
-            SETH_WARN("called 3 0 0!");
+            SHARDORA_WARN("called 3 0 0!");
             auto key = id + "_" + std::string("create_reenc_user_msg_rc1_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
             std::string val;
-            SETH_WARN("called 3 0 1!");
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            SHARDORA_WARN("called 3 0 1!");
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
 
-            SETH_WARN("called 3 0 2!");
+            SHARDORA_WARN("called 3 0 2!");
             tmp1.push_back(G1(e, (const unsigned char*)val.c_str(), val.size(), true, 0));
-            SETH_WARN("called 3 0 3!");
+            SHARDORA_WARN("called 3 0 3!");
         }
 
-        SETH_WARN("called 3 1!");
+        SHARDORA_WARN("called 3 1!");
         vector<GT> tmp2;
         for (int32_t tmp_idx = 0; tmp_idx < t; ++tmp_idx) {
             auto key = id + "_" + std::string("create_reenc_user_msg_rc2_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1089,12 +1089,12 @@ int ContractReEncryption::Decryption(
             tmp2.push_back(GT(e, (const unsigned char*)val.c_str(), val.size(), 0));
         }
 
-        SETH_WARN("called 3 2!");
+        SHARDORA_WARN("called 3 2!");
         vector<G1> tmp3;
         for (int32_t tmp_idx = 0; tmp_idx < t; ++tmp_idx) {
             auto key = id + "_" + std::string("create_reenc_user_msg_rc3_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1102,12 +1102,12 @@ int ContractReEncryption::Decryption(
             tmp3.push_back(G1(e, (const unsigned char*)val.c_str(), val.size(), true, 0));
         }
 
-        SETH_WARN("called 3 3!");
+        SHARDORA_WARN("called 3 3!");
         vector<GT> tmp4;
         for (int32_t tmp_idx = 0; tmp_idx < t; ++tmp_idx) {
             auto key = id + "_" + std::string("create_reenc_user_msg_rc4_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1115,12 +1115,12 @@ int ContractReEncryption::Decryption(
             tmp4.push_back(GT(e, (const unsigned char*)val.c_str(), val.size(), 0));
         }
 
-        SETH_WARN("called 3 4!");
+        SHARDORA_WARN("called 3 4!");
         vector<G1> tmp5;
         for (int32_t tmp_idx = 0; tmp_idx < 1; ++tmp_idx) {
             auto key = id + "_" + std::string("create_reenc_user_msg_rc5_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1128,12 +1128,12 @@ int ContractReEncryption::Decryption(
             tmp5.push_back(G1(e, (const unsigned char*)val.c_str(), val.size(), true, 0));
         }
 
-        SETH_WARN("called 3 5!");
+        SHARDORA_WARN("called 3 5!");
         vector<GT> tmp6;
         for (int32_t tmp_idx = 0; tmp_idx < 1; ++tmp_idx) {
             auto key = id + "_" + std::string("create_reenc_user_msg_rc6_") + std::to_string(i) + "_" + std::to_string(tmp_idx);
             std::string val;
-            if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+            if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
                 CONTRACT_ERROR("get key value failed: %s", key.c_str());
                 return kContractError;
             }
@@ -1141,22 +1141,22 @@ int ContractReEncryption::Decryption(
             tmp6.push_back(GT(e, (const unsigned char*)val.c_str(), val.size(), 0));
         }
 
-        SETH_WARN("called 3 6!");
+        SHARDORA_WARN("called 3 6!");
         rc1.push_back(tmp1);
         rc2.push_back(tmp2);
         rc3.push_back(tmp3);
         rc4.push_back(tmp4);
         rc5.push_back(tmp5);
         rc6.push_back(tmp6);
-        SETH_WARN("called 3 7!");
+        SHARDORA_WARN("called 3 7!");
     }
 
-    SETH_WARN("called 4");
+    SHARDORA_WARN("called 4");
     vector<Zr> lag;
     for (int i = 0; i < t; i++) {
         auto key = id + "_" + std::string("create_enc_user_msg_lag_") + std::to_string(i);
         std::string val;
-        if (param.seth_host->GetKeyValue(param.from, key, &val) != 0) {
+        if (param.shardora_host->GetKeyValue(param.from, key, &val) != 0) {
             CONTRACT_ERROR("get key value failed: %s", key.c_str());
             return kContractError;
         }
@@ -1166,7 +1166,7 @@ int ContractReEncryption::Decryption(
 
     // std::string test_data = "e49b72939ac609cf50e1773ea4af277b29f048981ec6438a45ac38b8c7f489ff";
     // GT m(e, test_data.c_str(), test_data.size());
-    // SETH_WARN("dec m data src: %s, tom: %s",
+    // SHARDORA_WARN("dec m data src: %s, tom: %s",
     //     test_data.c_str(), 
     //     common::Encode::HexEncode(m.toString()).c_str());
     // 重加密密文的解密如下(为了方便，选前t个碎片解密)
@@ -1178,7 +1178,7 @@ int ContractReEncryption::Decryption(
         }
 
         GT result2 = tempc2 / e(rc1[i][0], G1(e, Xi.toString().c_str(), Xi.getElementSize()));
-        SETH_WARN("get m data user %d success, res2 data: %s", 
+        SHARDORA_WARN("get m data user %d success, res2 data: %s", 
             i, 
             common::Encode::HexEncode(result2.toString()).c_str());
         // if (m == result2) {
@@ -1187,11 +1187,11 @@ int ContractReEncryption::Decryption(
                 return kContractSuccess;
             }
         // } else {
-        //     SETH_WARN("user %d failed.", i);
+        //     SHARDORA_WARN("user %d failed.", i);
         // }
     }
 
-    SETH_WARN("called 6");
+    SHARDORA_WARN("called 6");
     return kContractSuccess;
 }  catch (std::exception& e) {
     CONTRACT_ERROR("get exception failed: %s", e.what());
@@ -1200,4 +1200,4 @@ int ContractReEncryption::Decryption(
 
 }  // namespace contract
 
-}  // namespace seth
+}  // namespace shardora

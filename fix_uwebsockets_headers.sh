@@ -51,4 +51,4 @@ ls -lh third_party/include/libusockets.h 2>/dev/null && echo "  ✓ libusockets.
 ls -lh third_party/include/uWebSockets/App.h 2>/dev/null && echo "  ✓ App.h found" || echo "  ✗ App.h NOT found"
 ls -lh third_party/lib/libuSockets.a 2>/dev/null && echo "  ✓ libuSockets.a found" || echo "  ✗ libuSockets.a NOT found"
 echo ""
-echo "You can now build with: cd build && make seth -j\$(nproc)"
+echo "You can now build with: cd build && make shardora -j\$(nproc)"

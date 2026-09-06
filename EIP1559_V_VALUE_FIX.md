@@ -69,23 +69,23 @@ After flipping, the C++ code will use the correct recovery ID and recover the co
 ### Step 1: Recompile
 
 ```bash
-cd /root/seth/build
+cd /root/shardora/build
 make -j$(nproc)
 ```
 
 ### Step 2: Restart Node
 
 ```bash
-pkill -f seth
+pkill -f shardora
 sleep 2
-cd /root/seth
+cd /root/shardora
 ./start_node.sh
 ```
 
 ### Step 3: Run Tests
 
 ```bash
-cd /root/seth/clipy
+cd /root/shardora/clipy
 /root/tools/python3.10/bin/python3 test_eip1559.py
 ```
 
@@ -108,7 +108,7 @@ Total: 2/2 tests passed
 Check the server logs:
 
 ```bash
-tail -f /root/seth/logs/seth.log | grep -E "EIP-1559|recovery|pubkey"
+tail -f /root/shardora/logs/shardora.log | grep -E "EIP-1559|recovery|pubkey"
 ```
 
 You should see:

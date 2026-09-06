@@ -5,7 +5,7 @@
 
 #include "common/hash.h"
 
-namespace seth {
+namespace shardora {
 namespace common {
 namespace test {
 
@@ -39,4 +39,4 @@ TEST(HashValueBranches, AllZeroHexProducesZeroData) {
 
 }  // namespace test
 }  // namespace common
-}  // namespace seth
+}  // namespace shardora

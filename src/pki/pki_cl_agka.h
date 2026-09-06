@@ -4,7 +4,7 @@
 
 #include "contract/call_parameters.h"
 #include "pki/pki_cl_def.h"
-namespace seth {
+namespace shardora {
 
 namespace pkicl {
 
@@ -32,11 +32,11 @@ class PkiClAgka {
   // Stage1: Setup
   void Setup();
   int PkiExtract(
-        const seth::contract::CallParameters& param, 
+        const shardora::contract::CallParameters& param, 
         const std::string& key, 
         const std::string& value);
   int ClExtract(
-        const seth::contract::CallParameters& param, 
+        const shardora::contract::CallParameters& param, 
         const std::string& key, 
         const std::string& value);
 
@@ -51,19 +51,19 @@ class PkiClAgka {
   // Stage6: Encode Key Gen
   std::map<int, DecodeKey> DecKeyGen();
   int EncKeyGen(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   int DecKeyGen(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   int Enc(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   int Dec(
-      const seth::contract::CallParameters& param, 
+      const shardora::contract::CallParameters& param, 
       const std::string& key, 
       const std::string& value);
   // Stage7: Encode

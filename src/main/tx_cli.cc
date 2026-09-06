@@ -28,7 +28,7 @@
 #include "transport/tcp_transport.h"
 #include "api.h"
 
-using namespace seth;
+using namespace shardora;
 static bool global_stop = false;
 static const std::string kBroadcastIp = "10.10.1.115";
 static const uint16_t kBroadcastPort = 13001;
@@ -53,7 +53,7 @@ std::mutex upadte_nonce_mutex;
 std::condition_variable update_nonce_con;
 
 // Global leader routing for nonce updates
-std::unordered_map<uint32_t, SethSDK::LeaderInfo> g_leader_map;
+std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> g_leader_map;
 std::mutex g_leader_mutex;
 bool g_has_leader_routing = false;
 
@@ -86,8 +86,8 @@ static void WriteDefaultLogConf() {
     spdlog::init_thread_pool(8192, 1);
 
     auto logger = spdlog::create_async<spdlog::sinks::basic_file_sink_mt>(
-        "async_file", "log/seth.log", true);
-    // auto logger = spdlog::basic_logger_mt("sync_file", "log/seth.log", false);
+        "async_file", "log/shardora.log", true);
+    // auto logger = spdlog::basic_logger_mt("sync_file", "log/shardora.log", false);
     spdlog::set_default_logger(logger);
 
     // Critical: Force set global pattern
@@ -307,8 +307,8 @@ int tx_main(int argc, char** argv) {
     };
 
     // Fetch leader routing table
-    SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
-    std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
+    ShardoraSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+    std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> leader_map;
     uint32_t leader_count = 0;
     bool has_leader_routing = sdk.fetchLeaders(leader_map, leader_count);
     std::mutex leader_mutex;  // Protect leader_map access
@@ -503,7 +503,7 @@ int tx_main(int argc, char** argv) {
             }
             if (global_stop) break;
             
-            std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
+            std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> new_leaders;
             uint32_t new_count = 0;
             if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
                 // Update local leader map
@@ -588,7 +588,7 @@ void UpdateAddressNonce(const std::string& contract_address) {
             }
         }
         
-        SethSDK client(query_ip, query_port);
+        ShardoraSDK client(query_ip, query_port);
 
         // Retry up to 3 times on transient failures.
         int64_t nonce = -1;
@@ -627,7 +627,7 @@ int InitPrefund(const std::string& contract_address) {
                 dest_port = it->second.port + 10000;
             }
         }
-        SethSDK client(dest_ip, dest_port);
+        ShardoraSDK client(dest_ip, dest_port);
         auto prikey = common::Encode::HexEncode(*iter);
         auto res_json = client.setGasPrefund(prikey, contract_address, 60000000lu);
         if (res_json["status"] != 0) {
@@ -742,7 +742,7 @@ int main(int argc, char** argv) {
         std::cout << "\n[Phase 2] Creating accounts on blockchain..." << std::endl;
         std::cout << "  Using " << g_prikeys.size() << " funded accounts to create test accounts..." << std::endl;
 
-        SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+        ShardoraSDK sdk(global_chain_node_ip, global_chain_node_http_port);
         std::atomic<uint32_t> created_count{0};
         std::atomic<uint32_t> failed_count{0};
 
@@ -753,10 +753,10 @@ int main(int argc, char** argv) {
 
         // Use existing funded accounts to send initial coins to test accounts
         auto create_account_thread = [&](uint32_t thread_id, uint32_t start_idx, uint32_t end_idx) {
-            // Fix: Each thread creates its own SethSDK instance.
+            // Fix: Each thread creates its own ShardoraSDK instance.
             // httplib::SSLClient is NOT thread-safe — sharing one across threads
             // causes SIGSEGV in ensure_socket_connection.
-            SethSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
+            ShardoraSDK thread_sdk(global_chain_node_ip, global_chain_node_http_port);
 
             // Each thread gets a unique funder (thread_id < g_prikeys.size() guaranteed)
             std::string funder_prikey = g_prikeys[thread_id];
@@ -988,13 +988,13 @@ int main(int argc, char** argv) {
         }
 
         // Shared leader routing: pool_idx -> {ip, port}, updated by leader sync thread
-        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map;
+        std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> leader_map;
         std::mutex leader_mutex;
 
         // Try initial fetch
         {
             uint32_t lc = 0;
-            std::unordered_map<uint32_t, SethSDK::LeaderInfo> tmp;
+            std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> tmp;
             if (sdk.fetchLeaders(tmp, lc) && !tmp.empty()) {
                 std::lock_guard<std::mutex> lock(leader_mutex);
                 leader_map = tmp;
@@ -1035,7 +1035,7 @@ int main(int argc, char** argv) {
         auto stress_test_thread = [&](uint32_t thread_id, std::vector<uint32_t> my_account_indices) {
             if (my_account_indices.empty()) return;
             // Per-thread SDK for nonce queries (httplib is not thread-safe)
-            auto thread_sdk = std::make_unique<SethSDK>(global_chain_node_ip, global_chain_node_http_port);
+            auto thread_sdk = std::make_unique<ShardoraSDK>(global_chain_node_ip, global_chain_node_http_port);
             uint32_t consecutive_failures = 0;
             static const uint32_t kFailureThreshold = 10;  // After 10 consecutive failures, assume node is down
             uint32_t pos = 0;
@@ -1127,7 +1127,7 @@ int main(int argc, char** argv) {
                         while (!global_stop) {
                             usleep(2000000);  // 2s
                             // Try a simple nonce fetch as connectivity probe
-                            thread_sdk = std::make_unique<SethSDK>(global_chain_node_ip, global_chain_node_http_port);
+                            thread_sdk = std::make_unique<ShardoraSDK>(global_chain_node_ip, global_chain_node_http_port);
                             int64_t probe_nonce = thread_sdk->fetchNonce(
                                 common::Encode::HexEncode(from_addr));
                             if (probe_nonce >= 0) {
@@ -1342,7 +1342,7 @@ int main(int argc, char** argv) {
                 for (int i = 0; i < 30 && !global_stop; ++i) usleep(100000);
                 if (global_stop) break;
 
-                std::unordered_map<uint32_t, SethSDK::LeaderInfo> new_leaders;
+                std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> new_leaders;
                 uint32_t new_count = 0;
                 if (sdk.fetchLeaders(new_leaders, new_count) && !new_leaders.empty()) {
                     {
@@ -1448,7 +1448,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+        ShardoraSDK sdk(global_chain_node_ip, global_chain_node_http_port);
 
         // Quick connectivity test — verify HTTP port is reachable
         {
@@ -1685,7 +1685,7 @@ contract AMMPool {
         uint32_t accs_per_thread = kTotalAccounts / fund_threads;
 
         auto create_account_fn = [&](uint32_t tid, uint32_t start_idx, uint32_t end_idx) {
-            SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+            ShardoraSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
             std::string fpk = unique_funders[tid % unique_funders.size()];
             std::shared_ptr<security::Security> fsec = std::make_shared<security::Ecdsa>();
             fsec->SetPrivateKey(fpk);
@@ -1780,14 +1780,14 @@ contract AMMPool {
         auto dstart = std::chrono::steady_clock::now();
 
         // Deploy in 3 phases: TokenA → verify → TokenB → verify → AMMPool
-        auto deploy_one_type = [&](const std::string& label, std::function<void(uint32_t, SethSDK&)> fn) {
+        auto deploy_one_type = [&](const std::string& label, std::function<void(uint32_t, ShardoraSDK&)> fn) {
             std::vector<std::thread> dt;
             uint32_t nt = std::min(kDeployThreads, kContractSets); if (!nt) nt = 1;
             uint32_t pp = kContractSets / nt;
             for (uint32_t t = 0; t < nt; ++t) {
                 uint32_t s2 = t*pp, e2 = (t==nt-1)?kContractSets:(s2+pp);
                 dt.emplace_back([&,s2,e2](){
-                    SethSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
+                    ShardoraSDK tsdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t i=s2;i<e2&&!global_stop;++i) { if(!deployers[i].confirmed) continue; fn(i,tsdk); usleep(100000); }
                 });
             }
@@ -1827,14 +1827,14 @@ contract AMMPool {
         const uint64_t kPf=400000000lu;
 
         std::cout<<"  Step 1/3: Deploy TokenA..."<<std::endl;
-        deploy_one_type("TokenA",[&](uint32_t i,SethSDK& t){
+        deploy_one_type("TokenA",[&](uint32_t i,ShardoraSDK& t){
             auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"bytes32","uint256"},{mkname(i,"TkA_"),"10000000"});
             if(r["status"]==0){deployers[i].token_a_addr=r["id"];deployers[i].token_a_deployed=true;++ta_ok;} else ++dfail;
         });
         {std::vector<std::string> v; for(auto& d:deployers) if(d.token_a_deployed) v.push_back(d.token_a_addr); wait_addrs(v,"TokenA");}
 
         std::cout<<"  Step 2/3: Deploy TokenB..."<<std::endl;
-        deploy_one_type("TokenB",[&](uint32_t i,SethSDK& t){
+        deploy_one_type("TokenB",[&](uint32_t i,ShardoraSDK& t){
             if(!deployers[i].token_a_deployed){++dfail;return;}
             auto r=t.deploySolidity(deployers[i].prikey_hex,token_bytecode,0,kPf,0,{"bytes32","uint256"},{mkname(i,"TkB_"),"10000000"});
             if(r["status"]==0){deployers[i].token_b_addr=r["id"];deployers[i].token_b_deployed=true;++tb_ok;} else ++dfail;
@@ -1842,7 +1842,7 @@ contract AMMPool {
         {std::vector<std::string> v; for(auto& d:deployers) if(d.token_b_deployed) v.push_back(d.token_b_addr); wait_addrs(v,"TokenB");}
 
         std::cout<<"  Step 3/3: Deploy AMMPool..."<<std::endl;
-        deploy_one_type("AMMPool",[&](uint32_t i,SethSDK& t){
+        deploy_one_type("AMMPool",[&](uint32_t i,ShardoraSDK& t){
             if(!deployers[i].token_a_deployed||!deployers[i].token_b_deployed){++dfail;return;}
             auto r=t.deploySolidity(deployers[i].prikey_hex,pool_bytecode,0,kPf,0,{"address","address"},{deployers[i].token_a_addr,deployers[i].token_b_addr});
             if(r["status"]==0){deployers[i].pool_addr=r["id"];deployers[i].pool_deployed=true;++pool_ok;} else ++dfail;
@@ -1982,7 +1982,7 @@ contract AMMPool {
         std::atomic<uint64_t> tcp_sent_count{0};
 
         // Leader routing for contract calls
-        std::unordered_map<uint32_t, SethSDK::LeaderInfo> amm_leader_map;
+        std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> amm_leader_map;
         std::mutex amm_leader_mutex;
         bool amm_has_leaders = false;
 
@@ -2079,7 +2079,7 @@ contract AMMPool {
                                      int retries = 3) -> int64_t {
             auto [lip, lhttp] = get_leader_http(contract_addr_hex);
             for (int i = 0; i < retries; ++i) {
-                SethSDK leader_sdk(lip, lhttp);
+                ShardoraSDK leader_sdk(lip, lhttp);
                 int64_t n = leader_sdk.fetchNonce(prepay_addr_hex);
                 if (n >= 0) {
                     return n;
@@ -2088,7 +2088,7 @@ contract AMMPool {
                     usleep(100000);
                 }
             }
-            SethSDK fallback_sdk(global_chain_node_ip, global_chain_node_http_port);
+            ShardoraSDK fallback_sdk(global_chain_node_ip, global_chain_node_http_port);
             return fallback_sdk.fetchNonce(prepay_addr_hex);
         };
 
@@ -2119,18 +2119,18 @@ contract AMMPool {
         std::atomic<uint32_t> liq_ok{0}, liq_fail{0};
         auto liq_start = std::chrono::steady_clock::now();
 
-        // Helper: create SethSDK routed to the pool leader of a contract address
-        auto make_routed_sdk = [&](const std::string& contract_addr_hex) -> SethSDK {
+        // Helper: create ShardoraSDK routed to the pool leader of a contract address
+        auto make_routed_sdk = [&](const std::string& contract_addr_hex) -> ShardoraSDK {
             if (amm_has_leaders) {
                 std::string ca_raw = common::Encode::HexDecode(contract_addr_hex);
                 uint32_t pidx = common::GetAddressPoolIndex(ca_raw);
                 std::lock_guard<std::mutex> lk(amm_leader_mutex);
                 auto it = amm_leader_map.find(pidx);
                 if (it != amm_leader_map.end()) {
-                    return SethSDK(it->second.ip, it->second.port + 10000);
+                    return ShardoraSDK(it->second.ip, it->second.port + 10000);
                 }
             }
-            return SethSDK(global_chain_node_ip, global_chain_node_http_port);
+            return ShardoraSDK(global_chain_node_ip, global_chain_node_http_port);
         };
 
         // Step 5a: Set deployer prefund on contracts — route to contract's pool leader
@@ -2321,7 +2321,7 @@ contract AMMPool {
                 std::string deployer_addr = deployers[p.deployer_idx].addr_hex;
                 p.pool_index = common::GetAddressPoolIndex(
                     common::Encode::HexDecode(deployer_addr));
-                SETH_WARN("pool %s: using deployer %s pool_index=%u (fallback)",
+                SHARDORA_WARN("pool %s: using deployer %s pool_index=%u (fallback)",
                     p.pool.substr(0,12).c_str(), deployer_addr.substr(0,12).c_str(), p.pool_index);
             }
             contract_pool_index_map[p.pool] = p.pool_index;
@@ -2392,7 +2392,7 @@ contract AMMPool {
                 uint32_t s = t * addrs_per_thread;
                 uint32_t e = (t == batch_threads - 1) ? (uint32_t)all_addr_hex.size() : (s + addrs_per_thread);
                 nonce_threads.emplace_back([&, s, e]() {
-                    SethSDK batch_sdk(global_chain_node_ip, global_chain_node_http_port);
+                    ShardoraSDK batch_sdk(global_chain_node_ip, global_chain_node_http_port);
                     for (uint32_t offset = s; offset < e && !global_stop; offset += kBatchSize) {
                         uint32_t batch_end = std::min(offset + (uint32_t)kBatchSize, e);
                         std::vector<std::string> batch(all_addr_hex.begin() + offset,
@@ -2627,7 +2627,7 @@ contract AMMPool {
                         ldr_port = it->second.port + 10000;
                     }
                 }
-                SethSDK leader_sdk(ldr_ip, ldr_port);
+                ShardoraSDK leader_sdk(ldr_ip, ldr_port);
 
                 // Batch query this pool's pending prepay addresses
                 std::vector<std::string> ba;
@@ -2678,7 +2678,7 @@ contract AMMPool {
                             auto& grp = pf_groups[item.group_idx];
                             const auto& ca = grp.contract_addrs[item.contract_idx];
                             auto [retry_ip, retry_port] = get_leader_http(ca);
-                            SethSDK tsdk(retry_ip, retry_port);
+                            ShardoraSDK tsdk(retry_ip, retry_port);
                             auto r = tsdk.setGasPrefund(grp.prikey_hex, ca, kUserPrefund);
                             if (r["status"] == 0) ++resend_ok; else ++resend_fail;
                         }
@@ -2712,7 +2712,7 @@ contract AMMPool {
                             auto& item = pf_verify[pf_pending[i]];
                             const auto& ca = pf_groups[item.group_idx].contract_addrs[item.contract_idx];
                             auto [retry_ip, retry_port] = get_leader_http(ca);
-                            SethSDK tsdk(retry_ip, retry_port);
+                            ShardoraSDK tsdk(retry_ip, retry_port);
                             auto r = tsdk.setGasPrefund(pf_groups[item.group_idx].prikey_hex, ca, kUserPrefund);
                             if (r["status"]==0) ++retry_ok; else ++retry_fail;
                         }
@@ -2911,13 +2911,13 @@ contract AMMPool {
                     auto rate_start = std::chrono::steady_clock::now();
                     uint64_t rate_sent = 0;
                     // Per-thread caches to avoid repeated SSL connections and key setup
-                    std::unordered_map<std::string, std::shared_ptr<SethSDK>> sdk_cache;
+                    std::unordered_map<std::string, std::shared_ptr<ShardoraSDK>> sdk_cache;
                     std::unordered_map<std::string, std::shared_ptr<security::Security>> sec_cache;
-                    auto get_cached_sdk = [&](const std::string& ip, uint16_t port) -> SethSDK& {
+                    auto get_cached_sdk = [&](const std::string& ip, uint16_t port) -> ShardoraSDK& {
                         std::string key = ip + ":" + std::to_string(port);
                         auto it = sdk_cache.find(key);
                         if (it == sdk_cache.end())
-                            it = sdk_cache.emplace(key, std::make_shared<SethSDK>(ip, port)).first;
+                            it = sdk_cache.emplace(key, std::make_shared<ShardoraSDK>(ip, port)).first;
                         return *it->second;
                     };
                     auto get_cached_sec = [&](const std::string& prikey_hex) -> std::shared_ptr<security::Security> {
@@ -2936,7 +2936,7 @@ contract AMMPool {
                         // Nonce from prepayment account via leader node
                         std::string prepay_addr = grp.contract_addr + grp.caller_addr;
                         auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-                        SethSDK& leader_sdk = get_cached_sdk(ldr_ip, ldr_http);
+                        ShardoraSDK& leader_sdk = get_cached_sdk(ldr_ip, ldr_http);
                         // Retry nonce query up to 3 times on transient failures
                         int64_t nonce = -1;
                         for (int retry = 0; retry < 3 && nonce < 0; ++retry) {
@@ -2954,7 +2954,7 @@ contract AMMPool {
                         }
                         // Fallback: if leader failed, try default node
                         if (nonce < 0) {
-                            SethSDK fallback_sdk(global_chain_node_ip, global_chain_node_http_port);
+                            ShardoraSDK fallback_sdk(global_chain_node_ip, global_chain_node_http_port);
                             nonce = fallback_sdk.fetchNonce(prepay_addr);
                             if (nonce >= 0) {
                                 std::cerr << "  [" << label << " FALLBACK OK] grp=" << gi
@@ -3097,8 +3097,8 @@ contract AMMPool {
             const std::string prepay = grp.contract_addr + grp.caller_addr;
             const uint32_t pool_idx = get_contract_pool_idx(grp.contract_addr);
             auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-            SethSDK leader_sdk(ldr_ip, ldr_http);
-            SethSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
+            ShardoraSDK leader_sdk(ldr_ip, ldr_http);
+            ShardoraSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
 
             const int64_t nonce_leader = leader_sdk.fetchNonce(prepay);
             const int64_t nonce_default = default_sdk.fetchNonce(prepay);
@@ -3192,7 +3192,7 @@ contract AMMPool {
                             ldr_http = (uint16_t)(it->second.port + 10000);
                         }
                     }
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    ShardoraSDK leader_sdk(ldr_ip, ldr_http);
 
                     std::vector<std::string> batch;
                     std::vector<uint32_t> batch_gi;
@@ -3284,7 +3284,7 @@ contract AMMPool {
                     std::string spender = pool.pool;
 
                     auto [ldr_ip, ldr_http] = get_leader_http(pool.token_a);
-                    SethSDK query_sdk(ldr_ip, ldr_http);
+                    ShardoraSDK query_sdk(ldr_ip, ldr_http);
 
                     // Query allowance(owner, spender)
                     auto result = query_sdk.queryFunctionSolidity(
@@ -3354,7 +3354,7 @@ contract AMMPool {
                     std::cout << "    approve_input= " << approve_input.substr(0, 72) << "..." << std::endl;
 
                     // Try querying from a different node (default node) to rule out routing
-                    SethSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
+                    ShardoraSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
                     auto result2 = default_sdk.queryFunctionSolidity(
                         users[tp.user_a_idx].prikey_hex, pool.token_a,
                         "allowance", {"address", "address"},
@@ -3386,7 +3386,7 @@ contract AMMPool {
                         const auto& pool = pools[pi];
                         std::string owner_a = users[tp.user_a_idx].addr_hex;
                         auto [ldr_ip, ldr_http] = get_leader_http(pool.token_a);
-                        SethSDK query_sdk(ldr_ip, ldr_http);
+                        ShardoraSDK query_sdk(ldr_ip, ldr_http);
                         auto result = query_sdk.queryFunctionSolidity(
                             users[tp.user_a_idx].prikey_hex, pool.token_a,
                             "allowance", {"address", "address"},
@@ -3421,7 +3421,7 @@ contract AMMPool {
 
         // Refresh leader routing before swap to ensure we have current leaders
         {
-            std::unordered_map<uint32_t, SethSDK::LeaderInfo> fresh_leaders;
+            std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> fresh_leaders;
             uint32_t lc = 0;
             if (sdk.fetchLeaders(fresh_leaders, lc) && !fresh_leaders.empty()) {
                 std::lock_guard<std::mutex> lk(amm_leader_mutex);
@@ -3495,8 +3495,8 @@ contract AMMPool {
             const std::string prepay = grp.contract_addr + grp.caller_addr;
             const uint32_t pool_idx = get_contract_pool_idx(grp.contract_addr);
             auto [ldr_ip, ldr_http] = get_leader_http(grp.contract_addr);
-            SethSDK leader_sdk(ldr_ip, ldr_http);
-            SethSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
+            ShardoraSDK leader_sdk(ldr_ip, ldr_http);
+            ShardoraSDK default_sdk(global_chain_node_ip, global_chain_node_http_port);
 
             const int64_t nonce_leader = leader_sdk.fetchNonce(prepay);
             const int64_t nonce_default = default_sdk.fetchNonce(prepay);
@@ -3626,7 +3626,7 @@ contract AMMPool {
                             ldr_http = (uint16_t)(it->second.port + 10000);
                         }
                     }
-                    SethSDK leader_sdk(ldr_ip, ldr_http);
+                    ShardoraSDK leader_sdk(ldr_ip, ldr_http);
 
                     std::vector<std::string> batch;
                     std::vector<uint32_t> batch_gi;
@@ -4112,7 +4112,7 @@ contract AMMPool {
             std::cerr << "start tcp failed\n"; return 1;
         }
 
-        SethSDK sdk6(global_chain_node_ip, global_chain_node_http_port);
+        ShardoraSDK sdk6(global_chain_node_ip, global_chain_node_http_port);
 
         // Connectivity check
         {
@@ -4209,7 +4209,7 @@ contract Exchange {
 
         // ── Phase 2: Generate accounts per shard ────────────────────────
         // For each shard S, we need accounts whose address maps to shard S.
-        // Seth shards are identified by GetAddressPoolIndex() % num_shards,
+        // Shardora shards are identified by GetAddressPoolIndex() % num_shards,
         // but the simpler rule used throughout the codebase is:
         //   addr[0] >> ? — actually the chain uses net_id / shard_id embedded in
         //   the DHT key, not the address. For cross-shard, we just send with
@@ -4217,7 +4217,7 @@ contract Exchange {
         //   contracts deployed on each specific shard, so we need the accounts
         //   to reside on the correct shard.
         //
-        // Address-to-shard mapping in Seth:
+        // Address-to-shard mapping in Shardora:
         //   The first byte of the address (big-endian) determines the shard.
         //   shard_id = addr[0] * num_active_shards / 256
         //   With 4 shards (3,4,5,6), indices 0-3:
@@ -4250,7 +4250,7 @@ contract Exchange {
             std::vector<bool> contracts_confirmed;
         };
 
-        // Determine shard membership via Seth's actual pool routing:
+        // Determine shard membership via Shardora's actual pool routing:
         //   pool = XXH32(addr_bytes[0:20], seed=623453345) % 32
         //   shard = 6 - pool/8  =>  pool 24-31→shard3, 16-23→shard4, 8-15→shard5, 0-7→shard6
         const int kNumShards = 4;
@@ -4271,7 +4271,7 @@ contract Exchange {
         }
 
         // Phase 2: Generate exactly kUsersPerShard users + kContractsPerShard deployers per shard.
-        // Uses Seth shard routing (addr_shard_id) to filter — same approach as mode 7.
+        // Uses Shardora shard routing (addr_shard_id) to filter — same approach as mode 7.
         auto shard_to_idx = [](int shard_id) -> int { return shard_id - 3; };
         for (int i = 0; i < kNumShards; ++i) {
             shard_data[i].contract_addrs.clear();
@@ -4435,7 +4435,7 @@ contract Exchange {
         std::vector<FunderState> funders;
         {
             auto [f_ip, f_http] = funder_shard_ip("");
-            SethSDK fqsdk(f_ip, f_http);
+            ShardoraSDK fqsdk(f_ip, f_http);
             for (auto& pk : unique_funders6) {
                 FunderState fs;
                 fs.prikey = pk;
@@ -4568,7 +4568,7 @@ contract Exchange {
         // Each funder's on-chain nonce must equal nonce_start + sent_count.
         std::cout << "\n[Phase 3a] Verify funder nonces on-chain...\n";
         {
-            SethSDK verify_sdk(shard_data[0].node_ip, shard_data[0].node_http);
+            ShardoraSDK verify_sdk(shard_data[0].node_ip, shard_data[0].node_http);
             std::vector<std::string> funder_addrs;
             for (auto& fs : funders) funder_addrs.push_back(fs.addr_hex);
             auto t0 = std::chrono::steady_clock::now();
@@ -4631,7 +4631,7 @@ contract Exchange {
             const uint32_t kVBatch = 300;
 
             // Query ONLY this shard's own node (sd.node_ip:sd.node_http)
-            SethSDK own_sdk(sd.node_ip, sd.node_http);
+            ShardoraSDK own_sdk(sd.node_ip, sd.node_http);
 
             for (uint32_t rd = 0; !pending.empty() && !global_stop; ++rd) {
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
@@ -4714,7 +4714,7 @@ contract Exchange {
                 uint32_t s2 = t * pp;
                 uint32_t e2 = (t == nt-1) ? nd4 : (s2 + pp);
                 dth.emplace_back([&, si, s2, e2]() {
-                    SethSDK tsdk(shard_data[si].node_ip, shard_data[si].node_http);
+                    ShardoraSDK tsdk(shard_data[si].node_ip, shard_data[si].node_http);
                     for (uint32_t i = s2; i < e2 && !global_stop; ++i) {
                         if (!sd.deployers_confirmed[i]) { ++deploy_fail6; continue; }
                         std::string pk_hex = common::Encode::HexEncode(sd.deployer_prikeys[i]);
@@ -4760,7 +4760,7 @@ contract Exchange {
         for (int si = 0; si < kNumShards && !global_stop; ++si) {
             auto& sd = shard_data[si];
             uint32_t nd4v = (uint32_t)sd.deployer_addrs.size();
-            SethSDK shard_sdk(sd.node_ip, sd.node_http);
+            ShardoraSDK shard_sdk(sd.node_ip, sd.node_http);
             std::vector<uint32_t> pending;
             for (uint32_t i = 0; i < nd4v; ++i)
                 if (!sd.contract_addrs[i].empty()) pending.push_back(i);
@@ -4787,7 +4787,7 @@ contract Exchange {
                         // Query ALL shard nodes - contract addr may land on any shard
                         std::vector<bool> ba_found(bi.size(), false);
                         for (int qsi = 0; qsi < kNumShards && !global_stop; ++qsi) {
-                            SethSDK qsdk(shard_data[qsi].node_ip, shard_data[qsi].node_http);
+                            ShardoraSDK qsdk(shard_data[qsi].node_ip, shard_data[qsi].node_http);
                             auto r = qsdk.batchQueryAccounts(ba);
                             if (!r.contains("status") || r["status"] != 0 || !r.contains("accounts")) continue;
                             for (uint32_t k = 0; k < bi.size(); ++k)
@@ -4843,7 +4843,7 @@ contract Exchange {
             auto& sd = shard_data[si];
             uint32_t nd5 = (uint32_t)sd.deployer_addrs.size();
             uint32_t nu5 = (uint32_t)sd.user_addrs.size();
-            SethSDK shard_sdk5(sd.node_ip, sd.node_http);
+            ShardoraSDK shard_sdk5(sd.node_ip, sd.node_http);
             // Build list of valid (confirmed) contracts
             std::vector<uint32_t> valid_contracts;
             for (uint32_t i = 0; i < nd5; ++i)
@@ -4941,7 +4941,7 @@ contract Exchange {
             auto& sd = shard_data[si];
             uint32_t nd5v = (uint32_t)sd.deployer_addrs.size();
             uint32_t nu5v = (uint32_t)sd.user_addrs.size();
-            SethSDK shard_sdk_pf(sd.node_ip, sd.node_http);
+            ShardoraSDK shard_sdk_pf(sd.node_ip, sd.node_http);
             // Rebuild pf_ops list for this shard (same as sent above)
             std::vector<uint32_t> valid_contracts2;
             for (uint32_t i = 0; i < nd5v; ++i)
@@ -5028,7 +5028,7 @@ contract Exchange {
                         sec2->SetPrivateKey(pk_raw);
                         std::string addr_raw = sec2->GetAddress();
                         if (rs_nonces.find(addr_raw) == rs_nonces.end()) {
-                            SethSDK tsdk2(sd.node_ip, sd.node_http);
+                            ShardoraSDK tsdk2(sd.node_ip, sd.node_http);
                             int64_t n2 = tsdk2.fetchNonce(common::Encode::HexEncode(addr_raw));
                             rs_nonces[addr_raw] = (n2 >= 0) ? (uint64_t)n2 : 0;
                         }
@@ -5214,7 +5214,7 @@ contract Exchange {
                     std::vector<std::string> pkeys;
                     for (auto& su : stress_users)
                         pkeys.push_back(su.contract_addr + su.addr_hex);
-                    SethSDK stress_sdk(sd.node_ip, sd.node_http);
+                    ShardoraSDK stress_sdk(sd.node_ip, sd.node_http);
                     for (uint32_t off = 0; off < pkeys.size(); off += kBN) {
                         uint32_t end = std::min(off + kBN, (uint32_t)pkeys.size());
                         std::vector<std::string> batch(pkeys.begin() + off, pkeys.begin() + end);
@@ -5318,7 +5318,7 @@ contract Exchange {
                     // dedup
                     std::sort(pkeys.begin(), pkeys.end());
                     pkeys.erase(std::unique(pkeys.begin(), pkeys.end()), pkeys.end());
-                    SethSDK stress_sdk2(sd.node_ip, sd.node_http);
+                    ShardoraSDK stress_sdk2(sd.node_ip, sd.node_http);
                     for (uint32_t off = 0; off < pkeys.size(); off += kBN) {
                         uint32_t end = std::min(off + kBN, (uint32_t)pkeys.size());
                         std::vector<std::string> batch(pkeys.begin() + off, pkeys.begin() + end);
@@ -5434,7 +5434,7 @@ contract Exchange {
             // Batch-query each shard via HTTP
             for (int i = 0; i < kNumShards; ++i) {
                 auto& sd = shard_data[i];
-                SethSDK vsdk(sd.node_ip, sd.node_http);
+                ShardoraSDK vsdk(sd.node_ip, sd.node_http);
                 // Query sample of user addrs (first 300)
                 std::vector<std::string> sample_users;
                 for (size_t j = 0; j < sd.user_addrs.size() && j < 300; ++j)
@@ -5571,7 +5571,7 @@ contract Exchange {
 
         // Dedicated TCP sender thread (same pattern as mode 5/6).
         // Worker threads must NOT call TcpTransport::Send directly — get_thread_index()
-        // only allows the fixed system-thread pool; overflow causes SETH_FATAL/SIGSEGV.
+        // only allows the fixed system-thread pool; overflow causes SHARDORA_FATAL/SIGSEGV.
         struct TcpSendItem7 {
             transport::MessagePtr msg;
             std::string dest_ip;
@@ -5585,7 +5585,7 @@ contract Exchange {
 
         std::thread tcp_sender7([&]() {
             // Register thread index immediately while Init/Start window still allows it.
-            // Otherwise the first Send() at Phase 5 (minutes later) hits SETH_FATAL.
+            // Otherwise the first Send() at Phase 5 (minutes later) hits SHARDORA_FATAL.
             (void)common::GlobalInfo::Instance()->get_thread_index();
             std::vector<TcpSendItem7> batch;
             batch.reserve(4096);
@@ -5701,7 +5701,7 @@ contract Exchange {
 
         // Phase 2: Send transactions
         std::cout << "\n[Phase 2] Sending transactions..." << std::endl;
-        SethSDK sdk(global_chain_node_ip, global_chain_node_http_port);
+        ShardoraSDK sdk(global_chain_node_ip, global_chain_node_http_port);
 
         std::string funder_prikey = g_prikeys[0];
         std::shared_ptr<security::Security> funder_sec = std::make_shared<security::Ecdsa>();
@@ -5755,7 +5755,7 @@ contract Exchange {
         for (uint32_t try_times = 0; try_times < 60; ++try_times) {
             for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                 auto& ep = shard_endpoints[s];
-                SethSDK shard_sdk(ep.ip, ep.http_port);
+                ShardoraSDK shard_sdk(ep.ip, ep.http_port);
                 // Use batchQueryAccounts for efficiency
                 std::vector<std::string> hex_addrs;
                 hex_addrs.reserve(shard_addrs[s].size());
@@ -5829,7 +5829,7 @@ contract Exchange {
             total_missing = 0;
             for (uint32_t s = kConsensusBegin; s <= kMaxShardId; ++s) {
                 auto& ep = shard_endpoints[s];
-                SethSDK shard_sdk(ep.ip, ep.http_port);
+                ShardoraSDK shard_sdk(ep.ip, ep.http_port);
                 std::vector<std::string> hex_addrs;
                 for (auto& addr : shard_addrs[s]) {
                     hex_addrs.push_back(common::Encode::HexEncode(addr));
@@ -5904,7 +5904,7 @@ contract Exchange {
 }
 )";
 
-        SethSDK compile_sdk(global_chain_node_ip, global_chain_node_http_port);
+        ShardoraSDK compile_sdk(global_chain_node_ip, global_chain_node_http_port);
         auto compiled7 = compile_sdk.compileSolidity(EXCHANGE_SOL_7);
         if (!compiled7.contains("bytecode") || compiled7["bytecode"].get<std::string>().empty()) {
             std::cerr << "[Phase 4] Contract compilation failed, skipping deploy phase." << std::endl;
@@ -5960,7 +5960,7 @@ contract Exchange {
                 // deployToAddress() calls fetchNonce() internally but can see stale nonce=0
                 // when the deployer account already has committed txs (e.g. from Phase 2 fund).
                 // Fetching here and passing explicitly avoids the double-increment bug.
-                SethSDK nonce_sdk7(ep.ip, ep.http_port);
+                ShardoraSDK nonce_sdk7(ep.ip, ep.http_port);
                 std::vector<int64_t> deployer_nonces(nd, 0);
                 {
                     const uint32_t kNBatch = 300;
@@ -5995,7 +5995,7 @@ contract Exchange {
                     uint32_t s2 = t * pp;
                     uint32_t e2 = (t == nt - 1) ? nd : s2 + pp;
                     dth7.emplace_back([&, s, s2, e2, ep]() {
-                        SethSDK tsdk7(ep.ip, ep.http_port);
+                        ShardoraSDK tsdk7(ep.ip, ep.http_port);
                         for (uint32_t i = s2; i < e2 && !global_stop; ++i) {
                             // find a contract address that routes to this shard
                             std::string to_address;
@@ -6063,7 +6063,7 @@ contract Exchange {
                     // query all shards for each batch (contract addr may land on any shard)
                     std::vector<bool> found(pending_addrs.size(), false);
                     for (uint32_t qs = kConsensusBegin; qs <= kMaxShardId && !global_stop; ++qs) {
-                        SethSDK qsdk(shard_endpoints[qs].ip, shard_endpoints[qs].http_port);
+                        ShardoraSDK qsdk(shard_endpoints[qs].ip, shard_endpoints[qs].http_port);
                         auto r = qsdk.batchQueryAccounts(pending_addrs);
                         if (!r.contains("accounts")) continue;
                         for (uint32_t k = 0; k < pending_addrs.size(); ++k)
@@ -6221,7 +6221,7 @@ contract Exchange {
                     }
 
                     // Batch-fetch nonces for all users on this shard
-                    SethSDK shard_sdk7(ep.ip, ep.http_port);
+                    ShardoraSDK shard_sdk7(ep.ip, ep.http_port);
                     std::unordered_map<std::string, uint64_t> user_nonces7;
                     {
                         const uint32_t kNonceBatch = 300;
@@ -6405,7 +6405,7 @@ contract Exchange {
                     uint32_t pf_ok_shard = 0, pf_resend7 = 0;
                     auto pf_t07 = std::chrono::steady_clock::now();
                     const uint32_t kPfBatch7 = 300;
-                    SethSDK pf_sdk7(ep.ip, ep.http_port);
+                    ShardoraSDK pf_sdk7(ep.ip, ep.http_port);
                     std::string dest_ip_rs = ep.ip;
                     uint16_t dest_tcp_rs = (uint16_t)(ep.http_port - 10000);
 
@@ -6654,8 +6654,8 @@ contract Exchange {
                         if (nu == 0) return;
 
                         // Fetch leaders first
-                        SethSDK csdk(ep.ip, ep.http_port);
-                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> leader_map7;
+                        ShardoraSDK csdk(ep.ip, ep.http_port);
+                        std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> leader_map7;
                         uint32_t leader_cnt7 = 0;
                         csdk.fetchLeaders(leader_map7, leader_cnt7);
 
@@ -6703,7 +6703,7 @@ contract Exchange {
                                 ep_keys[{lip, lhttp}].push_back(k);
                             }
                             for (auto& [endpoint, qkeys] : ep_keys) {
-                                SethSDK qsdk(endpoint.first, endpoint.second);
+                                ShardoraSDK qsdk(endpoint.first, endpoint.second);
                                 for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kBN) {
                                     uint32_t end = std::min(off + kBN, (uint32_t)qkeys.size());
                                     std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
@@ -6864,7 +6864,7 @@ contract Exchange {
                                     ep_keys[{lip, lhttp}].push_back(key);
                                 }
                                 for (auto& [endpoint, qkeys] : ep_keys) {
-                                    SethSDK qsdk(endpoint.first, endpoint.second);
+                                    ShardoraSDK qsdk(endpoint.first, endpoint.second);
                                     for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kBN) {
                                         uint32_t end = std::min(off + kBN, (uint32_t)qkeys.size());
                                         std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
@@ -6959,8 +6959,8 @@ contract Exchange {
                         if (nu == 0) return;
 
                         // Fetch leaders first
-                        SethSDK psdk(ep.ip, ep.http_port);
-                        std::unordered_map<uint32_t, SethSDK::LeaderInfo> pleader_map7;
+                        ShardoraSDK psdk(ep.ip, ep.http_port);
+                        std::unordered_map<uint32_t, ShardoraSDK::LeaderInfo> pleader_map7;
                         uint32_t pleader_cnt7 = 0;
                         psdk.fetchLeaders(pleader_map7, pleader_cnt7);
 
@@ -7008,7 +7008,7 @@ contract Exchange {
                                 pep_init_keys[{lip, lhttp}].push_back(k);
                             }
                             for (auto& [endpoint, qkeys] : pep_init_keys) {
-                                SethSDK qsdk(endpoint.first, endpoint.second);
+                                ShardoraSDK qsdk(endpoint.first, endpoint.second);
                                 for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kBN) {
                                     uint32_t end = std::min(off + kBN, (uint32_t)qkeys.size());
                                     std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
@@ -7171,7 +7171,7 @@ contract Exchange {
                                     pep_keys[{lip, lhttp}].push_back(key);
                                 }
                                 for (auto& [endpoint, qkeys] : pep_keys) {
-                                    SethSDK qsdk(endpoint.first, endpoint.second);
+                                    ShardoraSDK qsdk(endpoint.first, endpoint.second);
                                     for (uint32_t off = 0; off < qkeys.size() && !global_stop; off += kPBN) {
                                         uint32_t end = std::min(off + kPBN, (uint32_t)qkeys.size());
                                         std::vector<std::string> batch(qkeys.begin() + off, qkeys.begin() + end);
@@ -7342,7 +7342,7 @@ contract Exchange {
             std::cerr << "start tcp transport failed\n"; return 1;
         }
 
-        SethSDK sdk8(global_chain_node_ip, global_chain_node_http_port);
+        ShardoraSDK sdk8(global_chain_node_ip, global_chain_node_http_port);
 
         // connectivity check
         {
@@ -7621,7 +7621,7 @@ contract AMMPool {
         }
 
         // ── Token deployers — random signing keys + pre-chosen contract addrs ──
-        // Seth lets the sender choose the contract address freely via the `to`
+        // Shardora lets the sender choose the contract address freely via the `to`
         // field of a kCreateContract TX, so we pick a random 20-byte address
         // that routes to the desired shard/pool.
         struct TokenDeployer8 {
@@ -7758,7 +7758,7 @@ contract AMMPool {
         };
         std::vector<FState8> fstates8;
         {
-            SethSDK fqsdk(eps8[funder_shard].ip, eps8[funder_shard].http);
+            ShardoraSDK fqsdk(eps8[funder_shard].ip, eps8[funder_shard].http);
             for (auto& pk : uniq_funders8) {
                 FState8 fs;
                 fs.prikey = pk;
@@ -7906,7 +7906,7 @@ contract AMMPool {
 
         std::cout << "\n[Phase 2a] Verify funder nonces on-chain (max 60s)...\n";
         {
-            SethSDK vsdk8(eps8[funder_shard].ip, eps8[funder_shard].http);
+            ShardoraSDK vsdk8(eps8[funder_shard].ip, eps8[funder_shard].http);
             std::vector<std::string> faddrs8;
             for (auto& fs : fstates8) faddrs8.push_back(fs.addr_hex);
 
@@ -7969,7 +7969,7 @@ contract AMMPool {
                         return;
                     }
 
-                    SethSDK ssdk(eps8[s].ip, eps8[s].http);
+                    ShardoraSDK ssdk(eps8[s].ip, eps8[s].http);
                     bool shard_ok = false;
                     for (int rd = 0; rd < 120 && !global_stop; ++rd) {
                         auto r = ssdk.batchQueryAccounts(sample);
@@ -8010,7 +8010,7 @@ contract AMMPool {
                     if (!shard_ok) {
                         std::lock_guard<std::mutex> lk(bal_mu);
                         std::cout << "  Shard " << s << ": FATAL balance check timed out (120s)\n";
-                        SethSDK dbg(eps8[s].ip, eps8[s].http);
+                        ShardoraSDK dbg(eps8[s].ip, eps8[s].http);
                         auto r2 = dbg.batchQueryAccounts(sample);
                         for (auto& a : sample) {
                             uint64_t bal = 0;

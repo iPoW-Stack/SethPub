@@ -4,7 +4,7 @@
 
 #include "pki/pki_cl_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pkicl {
 namespace test {
 
@@ -36,4 +36,4 @@ TEST(PkiClUtils, XorStringsEqualAndDifferentLengths) {
 
 }  // namespace test
 }  // namespace pkicl
-}  // namespace seth
+}  // namespace shardora

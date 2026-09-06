@@ -6,7 +6,7 @@
 #define private public
 #include "common/limit_hash_map.h"
 
-namespace seth {
+namespace shardora {
 
 namespace common {
 
@@ -113,4 +113,4 @@ TEST_F(TestLimitHashMap, CustomMaxSizeConstructor) {
 
 }  // namespace common
 
-}  // namespace seth
+}  // namespace shardora

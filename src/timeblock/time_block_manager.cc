@@ -18,7 +18,7 @@
 #include "transport/transport_utils.h"
 #include "vss/vss_manager.h"
 
-namespace seth {
+namespace shardora {
 
 namespace timeblock {
 
@@ -60,7 +60,7 @@ void TimeBlockManager::CreateTimeBlockTx() {
     tx_info.set_amount(0);
     tx_info.set_gas_price(common::kBuildinTransactionGasPrice);
     StoreTimeblockTx(create_tm_tx_cb_(msg_ptr));
-    SETH_DEBUG("success create timeblock tx key: %s",
+    SHARDORA_DEBUG("success create timeblock tx key: %s",
         common::Encode::HexEncode(pools::GetTxKey(
             msg_ptr->address_info->addr(), 
             msg_ptr->address_info->nonce())).c_str());
@@ -78,7 +78,7 @@ bool TimeBlockManager::HasTimeblockTx(
     if (tmblock_tx_ptr != nullptr) {
         auto now_tm_us = common::TimeUtils::TimestampUs();
         // if (tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us) {
-        //     SETH_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
+        //     SHARDORA_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
         //     return nullptr;
         // }
 
@@ -101,13 +101,13 @@ bool TimeBlockManager::CheckLeaderTimeblockTxValid(
         const pools::protobuf::TxMessage& tx_item, 
         pools::CheckAddrNonceValidFunction tx_valid_func) const {
     if (!CanCallTimeBlockTx()) {
-        SETH_DEBUG("CanCallTimeBlockTx leader: %s", ProtobufToJson(tx_item).c_str());
+        SHARDORA_DEBUG("CanCallTimeBlockTx leader: %s", ProtobufToJson(tx_item).c_str());
         return false;
     }
     
     timeblock::protobuf::TimeBlock timer_block;
     if (!timer_block.ParseFromString(tx_item.value())) {
-        SETH_WARN("Failed to parse TimeBlock from tx value");
+        SHARDORA_WARN("Failed to parse TimeBlock from tx value");
         return false;
     }
 
@@ -119,20 +119,20 @@ bool TimeBlockManager::CheckLeaderTimeblockTxValid(
 
     auto tm_hash = common::Hash::keccak256(std::to_string(new_time_block_tm));
     if (tx_item.key() != tm_hash) {
-        SETH_WARN("TimeBlock key mismatch, expected: %s, actual: %s",
+        SHARDORA_WARN("TimeBlock key mismatch, expected: %s, actual: %s",
             common::Encode::HexEncode(tm_hash).c_str(),
             common::Encode::HexEncode(tx_item.key()).c_str());
         return false;
     }
 
     if (timer_block.timestamp() != new_time_block_tm && latest_time_block_height_ != 0) {
-        SETH_WARN("TimeBlock timestamp mismatch, expected: %lu, actual: %lu",
+        SHARDORA_WARN("TimeBlock timestamp mismatch, expected: %lu, actual: %lu",
             new_time_block_tm, timer_block.timestamp());
         return false;
     }
 
     if (vss_mgr_->GetConsensusFinalRandom() != timer_block.vss_random()) {
-        SETH_WARN("TimeBlock vss_random mismatch, expected: %lu, actual: %lu",
+        SHARDORA_WARN("TimeBlock vss_random mismatch, expected: %lu, actual: %lu",
             vss_mgr_->GetConsensusFinalRandom(), timer_block.vss_random());
         return false;
     }
@@ -141,14 +141,14 @@ bool TimeBlockManager::CheckLeaderTimeblockTxValid(
         pools::protobuf::kConsensusRootTimeBlock, 
         common::kGlobalPoolIndex);
     if (account_info->nonce() + 1 != timer_block.nonce()) {
-        SETH_WARN("TimeBlock nonce mismatch, expected: %lu, actual: %lu",
+        SHARDORA_WARN("TimeBlock nonce mismatch, expected: %lu, actual: %lu",
             account_info->nonce(), timer_block.nonce());
         return false;
     }
 
     uint64_t now_nonce = 0ll;
     if (tx_valid_func(*account_info, tx_item, &now_nonce) != 0) {
-        SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
+        SHARDORA_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
             now_nonce, 
             account_info->nonce());
         return false;
@@ -165,12 +165,12 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
     if (tmblock_tx_ptr != nullptr) {
         auto now_tm_us = common::TimeUtils::TimestampUs();
         if (leader && tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us) {
-            SETH_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
+            SHARDORA_DEBUG("tmblock_tx_ptr->prev_consensus_tm_us + 3000000lu > now_tm_us, is leader: %d", leader);
             return nullptr;
         }
 
         if (!CanCallTimeBlockTx()) {
-            SETH_DEBUG("CanCallTimeBlockTx leader: %d", leader);
+            SHARDORA_DEBUG("CanCallTimeBlockTx leader: %d", leader);
             return nullptr;
         }
 
@@ -194,14 +194,14 @@ pools::TxItemPtr TimeBlockManager::tmblock_tx_ptr(
         tx_info->set_nonce(account_info->nonce() + 1);
         uint64_t now_nonce = 0ll;
         if (tx_valid_func(*account_info, *tx_info, &now_nonce) != 0) {
-            SETH_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
+            SHARDORA_DEBUG("tx_valid_func failed, now_nonce: %lu, account_info nonce: %lu", 
                 now_nonce, 
                 account_info->nonce());
             return nullptr;
         }
 
         tmblock_tx_ptr->prev_consensus_tm_us = now_tm_us;
-        SETH_DEBUG("success create timeblock tx tm: %lu, vss: %lu, leader: %d, unique hash: %s, to: %s",
+        SHARDORA_DEBUG("success create timeblock tx tm: %lu, vss: %lu, leader: %d, unique hash: %s, to: %s",
             timer_block.timestamp(), timer_block.vss_random(), leader,
             common::Encode::HexEncode(tx_info->key()).c_str(),
             common::Encode::HexEncode(tx_info->to()).c_str());
@@ -223,7 +223,7 @@ void TimeBlockManager::OnTimeBlock(
         return;
     }
 
-    SETH_DEBUG("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
+    SHARDORA_DEBUG("LeaderNewTimeBlockValid height[%lu:%lu], tm[%lu:%lu], vss[%lu]",
         latest_time_block_height,
         static_cast<uint64_t>(latest_time_block_height_),
         latest_time_block_tm,
@@ -239,5 +239,5 @@ void TimeBlockManager::OnTimeBlock(
 
 }  // namespace timeblock
 
-}  // namespace seth
+}  // namespace shardora
  

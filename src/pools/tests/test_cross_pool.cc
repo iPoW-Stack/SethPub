@@ -22,7 +22,7 @@
 #include "common/global_info.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -371,4 +371,4 @@ TEST_F(TestCrossPool, CrossPoolMemoryManagement) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

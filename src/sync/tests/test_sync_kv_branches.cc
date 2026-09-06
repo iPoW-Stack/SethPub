@@ -7,7 +7,7 @@
 #include "sync/key_value_sync.h"
 #undef private
 
-namespace seth {
+namespace shardora {
 namespace sync {
 namespace test {
 
@@ -107,4 +107,4 @@ TEST(SyncKvBranches, StaticConstants) {
 
 }  // namespace test
 }  // namespace sync
-}  // namespace seth
+}  // namespace shardora

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seth AMM Multi-User Atomic Swap Demo
+Shardora AMM Multi-User Atomic Swap Demo
 ======================================
 Demonstrates that:
   1. AMM contracts deployed by the SAME account are co-located in the same
@@ -16,7 +16,7 @@ Usage:
     python amm.py --host 10.0.0.1 --port 23001
     python amm.py --users 3                    # number of trader accounts
 
-Requires: seth_sdk.py in the same directory.
+Requires: shardora_sdk.py in the same directory.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ import secrets
 import time
 
 from eth_utils import to_checksum_address
-from seth_sdk import SethWeb3Mock, StepType, compile_and_link
+from shardora_sdk import ShardoraWeb3Mock, StepType, compile_and_link
 
 # ---------------------------------------------------------------------------
 # Solidity Sources
@@ -260,21 +260,21 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
 
     # Deploy TokenA
     print("\n[1] Deploying TokenA (supply=10,000,000)...")
-    token_a = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_a = w3.shardora.contract(abi=ta_abi, bytecode=ta_bin)
     token_a.deploy({'from': deployer_addr, 'salt': salt + 'ta',
                     'args': ["TokenA", 10_000_000]}, deployer_key)
     print(f"    TokenA @ {token_a.address}")
 
     # Deploy TokenB
     print("\n[2] Deploying TokenB (supply=10,000,000)...")
-    token_b = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_b = w3.shardora.contract(abi=ta_abi, bytecode=ta_bin)
     token_b.deploy({'from': deployer_addr, 'salt': salt + 'tb',
                     'args': ["TokenB", 10_000_000]}, deployer_key)
     print(f"    TokenB @ {token_b.address}")
 
     # Deploy AMMPool
     print("\n[3] Deploying AMMPool...")
-    amm = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    amm = w3.shardora.contract(abi=pool_abi, bytecode=pool_bin)
     amm.deploy({'from': deployer_addr, 'salt': salt + 'am',
                 'args': [_ck(token_a.address), _ck(token_b.address)]}, deployer_key)
     print(f"    AMMPool @ {amm.address}")
@@ -318,7 +318,7 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     users = []  # list of (addr, key, name)
     tokens_per_user = 100_000
     user_prefund = 10_000_000
-    # Native SETH to send to each user for address creation + gas
+    # Native SHARDORA to send to each user for address creation + gas
     native_transfer_amount = 100_000_000
 
     for i in range(num_users):
@@ -330,12 +330,12 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
         print(f"\n[{name}] Address: {user_addr}")
 
         # ── Step A: Create user address on chain via native transfer ──
-        # Seth requires addresses to be registered on-chain before they
-        # can send transactions.  A native SETH transfer from an existing
+        # Shardora requires addresses to be registered on-chain before they
+        # can send transactions.  A native SHARDORA transfer from an existing
         # account triggers kRootCreateAddress on the root shard.
-        print(f"    Deployer → {name}: native transfer {native_transfer_amount} SETH "
+        print(f"    Deployer → {name}: native transfer {native_transfer_amount} SHARDORA "
               f"(creates address on chain)...")
-        receipt = w3.seth.send_transaction(
+        receipt = w3.shardora.send_transaction(
             {'to': user_addr, 'value': native_transfer_amount}, deployer_key)
         assert receipt and receipt.get('status') == 0, \
             f"Native transfer to {name} failed: {receipt}"
@@ -401,11 +401,11 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
         print(f"{'─' * 40}")
 
         # Create contract handles bound to this user's sender_address
-        user_token_a = w3.seth.contract(address=token_a.address, abi=ta_abi,
+        user_token_a = w3.shardora.contract(address=token_a.address, abi=ta_abi,
                                         sender_address=user_addr)
-        user_token_b = w3.seth.contract(address=token_b.address, abi=ta_abi,
+        user_token_b = w3.shardora.contract(address=token_b.address, abi=ta_abi,
                                         sender_address=user_addr)
-        user_amm = w3.seth.contract(address=amm.address, abi=pool_abi,
+        user_amm = w3.shardora.contract(address=amm.address, abi=pool_abi,
                                     sender_address=user_addr)
 
         # Step A: Approve AMMPool to spend user's tokens
@@ -457,11 +457,11 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
     for user_addr, user_key, name in users:
         print(f"\n  {name}: refunding prefund from TokenA, TokenB, AMMPool...")
         # Bind contract handles for refund
-        c_a = w3.seth.contract(address=token_a.address, abi=ta_abi,
+        c_a = w3.shardora.contract(address=token_a.address, abi=ta_abi,
                                sender_address=user_addr)
-        c_b = w3.seth.contract(address=token_b.address, abi=ta_abi,
+        c_b = w3.shardora.contract(address=token_b.address, abi=ta_abi,
                                sender_address=user_addr)
-        c_amm = w3.seth.contract(address=amm.address, abi=pool_abi,
+        c_amm = w3.shardora.contract(address=amm.address, abi=pool_abi,
                                  sender_address=user_addr)
         c_a.refund(user_key)
         c_b.refund(user_key)
@@ -526,7 +526,7 @@ def test_amm(w3, deployer_addr: str, deployer_key: str, num_users: int = 3):
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Seth AMM Multi-User Atomic Swap Demo")
+    parser = argparse.ArgumentParser(description="Shardora AMM Multi-User Atomic Swap Demo")
     parser.add_argument("--host", default="127.0.0.1",
                         help="Node IP (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=23001,
@@ -538,7 +538,7 @@ def main():
                         help="Number of trader accounts to create (default: 3)")
     args = parser.parse_args()
 
-    w3 = SethWeb3Mock(args.host, args.port)
+    w3 = ShardoraWeb3Mock(args.host, args.port)
     deployer_addr = w3.client.get_address(args.key)
     print(f"Node     : https://{args.host}:{args.port}")
     print(f"Deployer : {deployer_addr}")
@@ -554,7 +554,7 @@ if __name__ == "__main__":
 # ===========================================================================
 # Multi-Shard AMM Test
 # ===========================================================================
-# Demonstrates that Seth's sharding architecture solves the concurrency
+# Demonstrates that Shardora's sharding architecture solves the concurrency
 # bottleneck of single-pool AMMs:
 #
 #   6 tokens: A, B, C, D, E, F
@@ -608,19 +608,19 @@ def _deploy_pair(w3, pair_deployer_addr, pair_deployer_key, salt_prefix,
     salt = salt_prefix
 
     print(f"\n  Deploying Token{tok_x} (supply={supply})...")
-    token_x = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_x = w3.shardora.contract(abi=ta_abi, bytecode=ta_bin)
     token_x.deploy({'from': pair_deployer_addr, 'salt': salt + tok_x,
                     'args': [f"Token{tok_x}", supply]}, pair_deployer_key)
     print(f"    Token{tok_x} @ {token_x.address}")
 
     print(f"  Deploying Token{tok_y} (supply={supply})...")
-    token_y = w3.seth.contract(abi=ta_abi, bytecode=ta_bin)
+    token_y = w3.shardora.contract(abi=ta_abi, bytecode=ta_bin)
     token_y.deploy({'from': pair_deployer_addr, 'salt': salt + tok_y,
                     'args': [f"Token{tok_y}", supply]}, pair_deployer_key)
     print(f"    Token{tok_y} @ {token_y.address}")
 
     print(f"  Deploying Pool_{tok_x}{tok_y}...")
-    pool = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    pool = w3.shardora.contract(abi=pool_abi, bytecode=pool_bin)
     pool.deploy({'from': pair_deployer_addr, 'salt': salt + tok_x + tok_y,
                  'args': [_ck(token_x.address), _ck(token_y.address)]}, pair_deployer_key)
     print(f"    Pool_{tok_x}{tok_y} @ {pool.address}")
@@ -656,7 +656,7 @@ def _fund_user_for_pair(w3, deployer_key, deployer_addr,
     user_ck = _ck(user_addr)
 
     # Native transfer to create address on chain
-    r = w3.seth.send_transaction({'to': user_addr, 'value': native_amount}, deployer_key)
+    r = w3.shardora.send_transaction({'to': user_addr, 'value': native_amount}, deployer_key)
     assert r and r.get('status') == 0, f"Native transfer to {name} failed"
     _wait_account_exists(w3.client, user_addr, name)
 
@@ -669,9 +669,9 @@ def _fund_user_for_pair(w3, deployer_key, deployer_addr,
     _wait_balance(token_y, user_ck, tokens_per_user)
 
     # Prefund on all 3 contracts
-    cx = w3.seth.contract(address=token_x.address, abi=ta_abi, sender_address=user_addr)
-    cy = w3.seth.contract(address=token_y.address, abi=ta_abi, sender_address=user_addr)
-    cp = w3.seth.contract(address=pool.address, abi=pool_abi, sender_address=user_addr)
+    cx = w3.shardora.contract(address=token_x.address, abi=ta_abi, sender_address=user_addr)
+    cy = w3.shardora.contract(address=token_y.address, abi=ta_abi, sender_address=user_addr)
+    cp = w3.shardora.contract(address=pool.address, abi=pool_abi, sender_address=user_addr)
     cx.prefund(user_prefund, user_key)
     cy.prefund(user_prefund, user_key)
     cp.prefund(user_prefund, user_key)
@@ -688,9 +688,9 @@ def _swap_on_pool(w3, user_addr, user_key, name,
                   swap_in: int, direction: str = "XtoY"):
     """Execute a swap on a pool and assert success."""
     user_ck = _ck(user_addr)
-    cx = w3.seth.contract(address=token_x.address, abi=ta_abi, sender_address=user_addr)
-    cy = w3.seth.contract(address=token_y.address, abi=ta_abi, sender_address=user_addr)
-    cp = w3.seth.contract(address=pool.address, abi=pool_abi, sender_address=user_addr)
+    cx = w3.shardora.contract(address=token_x.address, abi=ta_abi, sender_address=user_addr)
+    cy = w3.shardora.contract(address=token_y.address, abi=ta_abi, sender_address=user_addr)
+    cp = w3.shardora.contract(address=pool.address, abi=pool_abi, sender_address=user_addr)
 
     approve_amt = swap_in * 2
     cx.functions.approve(_ck(pool.address), approve_amt).transact(user_key)
@@ -768,8 +768,8 @@ def test_multi_shard_amm(w3, deployer_addr: str, deployer_key: str):
     # Fund pair deployers from the master deployer
     native_seed = 500_000_000
     for addr, label in [(addr_ab, "deployer_AB"), (addr_cd, "deployer_CD"), (addr_bc, "deployer_BC")]:
-        print(f"  Seeding {label} ({addr[:16]}...) with {native_seed} SETH...")
-        r = w3.seth.send_transaction({'to': addr, 'value': native_seed}, deployer_key)
+        print(f"  Seeding {label} ({addr[:16]}...) with {native_seed} SHARDORA...")
+        r = w3.shardora.send_transaction({'to': addr, 'value': native_seed}, deployer_key)
         assert r and r.get('status') == 0, f"Seed {label} failed"
         _wait_account_exists(w3.client, addr, label)
         print(f"    ✅ {label} on-chain")
@@ -935,8 +935,8 @@ def test_multi_shard_amm(w3, deployer_addr: str, deployer_key: str):
 
     # Attempt swap with minOut = 999_999_999 (impossible)
     user_ck1 = _ck(addr_u1)
-    cx_u1_ab = w3.seth.contract(address=tok_a.address, abi=ta_abi, sender_address=addr_u1)
-    cp_u1_ab2 = w3.seth.contract(address=pool_ab.address, abi=pool_abi, sender_address=addr_u1)
+    cx_u1_ab = w3.shardora.contract(address=tok_a.address, abi=ta_abi, sender_address=addr_u1)
+    cp_u1_ab2 = w3.shardora.contract(address=pool_ab.address, abi=pool_abi, sender_address=addr_u1)
     cx_u1_ab.functions.approve(_ck(pool_ab.address), 20_000).transact(key_u1)
 
     r_fail = cp_u1_ab2.functions.swapAForB(1_000, 999_999_999).transact(key_u1)
@@ -960,7 +960,7 @@ def test_multi_shard_amm(w3, deployer_addr: str, deployer_key: str):
         (addr_u3, key_u3, [(tok_b2, ta_abi), (tok_c2, ta_abi), (pool_bc, pool_abi)], "User3"),
     ]:
         for (contract, abi) in contracts:
-            c = w3.seth.contract(address=contract.address, abi=abi, sender_address=user_addr)
+            c = w3.shardora.contract(address=contract.address, abi=abi, sender_address=user_addr)
             c.refund(user_key)
         print(f"  ✅ {label} refunded")
 
@@ -1102,7 +1102,7 @@ contract BridgeToken {
 
 
 def _decode_output(receipt):
-    """Extract and decode the output from a Seth receipt (base64 or hex)."""
+    """Extract and decode the output from a Shardora receipt (base64 or hex)."""
     output_raw = receipt.get('output', '')
     if not output_raw:
         return b''
@@ -1145,7 +1145,7 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
 
     for addr, label in [(addr_x, "deployer_X"), (addr_y, "deployer_Y")]:
         print(f"  Funding {label}...")
-        r = w3.seth.send_transaction({'to': addr, 'value': 500_000_000}, deployer_key)
+        r = w3.shardora.send_transaction({'to': addr, 'value': 500_000_000}, deployer_key)
         assert r and r.get('status') == 0
         _wait_account_exists(w3.client, addr, label)
 
@@ -1154,11 +1154,11 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
 
     # Shard X: TokenA, TokenB, Pool_AB
     print(f"\n  [Shard X] Deploying TokenA, TokenB, Pool_AB...")
-    tok_a = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_a = w3.shardora.contract(abi=bt_abi, bytecode=bt_bin)
     tok_a.deploy({'from': addr_x, 'salt': salt_x + 'ta', 'args': ["TokenA", 5_000_000]}, key_x)
-    tok_b = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_b = w3.shardora.contract(abi=bt_abi, bytecode=bt_bin)
     tok_b.deploy({'from': addr_x, 'salt': salt_x + 'tb', 'args': ["TokenB", 5_000_000]}, key_x)
-    pool_ab = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    pool_ab = w3.shardora.contract(abi=pool_abi, bytecode=pool_bin)
     pool_ab.deploy({'from': addr_x, 'salt': salt_x + 'pab',
                     'args': [_ck(tok_a.address), _ck(tok_b.address)]}, key_x)
     print(f"    TokenA @ {tok_a.address}")
@@ -1167,11 +1167,11 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
 
     # Shard Y: TokenB2, TokenC, Pool_BC
     print(f"\n  [Shard Y] Deploying TokenB2, TokenC, Pool_BC...")
-    tok_b2 = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_b2 = w3.shardora.contract(abi=bt_abi, bytecode=bt_bin)
     tok_b2.deploy({'from': addr_y, 'salt': salt_y + 'tb2', 'args': ["TokenB2", 5_000_000]}, key_y)
-    tok_c = w3.seth.contract(abi=bt_abi, bytecode=bt_bin)
+    tok_c = w3.shardora.contract(abi=bt_abi, bytecode=bt_bin)
     tok_c.deploy({'from': addr_y, 'salt': salt_y + 'tc', 'args': ["TokenC", 5_000_000]}, key_y)
-    pool_bc = w3.seth.contract(abi=pool_abi, bytecode=pool_bin)
+    pool_bc = w3.shardora.contract(abi=pool_abi, bytecode=pool_bin)
     pool_bc.deploy({'from': addr_y, 'salt': salt_y + 'pbc',
                     'args': [_ck(tok_b2.address), _ck(tok_c.address)]}, key_y)
     print(f"    TokenB2 @ {tok_b2.address}")
@@ -1212,7 +1212,7 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
     user_key = secrets.token_hex(32)
     user_addr = w3.client.get_address(user_key)
     user_ck = _ck(user_addr)
-    w3.seth.send_transaction({'to': user_addr, 'value': 200_000_000}, deployer_key)
+    w3.shardora.send_transaction({'to': user_addr, 'value': 200_000_000}, deployer_key)
     _wait_account_exists(w3.client, user_addr, "User")
 
     # Give user some TokenA
@@ -1223,19 +1223,19 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
     # User prefunds on all contracts they'll interact with
     user_pf = 10_000_000
     for c in [tok_a, tok_b, pool_ab]:
-        uc = w3.seth.contract(address=c.address, abi=bt_abi, sender_address=user_addr)
+        uc = w3.shardora.contract(address=c.address, abi=bt_abi, sender_address=user_addr)
         uc.prefund(user_pf, user_key)
         _wait_prefund(uc, user_addr, user_pf)
     # Also prefund on Pool_AB with pool_abi
-    uc_pool = w3.seth.contract(address=pool_ab.address, abi=pool_abi, sender_address=user_addr)
+    uc_pool = w3.shardora.contract(address=pool_ab.address, abi=pool_abi, sender_address=user_addr)
     uc_pool.prefund(user_pf, user_key)
     _wait_prefund(uc_pool, user_addr, user_pf)
 
     for c in [tok_b2, tok_c, pool_bc]:
-        uc = w3.seth.contract(address=c.address, abi=bt_abi, sender_address=user_addr)
+        uc = w3.shardora.contract(address=c.address, abi=bt_abi, sender_address=user_addr)
         uc.prefund(user_pf, user_key)
         _wait_prefund(uc, user_addr, user_pf)
-    uc_pool_bc = w3.seth.contract(address=pool_bc.address, abi=pool_abi, sender_address=user_addr)
+    uc_pool_bc = w3.shardora.contract(address=pool_bc.address, abi=pool_abi, sender_address=user_addr)
     uc_pool_bc.prefund(user_pf, user_key)
     _wait_prefund(uc_pool_bc, user_addr, user_pf)
     print(f"    User prefunded on all contracts")
@@ -1243,15 +1243,15 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
     # ── Phase 4: Swap A→B on Shard X ──────────────────────────────────────
     print("\n--- Phase 4: Swap A→B on Pool_AB (Shard X) ---")
     swap_amount = 10_000
-    u_tok_a = w3.seth.contract(address=tok_a.address, abi=bt_abi, sender_address=user_addr)
-    u_pool_ab = w3.seth.contract(address=pool_ab.address, abi=pool_abi, sender_address=user_addr)
+    u_tok_a = w3.shardora.contract(address=tok_a.address, abi=bt_abi, sender_address=user_addr)
+    u_pool_ab = w3.shardora.contract(address=pool_ab.address, abi=pool_abi, sender_address=user_addr)
     u_tok_a.functions.approve(_ck(pool_ab.address), swap_amount * 2).transact(user_key)
     r = u_pool_ab.functions.swapAForB(swap_amount, 0).transact(user_key)
     assert r.get('status') == 0
     print(f"    Swapped {swap_amount} A → B")
 
     # Check user's TokenB balance
-    u_tok_b = w3.seth.contract(address=tok_b.address, abi=bt_abi, sender_address=user_addr)
+    u_tok_b = w3.shardora.contract(address=tok_b.address, abi=bt_abi, sender_address=user_addr)
     bal_b = u_tok_b.functions.balanceOf(user_ck).call()[0]
     print(f"    User TokenB balance: {bal_b}")
     assert bal_b > 0, "No TokenB received from swap"
@@ -1291,7 +1291,7 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
     mint_to_addr = "0x" + mint_to[-20:].hex()
     print(f"    Minting {mint_amount} TokenB2 to {mint_to_addr}")
 
-    u_tok_b2 = w3.seth.contract(address=tok_b2.address, abi=bt_abi, sender_address=user_addr)
+    u_tok_b2 = w3.shardora.contract(address=tok_b2.address, abi=bt_abi, sender_address=user_addr)
     r = u_tok_b2.functions.mint(mint_to_addr, mint_amount).transact(user_key)
     assert r.get('status') == 0
     print(f"    Minted {mint_amount} TokenB2")
@@ -1307,7 +1307,7 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
     assert r.get('status') == 0
     print(f"    Swapped {bal_b2} B2 → C")
 
-    u_tok_c = w3.seth.contract(address=tok_c.address, abi=bt_abi, sender_address=user_addr)
+    u_tok_c = w3.shardora.contract(address=tok_c.address, abi=bt_abi, sender_address=user_addr)
     bal_c = u_tok_c.functions.balanceOf(user_ck).call()[0]
     print(f"    User TokenC balance: {bal_c}")
     assert bal_c > 0, "No TokenC received"
@@ -1326,7 +1326,7 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
   Step 5: User swapped {bal_b2} TokenB2 → {bal_c} TokenC on Pool_BC (Shard Y)       [atomic]
 
   Each step is individually ATOMIC (EVM REVERT on failure).
-  The cross-shard relay (Step 3) is a standard Seth transaction.
+  The cross-shard relay (Step 3) is a standard Shardora transaction.
   Total: {swap_amount} TokenA → {bal_c} TokenC across two shards.
 """)
 
@@ -1337,7 +1337,7 @@ def test_cross_shard_amm_swap(w3, deployer_addr: str, deployer_key: str):
 
 def main_multi():
     parser = argparse.ArgumentParser(
-        description="Seth Multi-Shard AMM Demo — parallel pools + cross-shard swap")
+        description="Shardora Multi-Shard AMM Demo — parallel pools + cross-shard swap")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=23001)
     parser.add_argument("--key",
@@ -1349,7 +1349,7 @@ def main_multi():
                         help="Number of trader accounts for single-pool test")
     args = parser.parse_args()
 
-    w3 = SethWeb3Mock(args.host, args.port)
+    w3 = ShardoraWeb3Mock(args.host, args.port)
     deployer_addr = w3.client.get_address(args.key)
     print(f"Node     : https://{args.host}:{args.port}")
     print(f"Deployer : {deployer_addr}")

@@ -12,7 +12,7 @@
 #include "protos/view_block.pb.h"
 #include "pools/tx_utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace block {
     class AccountManager;
@@ -128,4 +128,4 @@ private:
 
 };  // namespace pools
 
-};  // namespace seth
+};  // namespace shardora

@@ -47,14 +47,14 @@
 #include "transport/processor.h"
 #include "transport/tcp_transport.h"
 #include "transport/transport_utils.h"
-#include "sethvm/execution.h"
+#include "shardoravm/execution.h"
 #include "common/defer.h"
 
-namespace seth {
+namespace shardora {
 
 namespace init {
 
-static const std::string kDefaultConfigPath("./conf/seth.conf");
+static const std::string kDefaultConfigPath("./conf/shardora.conf");
 static const uint32_t kDefaultBufferSize = 1024u * 1024u;
 static const std::string kInitJoinWaitingPoolDbKey = "__kInitJoinWaitingPoolDbKey";
 
@@ -65,7 +65,7 @@ NetworkInit::~NetworkInit() {
 }
 
 int NetworkInit::Init(int argc, char** argv) {
-    SETH_DEBUG("init 0 0");
+    SHARDORA_DEBUG("init 0 0");
     auto b_time = common::TimeUtils::TimestampMs();
     if (inited_) {
         INIT_ERROR("network inited!");
@@ -88,7 +88,7 @@ int NetworkInit::Init(int argc, char** argv) {
         
         // Initialize minimal components needed for HTTP server
         std::string db_path = "./db";
-        conf_.Get("seth", "db_path", db_path);
+        conf_.Get("shardora", "db_path", db_path);
         db_ = std::make_shared<db::Db>();
         if (!db_->Init(db_path)) {
             INIT_ERROR("init db failed!");
@@ -120,7 +120,7 @@ int NetworkInit::Init(int argc, char** argv) {
     }
 
     std::string db_path = "./db";
-    conf_.Get("seth", "db_path", db_path);
+    conf_.Get("shardora", "db_path", db_path);
     if (!db_) {
         db_ = std::make_shared<db::Db>();
         if (!db_->Init(db_path)) {
@@ -133,7 +133,7 @@ int NetworkInit::Init(int argc, char** argv) {
     if (!prefix_db_) {
         prefix_db_ = std::make_shared<protos::PrefixDb>(db_);
     }
-    SETH_DEBUG("init 0 1");
+    SHARDORA_DEBUG("init 0 1");
     contract_mgr_ = std::make_shared<contract::ContractManager>();
     contract_mgr_->Init(security_);
     common::ParserArgs parser_arg;
@@ -156,10 +156,10 @@ int NetworkInit::Init(int argc, char** argv) {
     }    
 
     // uint32_t ws_server = 0;
-    // conf_.Get("seth", "ws_server", ws_server);
+    // conf_.Get("shardora", "ws_server", ws_server);
     // if (ws_server > 0) {
     //     if (ws_server_.Init(prefix_db_, security_, &net_handler_) != kInitSuccess) {
-    //         SETH_ERROR("init ws server failed!");
+    //         SHARDORA_ERROR("init ws server failed!");
     //         return kInitError;
     //     }
     // }
@@ -167,11 +167,11 @@ int NetworkInit::Init(int argc, char** argv) {
     // random number
     vss_mgr_ = std::make_shared<vss::VssManager>();
     kv_sync_ = std::make_shared<sync::KeyValueSync>();
-    SETH_DEBUG("init 0 4");
+    SHARDORA_DEBUG("init 0 4");
     InitLocalNetworkId();
     if (common::GlobalInfo::Instance()->network_id() == common::kInvalidUint32) {
         uint32_t config_net_id = 0;
-        if (conf_.Get("seth", "net_id", config_net_id) &&
+        if (conf_.Get("shardora", "net_id", config_net_id) &&
                 config_net_id >= network::kRootCongressNetworkId && 
                 config_net_id <= network::kConsensusShardEndNetworkId) {
             common::GlobalInfo::Instance()->set_network_id(
@@ -182,29 +182,29 @@ int NetworkInit::Init(int argc, char** argv) {
         }
     }
 
-    SETH_DEBUG("id: %s, init sharding id: %u",
+    SHARDORA_DEBUG("id: %s, init sharding id: %u",
         common::Encode::HexEncode(security_->GetAddress()).c_str(),
         common::GlobalInfo::Instance()->network_id());
-    SETH_DEBUG("init 0 5");
+    SHARDORA_DEBUG("init 0 5");
     if (net_handler_.Init(db_, security_) != transport::kTransportSuccess) {
         return kInitError;
     }
 
-    SETH_DEBUG("init 0 6");
-    SETH_DEBUG("init 0 7");
+    SHARDORA_DEBUG("init 0 6");
+    SHARDORA_DEBUG("init 0 7");
     int transport_res = transport::TcpTransport::Instance()->Init(
         common::GlobalInfo::Instance()->config_local_ip() + ":" +
         std::to_string(common::GlobalInfo::Instance()->config_local_port()),
         128,
         true,
         &net_handler_);
-    SETH_DEBUG("init 0 8");
+    SHARDORA_DEBUG("init 0 8");
     if (transport_res != transport::kTransportSuccess) {
         INIT_ERROR("int tcp transport failed!");
         return kInitError;
     }
 
-    SETH_DEBUG("init 0 9");
+    SHARDORA_DEBUG("init 0 9");
     network::DhtManager::Instance();
     network::Route::Instance()->Init(security_);
     network::Route::Instance()->RegisterMessage(
@@ -215,7 +215,7 @@ int NetworkInit::Init(int argc, char** argv) {
         std::bind(&NetworkInit::HandleMessage, this, std::placeholders::_1));
     account_mgr_ = std::make_shared<block::AccountManager>();
     network::UniversalManager::Instance()->Init(security_, db_, account_mgr_);
-    SETH_DEBUG("init 0 10");
+    SHARDORA_DEBUG("init 0 10");
     if (InitNetworkSingleton() != kInitSuccess) {
         INIT_ERROR("InitNetworkSingleton failed!");
         return kInitError;
@@ -236,7 +236,7 @@ int NetworkInit::Init(int argc, char** argv) {
     pools_mgr_ = std::make_shared<pools::TxPoolManager>(
         security_, db_, kv_sync_, account_mgr_, hotstuff_mgr_);
     account_mgr_->Init(db_, pools_mgr_);
-    sethvm::Execution::Instance()->Init(db_);
+    shardoravm::Execution::Instance()->Init(db_);
     auto new_db_cb = std::bind(
         &NetworkInit::DbNewBlockCallback,
         this,
@@ -273,7 +273,7 @@ int NetworkInit::Init(int argc, char** argv) {
         return kInitError;
     }
 
-    SETH_WARN("init hotstuff_mgr_ success.");
+    SHARDORA_WARN("init hotstuff_mgr_ success.");
     kv_sync_->Init(
         block_mgr_,
         hotstuff_mgr_,
@@ -281,15 +281,15 @@ int NetworkInit::Init(int argc, char** argv) {
         db_,
         std::bind(&consensus::HotstuffManager::VerifySyncedViewBlock,
             hotstuff_mgr_, std::placeholders::_1));
-    SETH_WARN("init kv_sync_ success.");
+    SHARDORA_WARN("init kv_sync_ success.");
     tm_block_mgr_->Init(vss_mgr_,account_mgr_);
-    SETH_WARN("init tm_block_mgr_ success.");
+    SHARDORA_WARN("init tm_block_mgr_ success.");
     if (elect_mgr_->Init() != elect::kElectSuccess) {
         INIT_ERROR("init elect manager failed!");
         return kInitError;
     }
 
-    SETH_WARN("init elect_mgr_ success.");
+    SHARDORA_WARN("init elect_mgr_ success.");
     if (common::GlobalInfo::Instance()->network_id() != common::kInvalidUint32 &&
             common::GlobalInfo::Instance()->network_id() >= network::kConsensusShardEndNetworkId) {
         if (elect_mgr_->Join(
@@ -300,7 +300,7 @@ int NetworkInit::Init(int argc, char** argv) {
         }
     }
 
-    SETH_WARN("init shard_statistic_ success.");
+    SHARDORA_WARN("init shard_statistic_ success.");
     block_mgr_->LoadLatestBlocks();
     RegisterFirewallCheck();
     if (shard_statistic_->Init() != pools::kPoolsSuccess) {
@@ -308,11 +308,11 @@ int NetworkInit::Init(int argc, char** argv) {
     }
 
     hotstuff_mgr_->Start(); // The above should be placed in the hotstuff instance initialization and receive the genesis block
-    SETH_WARN("init hotstuff_mgr_ start success.");
+    SHARDORA_WARN("init hotstuff_mgr_ start success.");
     AddCmds();
     net_handler_.Start();
     transport::TcpTransport::Instance()->Start(false);
-    SETH_DEBUG("init 6");
+    SHARDORA_DEBUG("init 6");
     if (InitHttpServer() != kInitSuccess) {
         INIT_ERROR("InitHttpServer failed!");
         return kInitError;
@@ -323,17 +323,17 @@ int NetworkInit::Init(int argc, char** argv) {
         // return kInitError;
     }
 
-    SETH_DEBUG("init 7");
+    SHARDORA_DEBUG("init 7");
     if (InitCommand() != kInitSuccess) {
         INIT_ERROR("InitCommand failed!");
         return kInitError;
     }
 
-    SETH_DEBUG("init 8");
+    SHARDORA_DEBUG("init 8");
     JoinInitNodes();
     inited_ = true;
     common::GlobalInfo::Instance()->set_main_inited_success();
-    SETH_DEBUG("init 9");
+    SHARDORA_DEBUG("init 9");
     cmd_.AddCommand("gs", [this](const std::vector<std::string>& args) {
         if (args.size() < 3) {
             return;
@@ -361,10 +361,10 @@ int NetworkInit::Init(int argc, char** argv) {
 
 int NetworkInit::InitWsServer() {
     // int32_t ws_server = 0;
-    // conf_.Get("seth", "ws_server", ws_server);
+    // conf_.Get("shardora", "ws_server", ws_server);
     // if (ws_server > 0) {
     //     if (ws_server_.Init(prefix_db_, security_, &net_handler_) != kInitSuccess) {
-    //         SETH_ERROR("init ws server failed!");
+    //         SHARDORA_ERROR("init ws server failed!");
     //         return kInitError;
     //     }
 
@@ -399,9 +399,9 @@ int NetworkInit::InitWsServer() {
     // Start the tx-subscription WebSocket service.
     std::string ws_ip = "0.0.0.0";
     uint16_t ws_port = 0;
-    conf_.Get("seth", "tx_ws_ip", ws_ip);
-    conf_.Get("seth", "tx_ws_port", ws_port);
-    SETH_DEBUG("now init tx ws server: %d", ws_port);
+    conf_.Get("shardora", "tx_ws_ip", ws_ip);
+    conf_.Get("shardora", "tx_ws_port", ws_port);
+    SHARDORA_DEBUG("now init tx ws server: %d", ws_port);
     if (ws_port > 0) {
         if (tx_ws_server_.Init(ws_ip, ws_port) != 0) {
             INIT_ERROR("[TxWsServer] init failed on %s:%u", ws_ip.c_str(), ws_port);
@@ -412,7 +412,7 @@ int NetworkInit::InitWsServer() {
             [this](const std::string& tx_hash_hex, transport::MessageHandleStatus status) {
                 tx_ws_server_.OnTxStatusChange(tx_hash_hex, status);
             });
-        SETH_DEBUG("[TxWsServer] tx subscription websocket started on %s:%u", ws_ip.c_str(), ws_port);
+        SHARDORA_DEBUG("[TxWsServer] tx subscription websocket started on %s:%u", ws_ip.c_str(), ws_port);
     }
 
     return kInitSuccess;
@@ -468,7 +468,7 @@ int NetworkInit::FirewallCheckMessage(transport::MessagePtr& msg_ptr) {
 }
 
 void NetworkInit::HandleMessage(const transport::MessagePtr& msg_ptr) {
-    // SETH_DEBUG("common::kPoolTimerMessage coming.");
+    // SHARDORA_DEBUG("common::kPoolTimerMessage coming.");
     if (msg_ptr->header.type() == common::kPoolTimerMessage) {
         ADD_DEBUG_PROCESS_TIMESTAMP();
         HandleNewBlock();
@@ -486,7 +486,7 @@ bool NetworkInit::InitLocalNetworkIdWithLatestElectBlock() {
             i < network::kConsensusShardEndNetworkId; ++i) {
         elect::protobuf::ElectBlock elect_block;
         if (!prefix_db_->GetHavePrevlatestElectBlock(i, &elect_block)) {
-            SETH_ERROR("get elect latest block failed: %u", i);
+            SHARDORA_ERROR("get elect latest block failed: %u", i);
             break;
         }
 
@@ -512,7 +512,7 @@ void NetworkInit::InitLocalNetworkId() {
         auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
         if (local_node_account_info == nullptr) {
             if (!InitLocalNetworkIdWithLatestElectBlock()) {
-                SETH_DEBUG("failed get local account info id: %s",
+                SHARDORA_DEBUG("failed get local account info id: %s",
                     common::Encode::HexEncode(security_->GetAddress()).c_str());
                 return;
             }
@@ -525,25 +525,25 @@ void NetworkInit::InitLocalNetworkId() {
         }
 
         prefix_db_->SaveJoinShard(got_sharding_id, des_sharding_id_);
-        SETH_DEBUG("success save local sharding %u, %u", got_sharding_id, des_sharding_id_);
+        SHARDORA_DEBUG("success save local sharding %u, %u", got_sharding_id, des_sharding_id_);
     }
 
     for (uint32_t sharding_id = network::kRootCongressNetworkId;
             sharding_id < network::kConsensusShardEndNetworkId; ++sharding_id) {
         elect::protobuf::ElectBlock elect_block;
         if (!prefix_db_->GetLatestElectBlock(sharding_id, &elect_block)) {
-            SETH_WARN("get latest elect block failed: %u", sharding_id);
+            SHARDORA_WARN("get latest elect block failed: %u", sharding_id);
             break;
         }
 
         auto& in = elect_block.in();
         for (int32_t member_idx = 0; member_idx < in.size(); ++member_idx) {
             auto id = security_->GetAddressWithPublicKey(in[member_idx].pubkey());
-            SETH_DEBUG("network: %d get member id: %s, local id: %s",
+            SHARDORA_DEBUG("network: %d get member id: %s, local id: %s",
                 sharding_id, common::Encode::HexEncode(id).c_str(),
                 common::Encode::HexEncode(security_->GetAddress()).c_str()); // If the pubkey of this node is the same as the one recorded in the elect block, it will be assigned to the corresponding sharding
             if (id == security_->GetAddress()) {
-                SETH_DEBUG("should join network: %u", sharding_id);
+                SHARDORA_DEBUG("should join network: %u", sharding_id);
                 des_sharding_id_ = sharding_id;
                 common::GlobalInfo::Instance()->set_network_id(sharding_id);
                 break;
@@ -557,18 +557,18 @@ void NetworkInit::InitLocalNetworkId() {
 
     auto waiting_network_id = got_sharding_id + network::kConsensusWaitingShardOffset;
     common::GlobalInfo::Instance()->set_network_id(waiting_network_id);
-    SETH_DEBUG("should join waiting network: %u", waiting_network_id);
+    SHARDORA_DEBUG("should join waiting network: %u", waiting_network_id);
 }
 
 int NetworkInit::InitSecurity() {
     std::string prikey;
-    if (!conf_.Get("seth", "prikey", prikey) || prikey.empty()) {
+    if (!conf_.Get("shardora", "prikey", prikey) || prikey.empty()) {
         INIT_WARN("Private key is empty or not found in config, waiting for UpdatePrivateKey...");
         // Return a special status to indicate we need to wait for private key update
         return kInitWaitingForPrivateKey;
     }
-    SETH_DEBUG("prikey1: %s", prikey.c_str());
-    SETH_DEBUG("prikey2: %s", common::Encode::HexEncode(common::Encode::HexDecode(prikey)).c_str());
+    SHARDORA_DEBUG("prikey1: %s", prikey.c_str());
+    SHARDORA_DEBUG("prikey2: %s", common::Encode::HexEncode(common::Encode::HexDecode(prikey)).c_str());
 
     security_ = std::make_shared<security::Ecdsa>();
     auto bytes_prikey = common::Encode::HexDecode(prikey);
@@ -596,14 +596,14 @@ int NetworkInit::InitSecurity() {
 }
 
 int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
-    SETH_DEBUG("Updating private key...");
+    SHARDORA_DEBUG("Updating private key...");
     if (http_private_key_inited_) {
-        SETH_ERROR("Private key already inited!");
+        SHARDORA_ERROR("Private key already inited!");
         return kInitError;
     }
 
     if (new_private_key.empty()) {
-        SETH_ERROR("New private key is empty!");
+        SHARDORA_ERROR("New private key is empty!");
         return kInitError;
     }
     
@@ -614,20 +614,20 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     if (new_private_key.size() == security::kPrivateKeySize) {
         // Raw private key (32 bytes)
         if (new_security->SetPrivateKey(new_private_key) != security::kSecuritySuccess) { 
-            SETH_ERROR("Failed to set new private key (raw format)!");
+            SHARDORA_ERROR("Failed to set new private key (raw format)!");
             return kInitError;
         }
     } else {
         // Encrypted private key, needs decryption first
         if (security::KeyManager::Instance().Initialize(new_private_key) != security::kSecuritySuccess) {
-            SETH_ERROR("Failed to initialize KeyManager with new private key!");
+            SHARDORA_ERROR("Failed to initialize KeyManager with new private key!");
             return kInitError;
         }
 
         if (new_security->SetPrivateKey(
                 (const char*)security::KeyManager::Instance().GetProtectedKey(), 
                 security::KeyManager::Instance().GetKeyLength()) != security::kSecuritySuccess) { 
-            SETH_ERROR("Failed to set new private key (encrypted format)!");
+            SHARDORA_ERROR("Failed to set new private key (encrypted format)!");
             return kInitError;
         }
     }
@@ -640,20 +640,20 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     
     if (!is_initial_setup) {
         std::string old_address = security_->GetAddress();
-        SETH_DEBUG("Private key update: old address: %s, new address: %s",
+        SHARDORA_DEBUG("Private key update: old address: %s, new address: %s",
             common::Encode::HexEncode(old_address).c_str(),
             common::Encode::HexEncode(new_address).c_str());
     } else {
-        SETH_DEBUG("Initial private key setup: new address: %s",
+        SHARDORA_DEBUG("Initial private key setup: new address: %s",
             common::Encode::HexEncode(new_address).c_str());
     }
     
     // // Update private key in configuration file (for persistence)
     // std::string prikey_hex = common::Encode::HexEncode(new_private_key);
-    // if (conf_.Set("seth", "prikey", prikey_hex)) {
-    //     SETH_DEBUG("Configuration updated with new private key");
+    // if (conf_.Set("shardora", "prikey", prikey_hex)) {
+    //     SHARDORA_DEBUG("Configuration updated with new private key");
     // } else {
-    //     SETH_ERROR("Failed to update configuration with new private key");
+    //     SHARDORA_ERROR("Failed to update configuration with new private key");
     //     return kInitError;
     // }
     
@@ -661,7 +661,7 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     if (is_initial_setup) {
         // For initial setup, just notify the waiting thread
         // The security_ object will be properly initialized by InitSecurity() after wait returns
-        SETH_DEBUG("Private key received for initial setup");
+        SHARDORA_DEBUG("Private key received for initial setup");
         
         // Notify waiting thread that private key has been received
         {
@@ -678,9 +678,9 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
     // These components will automatically use the updated security_ pointer
     // since they hold shared_ptr references to it.
     
-    SETH_DEBUG("Security object updated with new private key");
+    SHARDORA_DEBUG("Security object updated with new private key");
     
-    SETH_DEBUG("Private key updated successfully! New address: %s",
+    SHARDORA_DEBUG("Private key updated successfully! New address: %s",
         common::Encode::HexEncode(new_address).c_str());
     
     return kInitSuccess;
@@ -689,8 +689,8 @@ int NetworkInit::UpdatePrivateKey(const std::string& new_private_key) {
 int NetworkInit::InitHttpServerForPrivateKeyWait() {
     std::string http_ip = "0.0.0.0";
     uint16_t http_port = 0;
-    conf_.Get("seth", "http_ip", http_ip);
-    if (!conf_.Get("seth", "http_port", http_port) || http_port == 0) {
+    conf_.Get("shardora", "http_ip", http_ip);
+    if (!conf_.Get("shardora", "http_port", http_port) || http_port == 0) {
         INIT_ERROR("HTTP port not configured, cannot wait for private key update!");
         return kInitError;
     }
@@ -719,7 +719,7 @@ int NetworkInit::InitHttpServerForPrivateKeyWait() {
         http_port);
     
     std::this_thread::sleep_for(std::chrono::milliseconds{200});
-    SETH_DEBUG("HTTP server initialized for private key waiting on %s:%u", http_ip.c_str(), http_port);
+    SHARDORA_DEBUG("HTTP server initialized for private key waiting on %s:%u", http_ip.c_str(), http_port);
     
     return kInitSuccess;
 }
@@ -737,8 +737,8 @@ static std::mutex wait_mutex_;
 int NetworkInit::InitHttpServer() {
     std::string http_ip = "0.0.0.0";
     uint16_t http_port = 0;
-    conf_.Get("seth", "http_ip", http_ip);
-    if (conf_.Get("seth", "http_port", http_port) && http_port != 0) {
+    conf_.Get("shardora", "http_ip", http_ip);
+    if (conf_.Get("shardora", "http_port", http_port) && http_port != 0) {
         if (private_key_received_) {
             http_handler_.set_net_handler(&net_handler_);
             http_handler_.set_contract_mgr(contract_mgr_);
@@ -765,18 +765,18 @@ int NetworkInit::InitHttpServer() {
         std::this_thread::sleep_for(std::chrono::milliseconds{200});
         // Note: HTTP client check removed as we migrated from httplib to uWebSockets
         // The server will be ready after the sleep delay
-        SETH_DEBUG("http init wait response coming.");
+        SHARDORA_DEBUG("http init wait response coming.");
         {
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.notify_one();
         }
 
-        SETH_DEBUG("http init waiting response coming.");
+        SHARDORA_DEBUG("http init waiting response coming.");
         {
             std::unique_lock<std::mutex> lock(wait_mutex_);
             wait_con_.wait_for(lock, std::chrono::milliseconds(10000));
         }
-        SETH_DEBUG("http init waiting response coming success.");
+        SHARDORA_DEBUG("http init waiting response coming success.");
     }
 
     return kInitSuccess;
@@ -797,14 +797,14 @@ void NetworkInit::Destroy() {
 
 int NetworkInit::InitCommand() {
     bool first_node = false;
-    if (!conf_.Get("seth", "first_node", first_node)) {
-        INIT_ERROR("get conf seth first_node failed!");
+    if (!conf_.Get("shardora", "first_node", first_node)) {
+        INIT_ERROR("get conf shardora first_node failed!");
         return kInitError;
     }
 
     bool show_cmd = false;
-    if (!conf_.Get("seth", "show_cmd", show_cmd)) {
-        INIT_ERROR("get conf seth show_cmd failed!");
+    if (!conf_.Get("shardora", "show_cmd", show_cmd)) {
+        INIT_ERROR("get conf shardora show_cmd failed!");
         return kInitError;
     }
 
@@ -887,7 +887,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
             }
         }
         
-        std::string encrypted_binary = seth::security::KeyManager::SealKey(raw_data);
+        std::string encrypted_binary = shardora::security::KeyManager::SealKey(raw_data);
         if (!encrypted_binary.empty()) {
             std::cout << encrypted_binary << ":" << common::Encode::HexEncode(security->GetAddress()) << std::endl;
             exit(0);
@@ -945,7 +945,7 @@ int NetworkInit::InitConfigWithArgs(int argc, char** argv) {
                 continue;
             }
 
-            std::string encrypted = seth::security::KeyManager::SealKey(common::Encode::HexDecode(first_column));
+            std::string encrypted = shardora::security::KeyManager::SealKey(common::Encode::HexDecode(first_column));
             if (!encrypted.empty()) {
                 outfile << encrypted << remaining_part << "\n";
                 count++;
@@ -989,7 +989,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
     std::string country;
     parser_arg.Get("o", country);
     if (!country.empty()) {
-        if (!conf_.Set("seth", "country", country)) {
+        if (!conf_.Set("shardora", "country", country)) {
             INIT_ERROR("set config failed [node][country][%s]", country.c_str());
             return kInitError;
         }
@@ -998,7 +998,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
     std::string local_ip;
     parser_arg.Get("a", local_ip);
     if (!local_ip.empty()) {
-        if (!conf_.Set("seth", "local_ip", local_ip)) {
+        if (!conf_.Set("shardora", "local_ip", local_ip)) {
             INIT_ERROR("set config failed [node][local_ip][%s]", local_ip.c_str());
             return kInitError;
         }
@@ -1006,7 +1006,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
 
     uint16_t local_port = 0;
     if (parser_arg.Get("l", local_port) == common::kParseSuccess) {
-        if (!conf_.Set("seth", "local_port", local_port)) {
+        if (!conf_.Set("shardora", "local_port", local_port)) {
             INIT_ERROR("set config failed [node][local_port][%d]", local_port);
             return kInitError;
         }
@@ -1015,7 +1015,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
     std::string prikey;
     parser_arg.Get("k", prikey);
     if (!prikey.empty()) {
-        if (!conf_.Set("seth", "prikey", prikey)) {
+        if (!conf_.Set("shardora", "prikey", prikey)) {
             INIT_ERROR("set config failed [node][id][%s]", prikey.c_str());
             return kInitError;
         }
@@ -1028,7 +1028,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
             first_node = true;
         }
 
-        if (!conf_.Set("seth", "first_node", first_node)) {
+        if (!conf_.Set("shardora", "first_node", first_node)) {
             INIT_ERROR("set config failed [node][first_node][%d]", first_node);
             return kInitError;
         }
@@ -1036,7 +1036,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
 
     std::string network_ids;
     if (parser_arg.Get("n", network_ids) == common::kParseSuccess) {
-        if (!conf_.Set("seth", "net_ids", network_ids)) {
+        if (!conf_.Set("shardora", "net_ids", network_ids)) {
             INIT_ERROR("set config failed [node][net_id][%s]", network_ids.c_str());
             return kInitError;
         }
@@ -1045,7 +1045,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
     std::string peer;
     parser_arg.Get("p", peer);
     if (!peer.empty()) {
-        if (!conf_.Set("seth", "bootstrap", peer)) {
+        if (!conf_.Set("shardora", "bootstrap", peer)) {
             INIT_ERROR("set config failed [node][bootstrap][%s]", peer.c_str());
             return kInitError;
         }
@@ -1054,7 +1054,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
     std::string id;
     parser_arg.Get("i", id);
     if (!id.empty()) {
-        if (!conf_.Set("seth", "id", id)) {
+        if (!conf_.Set("shardora", "id", id)) {
             INIT_ERROR("set config failed [node][id][%s]", peer.c_str());
             return kInitError;
         }
@@ -1062,7 +1062,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
 
     int show_cmd = 1;
     if (parser_arg.Get("g", show_cmd) == common::kParseSuccess) {
-        if (!conf_.Set("seth", "show_cmd", show_cmd == 1)) {
+        if (!conf_.Set("shardora", "show_cmd", show_cmd == 1)) {
             INIT_ERROR("set config failed [node][show_cmd][%d]", show_cmd);
             return kInitError;
         }
@@ -1070,7 +1070,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
 
     int vpn_vip_level = 0;
     if (parser_arg.Get("V", vpn_vip_level) == common::kParseSuccess) {
-        if (!conf_.Set("seth", "vpn_vip_level", vpn_vip_level)) {
+        if (!conf_.Set("shardora", "vpn_vip_level", vpn_vip_level)) {
             INIT_ERROR("set config failed [node][vpn_vip_level][%d]", vpn_vip_level);
             return kInitError;
         }
@@ -1078,7 +1078,7 @@ int NetworkInit::ResetConfig(common::ParserArgs& parser_arg) {
 
     std::string log_path;
     if (parser_arg.Get("L", log_path) != common::kParseSuccess) {
-        log_path = "log/seth.log";
+        log_path = "log/shardora.log";
     }
 
     if (!conf_.Set("log", "path", log_path)) {
@@ -1182,7 +1182,7 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
         valid_net_ids_set.insert(i);
     }
 
-    SETH_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
+    SHARDORA_DEBUG("now consensus_shard_node_count: %u", consensus_shard_node_count);
     if (parser_arg.Has("U")) {
         std::cout << "now genisis root" << std::endl;
         std::string valid_arg_i_value;
@@ -1267,14 +1267,14 @@ int NetworkInit::GenesisCmd(common::ParserArgs& parser_arg) {
 void NetworkInit::SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_id) {
     FILE* fd = fopen("./latest_blocks", "a+");
     if (fd == nullptr) {
-        SETH_FATAL("open latest_blocks failed!");
+        SHARDORA_FATAL("open latest_blocks failed!");
         return;
     }
 
     defer(fclose(fd));
     auto prefix_db = std::make_shared<protos::PrefixDb>(db);
     for (uint64_t i = 0; i < 128llu; i++) {
-        SETH_DEBUG("save block height: %u_%u_%llu", sharding_id, common::kGlobalPoolIndex, i);
+        SHARDORA_DEBUG("save block height: %u_%u_%llu", sharding_id, common::kGlobalPoolIndex, i);
         view_block::protobuf::ViewBlockItem view_block_item;
         if (!prefix_db->GetBlockWithHeight(sharding_id, common::kGlobalPoolIndex, i, &view_block_item)) {
             return;
@@ -1283,7 +1283,7 @@ void NetworkInit::SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_
         auto data = common::Encode::HexEncode(view_block_item.SerializeAsString());
         fwrite(data.c_str(), 1, data.size(), fd);
         fwrite("\n", 1, 1, fd);
-        SETH_DEBUG("success save block height: %u_%u_%lu", 
+        SHARDORA_DEBUG("success save block height: %u_%u_%lu", 
             sharding_id, common::kGlobalPoolIndex, i);
     }
 
@@ -1293,7 +1293,7 @@ void NetworkInit::SaveLatestBlock(std::shared_ptr<db::Db> db, uint32_t sharding_
 void NetworkInit::SaveCrossBlockToEachShard() {
     FILE* fd = fopen("./latest_blocks", "r");
     if (fd == nullptr) {
-        SETH_FATAL("open latest_blocks failed!");
+        SHARDORA_FATAL("open latest_blocks failed!");
         return;
     }
 
@@ -1341,7 +1341,7 @@ void NetworkInit::SaveCrossBlockToEachShard() {
 
         auto st = db->Put(batch);
         if (!st.ok()) {
-            SETH_FATAL("write db failed!");
+            SHARDORA_FATAL("write db failed!");
         }
     }
 }
@@ -1365,7 +1365,7 @@ void NetworkInit::GetNetworkNodesFromConf(
                 }
 
                 sks.push_back(common::Encode::HexDecode(items[0]));
-                SETH_DEBUG("reuse private key: %s", items[0]);
+                SHARDORA_DEBUG("reuse private key: %s", items[0]);
             }
         } else {
             for (int32_t i = 0; i < count; i++) {
@@ -1374,7 +1374,7 @@ void NetworkInit::GetNetworkNodesFromConf(
                 secptr->SetPrivateKey(sks[i]);
                 auto data = common::Encode::HexEncode(sks[i]) + "\t" + common::Encode::HexEncode(secptr->GetPublicKey()) + "\n";
                 fwrite(data.c_str(), 1, data.size(), fd);
-                SETH_DEBUG("random private key: %s", common::Encode::HexEncode(sks[i]).c_str());
+                SHARDORA_DEBUG("random private key: %s", common::Encode::HexEncode(sks[i]).c_str());
             }
         }
     };
@@ -1395,7 +1395,7 @@ void NetworkInit::GetNetworkNodesFromConf(
     //     node_ptr->id = secptr->GetAddressWithPublicKey(node_ptr->pubkey);
     //     node_ptr->nonce = 0;
     //     root_genesis_nodes.push_back(node_ptr);
-    //     SETH_DEBUG("root private key: %s, id: %s", 
+    //     SHARDORA_DEBUG("root private key: %s, id: %s", 
     //         common::Encode::HexEncode(sk).c_str(), 
     //         common::Encode::HexEncode(node_ptr->id).c_str());
     // }
@@ -1408,7 +1408,7 @@ void NetworkInit::GetNetworkNodesFromConf(
         std::cout << filename << ", reuse: " << reuse_shard << std::endl;
         auto sfd = fopen(filename.c_str(), (reuse_shard ? "r" : "w"));
         if (sfd == nullptr) {
-            SETH_FATAL("open file failed: %s", filename.c_str());
+            SHARDORA_FATAL("open file failed: %s", filename.c_str());
             break;
         }
 
@@ -1416,7 +1416,7 @@ void NetworkInit::GetNetworkNodesFromConf(
         get_sks_func(sfd, shard_sks, n, reuse_shard);
         std::vector<GenisisNodeInfoPtr> cons_genesis_nodes;
         for (uint32_t i = 0; i < n; i++) {
-            SETH_DEBUG("use private key: %d, %s", i, common::Encode::HexEncode(shard_sks[i]).c_str());
+            SHARDORA_DEBUG("use private key: %d, %s", i, common::Encode::HexEncode(shard_sks[i]).c_str());
             std::string& sk = shard_sks[i];
             std::shared_ptr<security::Security> secptr = std::make_shared<security::Ecdsa>();
             secptr->SetPrivateKey(sk);
@@ -1426,7 +1426,7 @@ void NetworkInit::GetNetworkNodesFromConf(
             node_ptr->id = secptr->GetAddressWithPublicKey(node_ptr->pubkey);
             node_ptr->nonce = 0;
             cons_genesis_nodes.push_back(node_ptr);   
-            SETH_DEBUG("shard: %d private key: %s, id: %s", 
+            SHARDORA_DEBUG("shard: %d private key: %s, id: %s", 
                 net_i,
                 common::Encode::HexEncode(sk).c_str(), 
                 common::Encode::HexEncode(node_ptr->id).c_str());     
@@ -1509,7 +1509,7 @@ void NetworkInit::AddBlockItemToCache(
 
     auto thread_idx = common::GlobalInfo::Instance()->get_thread_index();
     new_blocks_queue_[thread_idx].push(view_block);
-    SETH_DEBUG("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s, size: %u",
+    SHARDORA_DEBUG("cache new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s, size: %u",
         view_block->qc().network_id(),
         view_block->qc().pool_index(),
         block->height(),
@@ -1525,7 +1525,7 @@ void NetworkInit::HandleNewBlock() {
             std::shared_ptr<view_block::protobuf::ViewBlockItem> view_block;
             new_blocks_queue_[i].pop(&view_block);
             auto* block = &view_block->block_info();
-            SETH_DEBUG("handle new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s",
+            SHARDORA_DEBUG("handle new block coming sharding id: %u_%d_%lu, tx size: %u, hash: %s",
                 view_block->qc().network_id(),
                 view_block->qc().pool_index(),
                 block->height(),
@@ -1563,7 +1563,7 @@ bool NetworkInit::DbNewBlockCallback(
 void NetworkInit::HandleTimeBlock(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block,
         const block::protobuf::BlockTx& tx) {
-    SETH_DEBUG("time block coming %u_%u_%lu, %u_%u_%lu, tm: %lu, vss: %lu",
+    SHARDORA_DEBUG("time block coming %u_%u_%lu, %u_%u_%lu, tm: %lu, vss: %lu",
         view_block->qc().network_id(), 
         view_block->qc().pool_index(), 
         view_block->qc().view(), 
@@ -1579,7 +1579,7 @@ void NetworkInit::HandleTimeBlock(
         bls_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
         tm_block_mgr_->OnTimeBlock(block.timer_block().timestamp(), block.height(), vss_random);
         vss_mgr_->OnTimeBlock(view_block);
-        SETH_DEBUG("new time block called height: %lu, tm: %lu", block.height(), vss_random);
+        SHARDORA_DEBUG("new time block called height: %lu, tm: %lu", block.height(), vss_random);
     }
 }
 
@@ -1587,7 +1587,7 @@ void NetworkInit::HandleElectionBlock(
         const std::shared_ptr<view_block::protobuf::ViewBlockItem>& view_block,
         const block::protobuf::BlockTx& block_tx) {
     auto* block = &view_block->block_info();
-    SETH_DEBUG("new elect block coming, net: %u, pool: %u, height: %lu, block info: %s",
+    SHARDORA_DEBUG("new elect block coming, net: %u, pool: %u, height: %lu, block info: %s",
         view_block->qc().network_id(), view_block->qc().pool_index(), block->height(),
         ProtobufToJson(view_block->block_info()).c_str());
     auto elect_block = std::make_shared<elect::protobuf::ElectBlock>();
@@ -1609,7 +1609,7 @@ void NetworkInit::HandleElectionBlock(
     if (!elect_block->has_shard_network_id() ||
             elect_block->shard_network_id() >= network::kConsensusShardEndNetworkId ||
             elect_block->shard_network_id() < network::kRootCongressNetworkId) {
-        SETH_FATAL("parse elect block failed!");
+        SHARDORA_FATAL("parse elect block failed!");
         return;
     }
 
@@ -1618,7 +1618,7 @@ void NetworkInit::HandleElectionBlock(
         elect_block,
         prev_elect_block);
     if (members == nullptr) {
-        SETH_ERROR("elect manager handle elect block failed!");
+        SHARDORA_ERROR("elect manager handle elect block failed!");
         return;
     }
 
@@ -1654,7 +1654,7 @@ void NetworkInit::HandleElectionBlock(
         elect_height,
         members,
         elect_block);
-    SETH_DEBUG("%s success called election block. height: %lu, "
+    SHARDORA_DEBUG("%s success called election block. height: %lu, "
         "elect height: %lu, latest_valid_elect_height_: %lu, used elect height: %lu, net: %u, "
         "local net id: %u, prev elect height: %lu",
         common::Encode::HexEncode(security_->GetAddress()).c_str(),
@@ -1669,21 +1669,21 @@ void NetworkInit::HandleElectionBlock(
         join_elect_tick_.CutOff(
             3000000lu,
             std::bind(&NetworkInit::SendJoinElectTransaction, this));
-        SETH_DEBUG("now send join elect request transaction. first message.");
+        SHARDORA_DEBUG("now send join elect request transaction. first message.");
         another_join_elect_msg_needed_ = true;
     } else if (another_join_elect_msg_needed_ &&
             sharding_id == common::GlobalInfo::Instance()->network_id()) {
         join_elect_tick_.CutOff(
             3000000lu,
             std::bind(&NetworkInit::SendJoinElectTransaction, this));
-        SETH_DEBUG("now send join elect request transaction. second message.");
+        SHARDORA_DEBUG("now send join elect request transaction. second message.");
         another_join_elect_msg_needed_ = false;
     }
 }
 
 void NetworkInit::JoinInitNodes() {
     std::string init_nodes;
-    conf_.Get("seth", "bootstrap", init_nodes);
+    conf_.Get("shardora", "bootstrap", init_nodes);
     common::Split<10240> nodes(init_nodes.c_str(), ',');
     for (uint32_t i = 0; i < nodes.Count(); ++i) {
         common::Split<> items(nodes[i], ':');
@@ -1697,7 +1697,7 @@ void NetworkInit::JoinInitNodes() {
         node->public_ip = items[1];
         common::StringUtil::ToUint16(items[2], &node->public_port);
         common::StringUtil::ToInt32(items[3], &node->sharding_id);
-        SETH_DEBUG("join init node: %s:%d, %d, pk: %s, id: %s", 
+        SHARDORA_DEBUG("join init node: %s:%d, %d, pk: %s, id: %s", 
             node->public_ip.c_str(), node->public_port, node->sharding_id,
             items[0], common::Encode::HexEncode(node->id).c_str());
         if (network::IsSameToLocalShard(node->sharding_id)) {
@@ -1720,14 +1720,14 @@ void NetworkInit::SendJoinElectTransaction() {
 
     auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
     if (local_node_account_info == nullptr) {
-        SETH_DEBUG("failed get address info: %s",
+        SHARDORA_DEBUG("failed get address info: %s",
             common::Encode::HexEncode(security_->GetAddress()).c_str());
         return;
     }
     
     if (des_sharding_id_ == common::kInvalidUint32) {
         if (local_node_account_info == nullptr) {
-            SETH_DEBUG("failed get address info: %s",
+            SHARDORA_DEBUG("failed get address info: %s",
                 common::Encode::HexEncode(security_->GetAddress()).c_str());
             return;
         }
@@ -1771,18 +1771,18 @@ void NetworkInit::SendJoinElectTransaction() {
     
     // Get stake amount from config (in units of 8 * 10^8)
     uint64_t stake_units = 0;
-    conf_.Get("seth", "stake_units", stake_units);
+    conf_.Get("shardora", "stake_units", stake_units);
     
     if (has_existing_stake) {
         // User already has stake, no need to stake again
         // Send join_elect with stake_amount = 0 to participate using existing stake
         join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
         join_info.set_stake_amount(0);
-        SETH_DEBUG("User already has stake: %lu coins, sending join_elect without additional stake",
+        SHARDORA_DEBUG("User already has stake: %lu coins, sending join_elect without additional stake",
             existing_stake);
     } else if (stake_units > 0) {
         // User doesn't have stake, and config specifies stake amount
-        // Minimum stake unit is 8 * 10^8 coins (8 SETH)
+        // Minimum stake unit is 8 * 10^8 coins (8 SHARDORA)
         static const uint64_t kMinStakeUnit = 8 * 100000000llu;
         uint64_t stake_amount = stake_units * kMinStakeUnit;
         
@@ -1799,10 +1799,10 @@ void NetworkInit::SendJoinElectTransaction() {
                 join_info.set_stake_elect_height(elect_block.elect_height());
             }
             
-            SETH_DEBUG("Sending initial stake transaction: %lu coins (%lu units) to root shard",
+            SHARDORA_DEBUG("Sending initial stake transaction: %lu coins (%lu units) to root shard",
                 stake_amount, stake_units);
         } else {
-            SETH_ERROR("Insufficient balance for staking: have %lu, need %lu",
+            SHARDORA_ERROR("Insufficient balance for staking: have %lu, need %lu",
                 msg_ptr->address_info->balance(), stake_amount);
             return;
         }
@@ -1811,7 +1811,7 @@ void NetworkInit::SendJoinElectTransaction() {
         // Normal join_elect without staking
         join_info.set_stake_op(bls::protobuf::STAKE_OP_NONE);
         join_info.set_stake_amount(0);
-        SETH_DEBUG("Sending join_elect without stake");
+        SHARDORA_DEBUG("Sending join_elect without stake");
     }
     
     // Check if user has already sent g2_req in a previous join_elect transaction
@@ -1827,7 +1827,7 @@ void NetworkInit::SendJoinElectTransaction() {
         previous_join_info.g2_req().verify_vec_size() == t) {
         // User has already sent g2_req in a previous transaction (confirmed in consensus block)
         // No need to send it again, leave join_info.g2_req empty
-        SETH_DEBUG("User has already sent g2_req in previous join_elect (found in consensus block), "
+        SHARDORA_DEBUG("User has already sent g2_req in previous join_elect (found in consensus block), "
             "skipping g2_req in this transaction. verify_vec_size: %d",
             previous_join_info.g2_req().verify_vec_size());
     } else {
@@ -1841,7 +1841,7 @@ void NetworkInit::SendJoinElectTransaction() {
 #ifndef NDEBUG
         //assert(req->verify_vec_size() >= t);
 #endif
-        SETH_DEBUG("First time sending join_elect or no valid g2_req in consensus block, "
+        SHARDORA_DEBUG("First time sending join_elect or no valid g2_req in consensus block, "
             "including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
     }
 
@@ -1857,7 +1857,7 @@ void NetworkInit::SendJoinElectTransaction() {
     new_tx->set_sign(sign);
     // msg_ptr->msg_hash = tx_hash; // TxPoolmanager::HandleElectTx The receiving end has calculated it, so there is no need to transmit it here
     network::Route::Instance()->Send(msg_ptr);
-    SETH_DEBUG("success send join elect request transaction: %u, join: %u, addr: %s, nonce: %lu, "
+    SHARDORA_DEBUG("success send join elect request transaction: %u, join: %u, addr: %s, nonce: %lu, "
         "stake_amount: %lu, hash64: %lu, tx hash: %s, pk: %s sign: %s",
         des_sharding_id_, join_info.shard_id(),
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
@@ -1880,7 +1880,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
 
     auto local_node_account_info = prefix_db_->GetAddressInfo(security_->GetAddress());
     if (local_node_account_info == nullptr) {
-        SETH_DEBUG("failed get address info: %s",
+        SHARDORA_DEBUG("failed get address info: %s",
             common::Encode::HexEncode(security_->GetAddress()).c_str());
         return;
     }
@@ -1927,7 +1927,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
         previous_join_info.g2_req().verify_vec_size() == t) {
         // User has already sent g2_req in a previous transaction (confirmed in consensus block)
         // No need to send it again for redeem operation
-        SETH_DEBUG("Redeem: User has already sent g2_req in previous join_elect (found in consensus block), "
+        SHARDORA_DEBUG("Redeem: User has already sent g2_req in previous join_elect (found in consensus block), "
             "skipping g2_req in redeem transaction. verify_vec_size: %d",
             previous_join_info.g2_req().verify_vec_size());
     } else {
@@ -1937,7 +1937,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
         if (!res || req->verify_vec_size() != t) {
             CreateContribution(req);
         }
-        SETH_DEBUG("Redeem: Including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
+        SHARDORA_DEBUG("Redeem: Including g2_req in transaction. verify_vec_size: %d", req->verify_vec_size());
     }
     
     new_tx->set_value(SerializeDeterministic(join_info));
@@ -1952,7 +1952,7 @@ void NetworkInit::SendRedeemStakeTransaction() {
     new_tx->set_sign(sign);
     network::Route::Instance()->Send(msg_ptr);
     
-    SETH_DEBUG("Sent redeem stake transaction to root shard: addr=%s, nonce=%lu",
+    SHARDORA_DEBUG("Sent redeem stake transaction to root shard: addr=%s, nonce=%lu",
         common::Encode::HexEncode(msg_ptr->address_info->addr()).c_str(),
         new_tx->nonce());
 }
@@ -1993,4 +1993,4 @@ void NetworkInit::CreateContribution(bls::protobuf::VerifyVecBrdReq* bls_verify_
 
 }  // namespace init
 
-}  // namespace seth
+}  // namespace shardora

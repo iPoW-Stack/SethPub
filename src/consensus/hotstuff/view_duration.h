@@ -3,7 +3,7 @@
 #include <cmath>
 #include <common/log.h>
 
-namespace seth {
+namespace shardora {
 
 namespace hotstuff {
 
@@ -86,7 +86,7 @@ public:
             duration_ms = max;
         }
 
-        // SETH_DEBUG("pool: %d duration is %.2f ms", pool_idx_, duration_ms);
+        // SHARDORA_DEBUG("pool: %d duration is %.2f ms", pool_idx_, duration_ms);
         double us_d = std::max(0.0, duration_ms * 1000.0); // ms → µs
         uint64_t us = static_cast<uint64_t>(std::llround(us_d));
         // After at least one successful view, never report 0 µs (rounding / FP / pathological m2).
@@ -110,4 +110,4 @@ private:
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

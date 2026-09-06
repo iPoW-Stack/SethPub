@@ -8,7 +8,7 @@
 #include <common/hash.h>
 #include <tools/utils.h>
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
 

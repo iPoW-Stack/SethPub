@@ -10,7 +10,7 @@
 #include "common/global_info.h"
 #include "init/network_init.h"
 
-namespace seth {
+namespace shardora {
 namespace init {
 namespace test {
 
@@ -332,4 +332,4 @@ TEST_F(NetworkInitTest, CleanupAndShutdown) {
 
 }  // namespace test
 }  // namespace init
-}  // namespace seth
+}  // namespace shardora

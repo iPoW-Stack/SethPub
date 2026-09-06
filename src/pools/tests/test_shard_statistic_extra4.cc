@@ -3,10 +3,10 @@
 //   - OnNewBlock (inited_ gate)
 //   - StatisticWithHeights success path (setElectStatistics, addNewNode2JoinStatics,
 //     addPrepareMembers2JoinStastics with members whose pubkeys are all in
-//     added_id_set so that secptr_==null SETH_DEBUG lines are never reached)
+//     added_id_set so that secptr_==null SHARDORA_DEBUG lines are never reached)
 //   - StatisticWithHeights piter==rend early-return
 //
-// All tests guarded by SETH_UNITTEST.
+// All tests guarded by SHARDORA_UNITTEST.
 
 #include <gtest/gtest.h>
 
@@ -25,19 +25,19 @@
 #include "common/node_members.h"
 #include "network/network_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace elect {
 extern common::MembersPtr g_test_members_override;
 extern uint64_t           g_test_latest_height;
 }
 }
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
-#ifndef SETH_UNITTEST
-TEST(ShardStatExtra4, SkippedWithoutSethUnittest) {
+#ifndef SHARDORA_UNITTEST
+TEST(ShardStatExtra4, SkippedWithoutShardoraUnittest) {
     GTEST_SKIP() << "Rebuild with -DXENABLE_CODE_COVERAGE=ON";
 }
 #else
@@ -301,8 +301,8 @@ TEST_F(ShardStatExtra4Test, CallTimeBlock_ThenStatisticWithHeights_Consistent) {
     common::GlobalInfo::Instance()->set_network_id(prev);
 }
 
-#endif  // SETH_UNITTEST
+#endif  // SHARDORA_UNITTEST
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

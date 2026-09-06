@@ -7,7 +7,7 @@
 #include <consensus/hotstuff/types.h>
 #include <protos/block.pb.h>
 
-namespace seth {
+namespace shardora {
 
 namespace bls {
     class BlsManager;
@@ -111,4 +111,4 @@ private:
 
 } // namespace hotstuff
 
-} // namespace seth
+} // namespace shardora

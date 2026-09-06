@@ -13,7 +13,7 @@
 #include "common/global_info.h"
 #include "common/time_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -112,4 +112,4 @@ TEST(AccountQpsLruMapTest, DestructorAfterChecks) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

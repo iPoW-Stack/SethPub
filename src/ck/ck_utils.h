@@ -4,19 +4,19 @@
 
 #include "common/utils.h"
 
-namespace seth {
+namespace shardora {
 
 namespace ck {
 
-static const std::string kClickhouseTransTableName = "seth_ck_transaction_table";
-static const std::string kClickhouseBlockTableName = "seth_ck_block_table";
-static const std::string kClickhouseAccountTableName = "seth_ck_account_table";
-static const std::string kClickhouseAccountKvTableName = "seth_ck_account_key_value_table";
-static const std::string kClickhouseStatisticTableName = "seth_ck_statistic_table";
-static const std::string kClickhouseShardStatisticTableName = "seth_ck_shard_statistic_table";
-static const std::string kClickhousePoolStatisticTableName = "seth_ck_pool_statistic_table";
-static const std::string kClickhouseC2cTableName = "seth_ck_c2c_table";
-static const std::string kClickhousePrefundTableName = "seth_ck_prefund_table";
+static const std::string kClickhouseTransTableName = "shardora_ck_transaction_table";
+static const std::string kClickhouseBlockTableName = "shardora_ck_block_table";
+static const std::string kClickhouseAccountTableName = "shardora_ck_account_table";
+static const std::string kClickhouseAccountKvTableName = "shardora_ck_account_key_value_table";
+static const std::string kClickhouseStatisticTableName = "shardora_ck_statistic_table";
+static const std::string kClickhouseShardStatisticTableName = "shardora_ck_shard_statistic_table";
+static const std::string kClickhousePoolStatisticTableName = "shardora_ck_pool_statistic_table";
+static const std::string kClickhouseC2cTableName = "shardora_ck_c2c_table";
+static const std::string kClickhousePrefundTableName = "shardora_ck_prefund_table";
 static const std::string kClickhouseBlsElectInfo = "bls_elect_info";
 static const std::string kClickhouseBlsBlockInfo = "bls_block_info";
 
@@ -45,4 +45,4 @@ struct BlsBlockInfo {
 
 };  // namespace ck
 
-};  // namespace seth
+};  // namespace shardora

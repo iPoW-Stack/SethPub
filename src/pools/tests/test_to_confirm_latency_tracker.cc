@@ -12,7 +12,7 @@
 #include "common/utils.h"
 #include "protos/pools.pb.h"
 
-namespace seth {
+namespace shardora {
 namespace pools {
 namespace test {
 
@@ -139,4 +139,4 @@ TEST(ToConfirmLatencyTracker, PendingStartsAreCapped) {
 
 }  // namespace test
 }  // namespace pools
-}  // namespace seth
+}  // namespace shardora

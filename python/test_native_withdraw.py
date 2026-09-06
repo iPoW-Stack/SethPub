@@ -1,7 +1,7 @@
 """
-Native SETH one-click withdrawal test via Guardian HTTP VAA.
+Native SHARDORA one-click withdrawal test via Guardian HTTP VAA.
 
-Flow: SETH -> wrap WSETH -> swap sUSDC -> burn -> fetch signed VAA -> Solana USDC
+Flow: SHARDORA -> wrap WSHARDORA -> swap sUSDC -> burn -> fetch signed VAA -> Solana USDC
 """
 import os
 import sys
@@ -14,26 +14,26 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import eth_abi
 from Crypto.Hash import keccak
-from seth_sdk import SethClient, StepType
+from shardora_sdk import ShardoraClient, StepType
 
 # ==================== Config ====================
 HOST = "127.0.0.1"
 PORT = 23001
 PK = "4b6525236a2029ab54e2c6162c483133c1af7d38bd960f85b1f485c31e696b7b"
 GUARDIAN_API_BASE = os.getenv("GUARDIAN_API_BASE", "http://127.0.0.1:7072").rstrip("/")
-SETH_CHAIN_ID = 10001
+SHARDORA_CHAIN_ID = 10001
 SOLANA_RECIP = "ce336c124aa1825f886b606448abdd2822f5db75d0f9a431f524a49b8738feeb"
 DEFAULT_AMOUNT = "0.00001"
 VAA_POLL_MAX_SECONDS = int(os.getenv("VAA_POLL_MAX_SECONDS", "180"))
 VAA_POLL_INTERVAL = int(os.getenv("VAA_POLL_INTERVAL", "3"))
 
 
-def load_seth_addresses():
+def load_shardora_addresses():
     # Search in the same directory as this script first, then one level up.
     script_dir = os.path.dirname(os.path.abspath(__file__))
     candidates = [
-        os.path.join(script_dir, "seth_addresses.env"),
-        os.path.join(script_dir, "..", "seth_addresses.env"),
+        os.path.join(script_dir, "shardora_addresses.env"),
+        os.path.join(script_dir, "..", "shardora_addresses.env"),
     ]
     out = {}
     for env_path in candidates:
@@ -84,7 +84,7 @@ def fetch_vaa_from_guardian_http(chain_id, emitter_hex, sequence):
     return None
 
 def main():
-    addrs = load_seth_addresses()
+    addrs = load_shardora_addresses()
     bridge_router = os.getenv("BRIDGE_ROUTER", addrs.get("BRIDGE_ROUTER", ""))
     wb_addr = os.getenv("WORMHOLE_BRIDGE", addrs.get("WORMHOLE_BRIDGE", ""))
     # If the env var looks like a file path rather than an address, ignore it.
@@ -93,7 +93,7 @@ def main():
     if wb_addr and (wb_addr.startswith("/") or wb_addr.endswith(".env")):
         wb_addr = addrs.get("WORMHOLE_BRIDGE", "")
     if not bridge_router or not wb_addr:
-        print("Missing BRIDGE_ROUTER / WORMHOLE_BRIDGE (env or seth_addresses.env)")
+        print("Missing BRIDGE_ROUTER / WORMHOLE_BRIDGE (env or shardora_addresses.env)")
         return
 
     amount_str = DEFAULT_AMOUNT
@@ -101,28 +101,28 @@ def main():
         if a == "--amount" and i + 1 < len(sys.argv):
             amount_str = sys.argv[i + 1]
 
-    seth_amount = int(Decimal(amount_str) * 10**8)
-    cli = SethClient(HOST, PORT)
+    shardora_amount = int(Decimal(amount_str) * 10**8)
+    cli = ShardoraClient(HOST, PORT)
     sender = cli.get_address(PK)
 
     print("=" * 55)
-    print("  Native SETH One-Click Withdrawal")
+    print("  Native SHARDORA One-Click Withdrawal")
     print("=" * 55)
     print(f"BridgeRouter: {bridge_router}")
     print(f"WormholeBridge: {wb_addr}")
     print(f"Sender:    {sender}")
-    print(f"Amount:    {amount_str} SETH")
+    print(f"Amount:    {amount_str} SHARDORA")
     print(f"Recipient: EsvTu4hJRLSa2syy4EY24UdfR6tqXDDhe9Pvcxazs9aJ")
 
     # Step 1: withdrawNativeToSolana (1 tx, no approve)
     print("\n[1] BridgeRouter.withdrawNativeToSolana...")
-    print("    (wrap SETH→WSETH → swap→sUSDC → burn → Wormhole msg)")
+    print("    (wrap SHARDORA→WSHARDORA → swap→sUSDC → burn → Wormhole msg)")
     inp = sel("withdrawNativeToSolana(uint24,uint256,bytes32)") + eth_abi.encode(
         ["uint24", "uint256", "bytes32"],
         [3000, 0, bytes.fromhex(SOLANA_RECIP)]
     ).hex()
     tx = cli.send_transaction_auto(PK, bridge_router, StepType.kContractExcute,
-                                    amount=seth_amount, input_hex=inp, prefund=10_000_000)
+                                    amount=shardora_amount, input_hex=inp, prefund=10_000_000)
     rc = cli.wait_for_receipt(tx)
     ok = rc and rc.get("status") == 0
     print(f"    Result: {'OK' if ok else 'FAIL'}")
@@ -171,7 +171,7 @@ def main():
     vaa_b64 = None
     deadline = time.time() + VAA_POLL_MAX_SECONDS
     while time.time() < deadline:
-        vaa_b64 = fetch_vaa_from_guardian_http(SETH_CHAIN_ID, emitter_hex, sequence)
+        vaa_b64 = fetch_vaa_from_guardian_http(SHARDORA_CHAIN_ID, emitter_hex, sequence)
         if vaa_b64:
             break
         time.sleep(VAA_POLL_INTERVAL)
@@ -194,9 +194,9 @@ def main():
 
     print(f"\n{'=' * 55}")
     if result.returncode == 0:
-        print(f"  OK: {amount_str} SETH → {burn_amount / 1e6} sUSDC → Solana USDC")
+        print(f"  OK: {amount_str} SHARDORA → {burn_amount / 1e6} sUSDC → Solana USDC")
     else:
-        print(f"  FAIL: Seth side OK, Solana submission failed")
+        print(f"  FAIL: Shardora side OK, Solana submission failed")
     print(f"{'=' * 55}")
 
 if __name__ == "__main__":

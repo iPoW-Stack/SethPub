@@ -11,7 +11,7 @@
 #include "contract/contract_modexp.h"
 #include "contract/contract_utils.h"
 
-namespace seth {
+namespace shardora {
 namespace contract {
 namespace test {
 
@@ -206,4 +206,4 @@ TEST(Blake2CompressionBranches, SuccessFinalBlockFlagOne) {
 
 }  // namespace test
 }  // namespace contract
-}  // namespace seth
+}  // namespace shardora

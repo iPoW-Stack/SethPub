@@ -1,6 +1,6 @@
-# Seth AMM Atomicity Solution — A Complete Explanation Based on the Demo
+# Shardora AMM Atomicity Solution — A Complete Explanation Based on the Demo
 ```
-cd SethPub/clipy && python3 amm.py --host 35.197.170.240 --port 23001
+cd ShardoraPub/clipy && python3 amm.py --host 35.197.170.240 --port 23001
 ```
 
 ## 1. Problem Background
@@ -24,14 +24,14 @@ The core requirement of an AMM is **atomicity**: a single swap involves state ch
 
 ---
 
-## 2. Seth's Solution: Deployer Address Derivation Guarantees Contract Co-location
+## 2. Shardora's Solution: Deployer Address Derivation Guarantees Contract Co-location
 
 ### 2.1 Core Mechanism
 
-Seth uses CREATE2 address derivation, where the contract address is determined by **deployer address + salt + bytecode**:
+Shardora uses CREATE2 address derivation, where the contract address is determined by **deployer address + salt + bytecode**:
 
 ```python
-# seth_sdk.py — Address calculation
+# shardora_sdk.py — Address calculation
 def calc_create2_address(sender, salt, bytecode):
     code_hash = keccak256(bytecode)
     input_data = 0xff + sender + salt_bytes + code_hash
@@ -50,7 +50,7 @@ static inline uint32_t GetAddressPoolIndex(const std::string& addr) {
 **Key corollary**: All contracts deployed by the same account have their addresses derived from that account's address and are processed within the same shard's consensus scope. When AMMPool calls TokenA.transferFrom(), the EVM CALL instruction resolves to **intra-pool execution** — the called contract's storage is in the same `ViewBlockChain`:
 
 ```cpp
-// src/sethvm/seth_host.cc — EVM CALL handling
+// src/shardoravm/shardora_host.cc — EVM CALL handling
 protos::AddressInfoPtr acc_info = view_block_chain_->ChainGetAccountInfo(id);
 if (acc_info != nullptr && !acc_info->bytes_code().empty()) {
     // Execute the called contract's bytecode within the same consensus context
@@ -344,7 +344,7 @@ If `amountOut < minOut`, `require` triggers an EVM `REVERT`. Since all three con
 
 ## 6. Comparison with the Reviewer's Assumptions
 
-| Dimension | Reviewer's Assumption | Seth's Actual Behavior |
+| Dimension | Reviewer's Assumption | Shardora's Actual Behavior |
 |------|-----------|-------------|
 | Token location | Different shards | Same shard, same pool (co-deployed) |
 | AMM swap | Cross-shard multi-hop | Single intra-pool transaction |
@@ -378,7 +378,7 @@ pool_usdc_y.deploy({'from': MY, 'salt': salt + 'p2', 'args': [tokenUSDC, tokenY]
 
 ## 8. Multi-User Interaction Flow and Prefund Lifecycle
 
-In Seth, users must pre-deposit gas on a contract (prefund) before calling it. The complete multi-user AMM interaction flow:
+In Shardora, users must pre-deposit gas on a contract (prefund) before calling it. The complete multi-user AMM interaction flow:
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -489,7 +489,7 @@ All deployed by the same account → all in the same shard, same pool
 
 ## 10. Equivalence with Ethereum
 
-| Feature | Ethereum | Seth |
+| Feature | Ethereum | Shardora |
 |------|--------|------|
 | Single-transaction atomicity | ✅ Global state | ✅ Intra-pool state |
 | Inter-contract calls | ✅ Synchronous CALL | ✅ Synchronous CALL (same pool) |
@@ -498,13 +498,13 @@ All deployed by the same account → all in the same shard, same pool
 | Developer experience | Standard Solidity | Standard Solidity (no difference) |
 | Throughput | ~15 TPS | Number of shards × single-shard TPS |
 
-**Seth achieves horizontal scaling through sharding while maintaining a developer experience fully consistent with Ethereum.**
+**Shardora achieves horizontal scaling through sharding while maintaining a developer experience fully consistent with Ethereum.**
 
 ---
 
 ## 11. Conclusion
 
-The reviewer's concern about AMM atomicity is based on an **incorrect premise**: the assumption that composable contracts are distributed across different shards. Seth's architecture naturally guarantees co-location of composable contracts through **hash-bucket sharding + deployer address derivation**.
+The reviewer's concern about AMM atomicity is based on an **incorrect premise**: the assumption that composable contracts are distributed across different shards. Shardora's architecture naturally guarantees co-location of composable contracts through **hash-bucket sharding + deployer address derivation**.
 
 The `test_amm` demo (`clipy/amm.py`) demonstrates through a multi-user scenario that:
 
@@ -514,7 +514,7 @@ The `test_amm` demo (`clipy/amm.py`) demonstrates through a multi-user scenario 
 4. **Developer experience identical to Ethereum** — Standard Solidity, no async patterns needed
 5. **Complete resource lifecycle** — prefund pre-deposits gas → trading → refund reclaims
 
-The only cross-shard operations are **fund transfers** (deposits/withdrawals), which are asynchronous in any sharded system and are handled by Seth's existing cross-shard mechanism with three-layer replay protection and dual-route optimization (direct routing + root relay).
+The only cross-shard operations are **fund transfers** (deposits/withdrawals), which are asynchronous in any sharded system and are handled by Shardora's existing cross-shard mechanism with three-layer replay protection and dual-route optimization (direct routing + root relay).
 
 ---
 
@@ -523,9 +523,9 @@ The only cross-shard operations are **fund transfers** (deposits/withdrawals), w
 | File | Description |
 |------|------|
 | `clipy/amm.py` | **Standalone AMM Demo** (`test_amm` function, can be run directly) |
-| `clipy/seth3.py` | Comprehensive test suite (includes `test_amm_same_shard` and all other tests) |
-| `clipy/seth_sdk.py` | SDK infrastructure (`calc_create2_address`, etc.) |
-| `src/sethvm/seth_host.cc` | EVM CALL handling (intra-pool contract calls) |
+| `clipy/shardora3.py` | Comprehensive test suite (includes `test_amm_same_shard` and all other tests) |
+| `clipy/shardora_sdk.py` | SDK infrastructure (`calc_create2_address`, etc.) |
+| `src/shardoravm/shardora_host.cc` | EVM CALL handling (intra-pool contract calls) |
 | `src/common/utils.h` | `GetAddressPoolIndex` address-to-pool mapping |
 | `src/pools/to_txs_pools.cc` | Cross-shard transfer routing |
 | `AMM_ATOMICITY_IN_SHARDED_BLOCKCHAIN.md` | Formal analysis of atomicity |

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Seth Blockchain Deployment and Monitoring Script
+# Shardora Blockchain Deployment and Monitoring Script
 # ================================================
 # This script provides comprehensive deployment automation and monitoring
-# for the Seth blockchain optimization suite.
+# for the Shardora blockchain optimization suite.
 #
-# Author: Seth Optimization Team
+# Author: Shardora Optimization Team
 # Version: 3.0 Ultimate
 # Date: May 2026
 
@@ -134,7 +134,7 @@ deploy_docker() {
     if [ ! -f "Dockerfile.optimized" ]; then
         log INFO "Creating optimized Dockerfile..."
         cat > Dockerfile.optimized << 'EOF'
-# Seth Blockchain Optimized Docker Image
+# Shardora Blockchain Optimized Docker Image
 FROM ubuntu:22.04
 
 # Install dependencies
@@ -170,13 +170,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Run the application
-CMD ["./build_optimized/seth_node"]
+CMD ["./build_optimized/shardora_node"]
 EOF
     fi
     
     # Build Docker image
     log INFO "Building Docker image..."
-    if docker build -f Dockerfile.optimized -t seth-blockchain:optimized .; then
+    if docker build -f Dockerfile.optimized -t shardora-blockchain:optimized .; then
         log INFO "Docker image built successfully"
     else
         error_exit "Failed to build Docker image"
@@ -185,13 +185,13 @@ EOF
     # Run container
     log INFO "Starting Docker container..."
     docker run -d \
-        --name seth-blockchain-optimized \
+        --name shardora-blockchain-optimized \
         --restart unless-stopped \
         -p ${MONITORING_PORT}:8080 \
         -p ${METRICS_PORT}:9090 \
         -v "${PROJECT_ROOT}/data:/app/data" \
         -v "${PROJECT_ROOT}/logs:/app/logs" \
-        seth-blockchain:optimized
+        shardora-blockchain:optimized
     
     log INFO "Docker deployment completed"
 }
@@ -215,7 +215,7 @@ rule_files:
   - "alert_rules.yml"
 
 scrape_configs:
-  - job_name: 'seth-blockchain'
+  - job_name: 'shardora-blockchain'
     static_configs:
       - targets: ['localhost:9090']
     scrape_interval: 5s
@@ -231,7 +231,7 @@ EOF
     # Alert rules
     cat > monitoring/alert_rules.yml << 'EOF'
 groups:
-  - name: seth_blockchain_alerts
+  - name: shardora_blockchain_alerts
     rules:
       - alert: HighCPUUsage
         expr: cpu_usage_percent > 80
@@ -274,9 +274,9 @@ EOF
     cat > monitoring/dashboard.py << 'EOF'
 #!/usr/bin/env python3
 """
-Seth Blockchain Monitoring Dashboard
+Shardora Blockchain Monitoring Dashboard
 ===================================
-Real-time monitoring dashboard for the Seth blockchain system.
+Real-time monitoring dashboard for the Shardora blockchain system.
 """
 
 import time
@@ -305,7 +305,7 @@ class MonitoringHandler(BaseHTTPRequestHandler):
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Seth Blockchain Monitoring</title>
+            <title>Shardora Blockchain Monitoring</title>
             <meta http-equiv="refresh" content="5">
             <style>
                 body { font-family: Arial, sans-serif; margin: 20px; }
@@ -316,7 +316,7 @@ class MonitoringHandler(BaseHTTPRequestHandler):
             </style>
         </head>
         <body>
-            <h1>Seth Blockchain Monitoring Dashboard</h1>
+            <h1>Shardora Blockchain Monitoring Dashboard</h1>
             <div id="metrics">
                 <div class="metric">
                     <h3>System Metrics</h3>
@@ -420,8 +420,8 @@ stop_monitoring() {
     fi
     
     # Stop Docker container
-    if docker ps -q -f name=seth-blockchain-optimized | grep -q .; then
-        docker stop seth-blockchain-optimized
+    if docker ps -q -f name=shardora-blockchain-optimized | grep -q .; then
+        docker stop shardora-blockchain-optimized
         log INFO "Docker container stopped"
     fi
 }
@@ -433,7 +433,7 @@ generate_report() {
     local report_file="${PROJECT_ROOT}/deployment_report_$(date +%Y%m%d_%H%M%S).md"
     
     cat > "$report_file" << EOF
-# Seth Blockchain Deployment Report
+# Shardora Blockchain Deployment Report
 
 **Generated**: $(date '+%Y-%m-%d %H:%M:%S')
 
@@ -475,7 +475,7 @@ generate_report() {
 
 ---
 
-*This report was generated automatically by the Seth Blockchain deployment system.*
+*This report was generated automatically by the Shardora Blockchain deployment system.*
 EOF
 
     log INFO "Deployment report generated: $report_file"
@@ -483,7 +483,7 @@ EOF
 
 # Main deployment function
 deploy() {
-    log INFO "Starting Seth Blockchain deployment..."
+    log INFO "Starting Shardora Blockchain deployment..."
     
     # Check prerequisites
     check_prerequisites
@@ -540,10 +540,10 @@ usage() {
 
 # Show status
 show_status() {
-    log INFO "Seth Blockchain Deployment Status:"
+    log INFO "Shardora Blockchain Deployment Status:"
     
     # Check Docker container
-    if docker ps -q -f name=seth-blockchain-optimized | grep -q .; then
+    if docker ps -q -f name=shardora-blockchain-optimized | grep -q .; then
         log INFO "  Docker Container: Running"
     else
         log INFO "  Docker Container: Stopped"

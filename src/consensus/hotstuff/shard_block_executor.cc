@@ -1,28 +1,28 @@
 #include <consensus/hotstuff/block_executor.h>
 #include <consensus/consensus_utils.h>
 #include "consensus/hotstuff/hotstuff_utils.h"
-#include <sethvm/sethvm_utils.h>
+#include <shardoravm/shardoravm_utils.h>
 
-namespace seth {
+namespace shardora {
 namespace hotstuff {
 
 Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         const std::shared_ptr<consensus::WaitingTxsItem> &txs_ptr,
         view_block::protobuf::ViewBlockItem* view_block,
         BalanceAndNonceMap& acc_balance_map,
-        sethvm::SethhainHost& seth_host) {
+        shardoravm::ShardorahainHost& shardora_host) {
     // Execute transaction
     auto& block = *view_block->mutable_block_info();
     auto tx_list = block.mutable_tx_list();
     auto& tx_map = txs_ptr->txs;
     tx_list->Reserve(tx_map.size());
-    seth_host.tx_context_.tx_origin = evmc::address{};
-    seth_host.tx_context_.block_coinbase = evmc::address{};
-    seth_host.tx_context_.block_number = block.height();
-    seth_host.tx_context_.block_timestamp = block.timestamp() / 1000;
+    shardora_host.tx_context_.tx_origin = evmc::address{};
+    shardora_host.tx_context_.block_coinbase = evmc::address{};
+    shardora_host.tx_context_.block_number = block.height();
+    shardora_host.tx_context_.block_timestamp = block.timestamp() / 1000;
     uint64_t chain_id = hotstuff::kGlobalChainId;
-    sethvm::Uint64ToEvmcBytes32(
-        seth_host.tx_context_.chain_id,
+    shardoravm::Uint64ToEvmcBytes32(
+        shardora_host.tx_context_.chain_id,
         chain_id);
     uint32_t tx_index = 0;
     uint64_t block_gas_used = 0;
@@ -33,7 +33,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         int res = (*iter)->TxToBlockTx(*tx_info, &block_tx);
         if (res != consensus::kConsensusSuccess) {
             tx_list->RemoveLast();
-            SETH_WARN("handle tx failed: %u_%u_%lu, tx step: %d, nonce: %lu, res: %d",
+            SHARDORA_WARN("handle tx failed: %u_%u_%lu, tx step: %d, nonce: %lu, res: %d",
                 view_block->qc().network_id(), 
                 view_block->qc().pool_index(), 
                 view_block->qc().view(), 
@@ -58,7 +58,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         // if (iter == acc_balance_map.end()) {
         //     if (iter->second.nonce + 1 != block_tx.nonce()) {
         //         tx_list->RemoveLast();
-        //         SETH_WARN("handle tx failed: %u_%u_%lu, tx step: %d, nonce: %lu, res: %d",
+        //         SHARDORA_WARN("handle tx failed: %u_%u_%lu, tx step: %d, nonce: %lu, res: %d",
         //             view_block->qc().network_id(), 
         //             view_block->qc().pool_index(), 
         //             view_block->qc().view(), 
@@ -72,12 +72,12 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
         int do_tx_res = (*iter)->HandleTx(
             tx_index++,
             *view_block,
-            seth_host,
+            shardora_host,
             acc_balance_map,
             block_tx);
         if (do_tx_res != consensus::kConsensusSuccess) {
             tx_list->RemoveLast();
-            SETH_WARN("handle tx failed: %u_%u_%lu, tx step: %d, nonce: %lu, do_tx_res: %d",
+            SHARDORA_WARN("handle tx failed: %u_%u_%lu, tx step: %d, nonce: %lu, do_tx_res: %d",
                 view_block->qc().network_id(), 
                 view_block->qc().pool_index(), 
                 view_block->qc().view(), 
@@ -89,7 +89,7 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
 
         if (!consensus::CanAddBlockGas(block_gas_used, block_tx.gas_used())) {
             tx_list->RemoveLast();
-            SETH_ERROR("block gas used overflow after tx execution: %u_%u_%lu, "
+            SHARDORA_ERROR("block gas used overflow after tx execution: %u_%u_%lu, "
                 "tx step: %d, nonce: %lu, block_gas_used: %lu, tx_gas_used: %lu, "
                 "block_gas_limit: %lu",
                 view_block->qc().network_id(),
@@ -104,8 +104,8 @@ Status ShardBlockExecutor::DoTransactionAndCreateTxBlock(
             return Status::kError;
         }
         block_gas_used += block_tx.gas_used();
-        seth_host.recorded_logs_.clear();
-        // SETH_DEBUG("handle tx success: %u_%u_%lu, tx step: %d, nonce: %lu",
+        shardora_host.recorded_logs_.clear();
+        // SHARDORA_DEBUG("handle tx success: %u_%u_%lu, tx step: %d, nonce: %lu",
         //     view_block->qc().network_id(), 
         //     view_block->qc().pool_index(), 
         //     view_block->qc().view(), 
